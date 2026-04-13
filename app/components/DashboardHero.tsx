@@ -29,25 +29,36 @@ export default function DashboardHero(_props: Props = {}) {
   const streak = useStreak();
   const showStreakFlame = streak.current > 0;
 
-  // Ping-pong loop: when the video reaches the end, it plays backward;
-  // when it reaches the start, it plays forward again. This hides any
-  // hard cut between the last frame and the first frame of an AI video.
+  // Slow ping-pong loop: the video plays forward at 0.5x native speed,
+  // when it ends we rAF-reverse it at the same slow rate, then flip
+  // again at the start. Forward and reverse are symmetric so there's
+  // no perceptible cut at either end.
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+
+    const SLOW = 0.5;           // 50% speed
     let dir: 1 | -1 = 1;
     let raf = 0;
     let lastTs = 0;
 
+    v.playbackRate = SLOW;
+
     const tick = (ts: number) => {
-      if (v.paused || v.ended) { raf = requestAnimationFrame(tick); return; }
+      if (!v) return;
       if (lastTs === 0) lastTs = ts;
       const dt = (ts - lastTs) / 1000;
       lastTs = ts;
       if (dir === -1) {
-        v.currentTime = Math.max(0, v.currentTime - dt);
-        if (v.currentTime <= 0.02) { dir = 1; v.play().catch(() => {}); }
+        const next = v.currentTime - dt * SLOW;
+        if (next <= 0.02) {
+          v.currentTime = 0;
+          dir = 1;
+          v.play().catch(() => {});
+        } else {
+          v.currentTime = next;
+        }
       }
       raf = requestAnimationFrame(tick);
     };
@@ -56,13 +67,11 @@ export default function DashboardHero(_props: Props = {}) {
       dir = -1;
       v.pause();
       lastTs = 0;
-      raf = requestAnimationFrame(tick);
     };
 
-    // The video element has loop={false} so 'ended' fires; we flip
-    // direction and start the rAF-driven reverse playback.
     v.addEventListener('ended', onEnded);
     v.play().catch(() => {});
+    raf = requestAnimationFrame(tick);
 
     return () => {
       v.removeEventListener('ended', onEnded);
@@ -78,8 +87,9 @@ export default function DashboardHero(_props: Props = {}) {
     <div
       className="relative w-full overflow-hidden"
       style={{
-        borderBottom: '3px solid #0d0a06',
-        boxShadow: 'inset 0 -18px 36px -8px rgba(0, 0, 0, 0.65)',
+        // No hard border at the bottom — the scene fades into the
+        // night background via a gradient overlay so the sword feels
+        // like it sits inside the same world.
       }}
     >
       {/* === Background video (ping-pong loop via JS) === */}
@@ -239,6 +249,21 @@ export default function DashboardHero(_props: Props = {}) {
           />
         ))}
       </div>
+
+      {/* === Smooth fade to the app background at the bottom === */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: '28%',
+          background:
+            'linear-gradient(180deg, rgba(13, 10, 6, 0) 0%, rgba(13, 10, 6, 0.35) 40%, rgba(13, 10, 6, 0.85) 80%, rgba(13, 10, 6, 1) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
 
       {/* === Falling leaves / embers === */}
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
