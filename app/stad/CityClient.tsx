@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { loadCity, saveCity, addBuilding, upgradeBuilding, spendCoins, addCoins, type CityState, type PlacedBuilding } from '@/lib/cityStore';
 import { BUILDINGS, BUILDING_ORDER, buildCost, upgradeCost, type BuildingType } from '@/lib/game/buildings';
 
@@ -12,6 +13,8 @@ type TileTarget = { gx: number; gy: number } | null;
 type BuildingTarget = PlacedBuilding | null;
 
 export default function CityClient() {
+  const searchParams = useSearchParams();
+  const devMode = searchParams.get('dev') === '1';
   const [state, setState] = useState<CityState>({ coins: 0, buildings: [] });
   const [loaded, setLoaded] = useState(false);
   const [tileTarget, setTileTarget] = useState<TileTarget>(null);
@@ -88,15 +91,17 @@ export default function CityClient() {
         </Link>
       </div>
 
-      {/* Bottom dev bar */}
-      <div className="fixed bottom-4 left-0 right-0 z-10 flex items-center justify-center pointer-events-none">
-        <button
-          onClick={handleDevCoins}
-          className="pointer-events-auto bg-[#E8B84A] text-[#3a2a18] font-bold px-5 py-2.5 rounded-full shadow-lg active:scale-95 transition-transform text-sm"
-        >
-          +100 🪙 (dev)
-        </button>
-      </div>
+      {/* Bottom dev bar (only with ?dev=1) */}
+      {devMode && (
+        <div className="fixed bottom-4 left-0 right-0 z-10 flex items-center justify-center pointer-events-none">
+          <button
+            onClick={handleDevCoins}
+            className="pointer-events-auto bg-[#E8B84A] text-[#3a2a18] font-bold px-5 py-2.5 rounded-full shadow-lg active:scale-95 transition-transform text-sm"
+          >
+            +100 🪙 (dev)
+          </button>
+        </div>
+      )}
 
       {/* Flash toast */}
       {flash && (

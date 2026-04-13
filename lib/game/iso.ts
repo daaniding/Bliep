@@ -1,6 +1,6 @@
 export const TILE_W = 96;
 export const TILE_H = 48;
-export const GRID_SIZE = 8;
+export const GRID_SIZE = 16;
 
 export interface GridCoord {
   gx: number;

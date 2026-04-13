@@ -39,7 +39,7 @@ function defaultCity(): CityState {
   return {
     coins: 0,
     buildings: [
-      { id: 'start-house', type: 'house', gx: 3, gy: 3, level: 1 },
+      { id: 'start-house', type: 'house', gx: 7, gy: 7, level: 1 },
     ],
   };
 }
