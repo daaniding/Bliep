@@ -1,12 +1,29 @@
 'use client';
 
-// Dense hand-drawn SVG hero scene — medieval kingdom at sunset.
-// Layered parallax (sky / far mountains / near mountains / castle /
-// foreground with knight), all strongly outlined with dark strokes,
-// warm gradients, stone textures, flame animations and real detail.
-// Target: recognizable, not generic.
+import { useEffect, useState } from 'react';
+import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
+import { useStreak } from '@/lib/useStreak';
 
-export default function DashboardHero() {
+// Dense hand-drawn SVG hero scene — medieval kingdom with a live
+// day/night cycle. Sky colours shift with the real Amsterdam clock.
+// A dragon flies across on a long timer. Windows glow stronger at
+// night. If the user has a streak, a flame hovers above the keep.
+
+interface Props {
+  className?: string;
+}
+
+export default function DashboardHero(_props: Props = {}) {
+  // Recompute every 60s so the sky shifts over time
+  const [tod, setTod] = useState<TimeOfDay>(() => getTimeOfDay());
+  useEffect(() => {
+    const id = window.setInterval(() => setTod(getTimeOfDay()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const streak = useStreak();
+  const showStreakFlame = streak.current > 0;
+
   return (
     <div
       className="relative w-full overflow-hidden"
@@ -25,12 +42,12 @@ export default function DashboardHero() {
       >
         <defs>
           {/* === GRADIENTS === */}
+          {/* Sky gradient is dynamic: colour stops come from time-of-day */}
           <linearGradient id="heroSky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stopColor="#ffe39a" />
-            <stop offset="25%" stopColor="#ffb458" />
-            <stop offset="55%" stopColor="#ef7336" />
-            <stop offset="85%" stopColor="#70290e" />
-            <stop offset="100%" stopColor="#2a0f04" />
+            <stop offset="0%"  stopColor={tod.skyTop} />
+            <stop offset="28%" stopColor={tod.skyMid} />
+            <stop offset="60%" stopColor={tod.skyLow} />
+            <stop offset="100%" stopColor={tod.skyBottom} />
           </linearGradient>
           <radialGradient id="heroSun" cx="0.5" cy="0.5" r="0.5">
             <stop offset="0%"  stopColor="#fff8e0" />
@@ -103,11 +120,36 @@ export default function DashboardHero() {
         <rect x="0" y="0" width="390" height="460" fill="url(#heroSky)" />
 
         {/* Sun halo + disc — positioned behind the central keep, pulses.
-            No transform-box: sunPulse only animates filter, no transform. */}
-        <g style={{ animation: 'sunPulse 4s ease-in-out infinite' }}>
-          <circle cx="300" cy="120" r="130" fill="url(#heroSun)" />
-          <circle cx="300" cy="120" r="42" fill="#fff6dc" opacity="0.98" />
-          <circle cx="300" cy="120" r="32" fill="#ffdb7c" />
+            Only renders during day/dawn/dusk. */}
+        {tod.sunVisible && (
+          <g style={{ animation: 'sunPulse 4s ease-in-out infinite', opacity: Math.max(0.4, tod.daylight) }}>
+            <circle cx="300" cy="120" r="130" fill="url(#heroSun)" />
+            <circle cx="300" cy="120" r="42" fill="#fff6dc" opacity="0.98" />
+            <circle cx="300" cy="120" r="32" fill="#ffdb7c" />
+          </g>
+        )}
+
+        {/* Moon — night only, with craters */}
+        {tod.moonVisible && (
+          <g style={{ opacity: Math.max(0.4, tod.darkness) }}>
+            <circle cx="300" cy="100" r="90" fill="rgba(200, 210, 240, 0.15)" />
+            <circle cx="300" cy="100" r="40" fill="#e8e8f0" />
+            <circle cx="300" cy="100" r="36" fill="#f0f0f8" />
+            <circle cx="288" cy="92"  r="4" fill="#c8c8d0" opacity="0.6" />
+            <circle cx="310" cy="108" r="5" fill="#c8c8d0" opacity="0.5" />
+            <circle cx="302" cy="90"  r="3" fill="#c8c8d0" opacity="0.55" />
+          </g>
+        )}
+
+        {/* Dragon silhouette flying in the distance — starts from left,
+            crosses the sky every ~45s */}
+        <g className="hero-svg-anim dragon-fly">
+          <path
+            d="M0 0 Q-8 -6 -14 -4 Q-18 0 -14 4 Q-10 6 -6 4 Q-2 8 2 4 Q8 8 14 4 Q18 0 14 -4 Q8 -6 2 -4 Q-2 0 -6 -4 Q-8 -2 -6 0 Q0 2 0 0 Z"
+            fill="#0d0a06"
+            opacity="0.75"
+          />
+          <path d="M-2 1 L-4 3 L-1 2 Z" fill="#0d0a06" opacity="0.6" />
         </g>
 
         {/* Everything from mountains onward is shifted down so the castle
@@ -169,9 +211,10 @@ export default function DashboardHero() {
             <rect key={i} x={62 + i * 13} y="112" width="9" height="12" />
           ))}
         </g>
-        {/* Window */}
+        {/* Window with night glow */}
         <path d="M82 150 Q82 142 87 142 Q92 142 92 150 L92 164 L82 164 Z" fill="#2a1205" stroke="#0d0a06" strokeWidth="2" />
-        <circle cx="87" cy="150" r="4" fill="url(#windowGlow)" />
+        <circle cx="87" cy="150" r="6" fill="url(#windowGlow)" opacity={0.6 + tod.darkness * 0.4} style={{ animation: 'windowFlicker 2.4s ease-in-out infinite' }} />
+        {tod.darkness > 0.3 && <circle cx="87" cy="150" r="12" fill="#ffb866" opacity={tod.darkness * 0.2} filter="url(#grain)" />}
         {/* Conical roof */}
         <polygon points="52,122 87,72 122,122" fill="url(#roofRed)" stroke="#0d0a06" strokeWidth="3" strokeLinejoin="round" />
         <polygon points="87,72 122,122 87,112" fill="rgba(0,0,0,0.35)" />
@@ -194,7 +237,7 @@ export default function DashboardHero() {
           ))}
         </g>
         <path d="M298 150 Q298 142 303 142 Q308 142 308 150 L308 164 L298 164 Z" fill="#2a1205" stroke="#0d0a06" strokeWidth="2" />
-        <circle cx="303" cy="150" r="4" fill="url(#windowGlow)" />
+        <circle cx="303" cy="150" r="6" fill="url(#windowGlow)" opacity={0.6 + tod.darkness * 0.4} style={{ animation: 'windowFlicker 2.8s ease-in-out infinite' }} />
         <polygon points="268,122 303,72 338,122" fill="url(#roofRed)" stroke="#0d0a06" strokeWidth="3" strokeLinejoin="round" />
         <polygon points="303,72 338,122 303,112" fill="rgba(0,0,0,0.35)" />
         <line x1="285" y1="96" x2="321" y2="96" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
@@ -213,12 +256,13 @@ export default function DashboardHero() {
             <rect key={i} x={162 + i * 14} y="78" width="10" height="12" />
           ))}
         </g>
-        {/* Keep window (upper) */}
+        {/* Keep window (upper) with night bloom */}
         <path d="M180 114 Q180 105 190 105 Q200 105 200 114 L200 132 L180 132 Z" fill="#2a1205" stroke="#0d0a06" strokeWidth="2" />
-        <circle cx="190" cy="116" r="6" fill="url(#windowGlow)" />
+        <circle cx="190" cy="116" r="8" fill="url(#windowGlow)" opacity={0.7 + tod.darkness * 0.3} style={{ animation: 'windowFlicker 2.6s ease-in-out infinite' }} />
+        {tod.darkness > 0.3 && <circle cx="190" cy="116" r="18" fill="#ffb866" opacity={tod.darkness * 0.25} />}
         {/* Keep window (middle) */}
         <path d="M205 148 Q205 141 210 141 Q215 141 215 148 L215 160 L205 160 Z" fill="#2a1205" stroke="#0d0a06" strokeWidth="2" />
-        <circle cx="210" cy="150" r="3" fill="url(#windowGlow)" />
+        <circle cx="210" cy="150" r="4" fill="url(#windowGlow)" opacity={0.6 + tod.darkness * 0.4} style={{ animation: 'windowFlicker 2.2s ease-in-out infinite' }} />
         {/* Keep gate (arched) */}
         <path
           d="M180 260 L180 210 Q180 192 195 192 Q210 192 210 210 L210 260 Z"
@@ -266,6 +310,33 @@ export default function DashboardHero() {
           <path d="M195 8 L220 14 L195 22 Z" fill="#f0b840" stroke="#0d0a06" strokeWidth="1.5" />
         </g>
         <circle cx="195" cy="6" r="2.5" fill="#f0b840" stroke="#0d0a06" strokeWidth="1" />
+
+        {/* Streak flame above keep — only when streak is active */}
+        {showStreakFlame && (
+          <g className="hero-svg-anim" style={{ animation: 'torchFlicker 0.8s ease-in-out infinite' }}>
+            <path
+              d="M160 26 Q154 10 162 2 Q158 14 166 6 Q164 20 170 10 Q168 24 172 16 Q178 26 160 32 Z"
+              fill="url(#torchFlame)"
+              stroke="#7a2e0a"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <circle cx="162" cy="18" r="4" fill="#fff8c0" opacity="0.9" />
+            <text
+              x="165"
+              y="44"
+              textAnchor="middle"
+              fontFamily="Lilita One, sans-serif"
+              fontSize="14"
+              fill="#fdd069"
+              stroke="#0d0a06"
+              strokeWidth="1.4"
+              paintOrder="stroke fill"
+            >
+              {streak.current}
+            </text>
+          </g>
+        )}
 
         {/* Smoke from keep top — rising puffs. transform-box so the
             puffs translate/scale around their own center. */}
@@ -498,15 +569,19 @@ export default function DashboardHero() {
         ))}
       </div>
 
-      {/* Static faint stars in upper sky (becomes visible in the darker gradient zone) */}
-      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Stars — visibility scales with darkness */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: tod.darkness }}>
         {[
-          { left: '12%', top: '4%',  size: 2 },
-          { left: '38%', top: '7%',  size: 2 },
-          { left: '62%', top: '5%',  size: 3 },
-          { left: '88%', top: '3%',  size: 2 },
-          { left: '22%', top: '11%', size: 1.5 },
+          { left: '10%', top: '4%',  size: 2 },
+          { left: '24%', top: '9%',  size: 1.5 },
+          { left: '38%', top: '3%',  size: 2 },
+          { left: '52%', top: '10%', size: 2 },
+          { left: '66%', top: '6%',  size: 3 },
           { left: '76%', top: '13%', size: 2 },
+          { left: '88%', top: '2%',  size: 2 },
+          { left: '6%',  top: '15%', size: 1.5 },
+          { left: '45%', top: '18%', size: 1.5 },
+          { left: '92%', top: '17%', size: 2 },
         ].map((s, i) => (
           <div
             key={i}
@@ -518,10 +593,39 @@ export default function DashboardHero() {
               height: s.size,
               borderRadius: '50%',
               background: '#fff',
-              boxShadow: `0 0 ${s.size * 3}px rgba(255, 255, 255, 0.8)`,
+              boxShadow: `0 0 ${s.size * 4}px rgba(255, 255, 255, 0.9)`,
               opacity: 0.85,
               animation: 'softPulse 3s ease-in-out infinite',
               animationDelay: `${i * 0.4}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Falling leaves / embers — gentle particles drifting down */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[
+          { left: '15%', color: '#c0392b', delay: '0s',   duration: '14s' },
+          { left: '32%', color: '#ef7336', delay: '-5s',  duration: '16s' },
+          { left: '50%', color: '#f0b840', delay: '-9s',  duration: '15s' },
+          { left: '68%', color: '#c0392b', delay: '-2s',  duration: '18s' },
+          { left: '84%', color: '#ef7336', delay: '-12s', duration: '14s' },
+          { left: '42%', color: '#7a4f2a', delay: '-6s',  duration: '17s' },
+        ].map((p, i) => (
+          <div
+            key={i}
+            className="leaf-fall"
+            style={{
+              position: 'absolute',
+              left: p.left,
+              top: '-6%',
+              width: 5,
+              height: 7,
+              borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+              background: p.color,
+              boxShadow: `0 0 4px ${p.color}`,
+              animation: `leafFall ${p.duration} linear infinite`,
+              animationDelay: p.delay,
             }}
           />
         ))}

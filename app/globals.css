@@ -257,7 +257,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   padding: 4px 6px;
   color: var(--color-parch-200);
   text-decoration: none;
@@ -271,27 +271,66 @@ body {
 }
 .arch-tab:active { transform: translateY(2px); }
 .arch-tab.active { color: var(--color-gold-100); }
-.arch-tab.active .arch-tab-icon {
-  filter: drop-shadow(0 0 10px rgba(240, 184, 64, 0.8));
-}
+
+/* Gold frame around every icon — 3D bevel + border */
 .arch-tab-icon {
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 240, 200, 0.25), transparent 55%),
+    linear-gradient(180deg, #3a2410 0%, #0d0a06 100%);
+  border: 2px solid #f0b840;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+    0 2px 0 #7a4f2a,
+    0 4px 8px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+.arch-tab-icon > svg {
+  width: 26px;
+  height: 26px;
+}
+.arch-tab.active .arch-tab-icon {
+  border-color: #fff6dc;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 #d19225,
+    0 0 20px rgba(240, 184, 64, 0.85),
+    0 4px 8px rgba(0, 0, 0, 0.5);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 240, 200, 0.45), transparent 55%),
+    linear-gradient(180deg, #5a3718 0%, #1a0f05 100%);
 }
 
+/* Center BATTLE tab — bigger, taller frame, raised */
 .arch-tab.center {
-  transform: translateY(-22px);
+  transform: translateY(-26px);
   z-index: 2;
 }
 .arch-tab.center .arch-tab-icon {
-  width: 56px;
-  height: 56px;
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  border-width: 3px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.55),
+    0 4px 0 #a3701a,
+    0 0 28px rgba(240, 184, 64, 0.7),
+    0 8px 16px rgba(0, 0, 0, 0.6);
+}
+.arch-tab.center .arch-tab-icon > svg {
+  width: 50px;
+  height: 50px;
 }
 .arch-tab.center:active {
-  transform: translateY(-19px);
+  transform: translateY(-23px);
 }
 
 /* === GEM GLOW — used on sword pommel and ready indicators === */
@@ -416,6 +455,29 @@ body {
   30%      { opacity: 0.6; }
   55%      { opacity: 1; }
   85%      { opacity: 0.75; }
+}
+
+/* Leaf fall — drift + sway */
+@keyframes leafFall {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  6%   { opacity: 0.75; }
+  25%  { transform: translate(-10px, 80px) rotate(120deg); }
+  50%  { transform: translate(12px, 180px) rotate(240deg); opacity: 0.8; }
+  75%  { transform: translate(-8px, 280px) rotate(360deg); }
+  94%  { opacity: 0.6; }
+  100% { transform: translate(4px, 380px) rotate(480deg); opacity: 0; }
+}
+
+/* Dragon flies across the sky — long cycle */
+@keyframes dragonFly {
+  0%   { transform: translate(-30px, 30px) scaleX(1); opacity: 0; }
+  3%   { opacity: 0.85; }
+  50%  { transform: translate(195px, 45px) scaleX(1); opacity: 0.85; }
+  97%  { opacity: 0.85; }
+  100% { transform: translate(430px, 30px) scaleX(1); opacity: 0; }
+}
+.dragon-fly {
+  animation: dragonFly 42s linear infinite;
 }
 
 /* Firefly drift */
