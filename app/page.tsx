@@ -11,15 +11,6 @@ import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { trophiesForTier } from '@/lib/trophies';
 
-// Rotating quest lines that replace the greeting
-const QUEST_LINES = [
-  'Je koninkrijk wacht op je bevelen, heer.',
-  'De dag vraagt om een held. Ben jij het?',
-  'Een nieuwe strijd voor een nieuwe dag.',
-  'De wallen staan, de troon is van jou.',
-  'Elk moment is een kans om groter te worden.',
-];
-
 function getToday(): string {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })).toISOString().split('T')[0];
 }
@@ -72,7 +63,6 @@ export default function Home() {
   const [tasks] = useState<DailyTask[]>(() => getDailyTasks());
   const [pick, setPick] = useState(() => loadDailyPick());
   const [showTimerModal, setShowTimerModal] = useState(false);
-  const [questLine] = useState(() => QUEST_LINES[Math.floor(Math.random() * QUEST_LINES.length)]);
   const confettiRef = useRef<HTMLDivElement>(null);
   const { award } = useCoins();
   const { awardTrophies } = useTrophies();
@@ -174,42 +164,26 @@ export default function Home() {
 
       {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
 
-      {/* Hero — animated castle scene */}
-      <div className="animate-fade-up">
+      {/* Hero — animated castle scene fills all available space */}
+      <div className="hero-fill animate-fade-up">
         <DashboardHero />
-      </div>
-
-      {/* Quest line */}
-      <div className="px-5 pt-3 pb-1 text-center animate-fade-up" style={{ animationDelay: '80ms' }}>
-        <p className="font-display text-[14px] text-[var(--color-gold-100)] text-stroke-dark leading-snug">
-          {questLine}
-        </p>
       </div>
 
       {/* Completed state — short message */}
       {pick.completed && (
         <div className="px-6 pt-2 animate-fade-up" style={{ animationDelay: '160ms' }}>
-          <div className="text-center py-2">
-            <div className="text-4xl mb-1 drop-shadow-[0_4px_0_#0d0a06]">
-              {pick.outcome === 'won' ? '🏆' : pick.outcome === 'failed-locked' ? '⚔️' : '💤'}
-            </div>
-            <p className="font-display text-[16px] text-[var(--color-gold-100)] text-stroke-dark mb-1">
-              {pick.outcome === 'won' ? 'De dag is gewonnen' : 'Dag is voorbij'}
-            </p>
-            <p className="text-[var(--color-parch-200)] text-[11px] font-body">
-              {pick.outcome === 'won' && 'Kom morgen terug voor een nieuwe uitdaging.'}
-              {pick.outcome === 'gave-up' && 'Je hebt opgegeven. Morgen nieuwe kans.'}
-              {pick.outcome === 'failed-locked' && 'Te lang weg van Bliep. Morgen opnieuw.'}
+          <div className="text-center py-1">
+            <p className="font-display text-[15px] text-[var(--color-gold-100)] text-stroke-dark">
+              {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
+              {pick.outcome === 'gave-up' && '💤 Dag is voorbij'}
+              {pick.outcome === 'failed-locked' && '⚔️ Dag is voorbij'}
             </p>
           </div>
         </div>
       )}
 
-      {/* Spacer — pushes sword to just above the nav */}
-      <div className="content-spacer" />
-
-      {/* Sword CTA — sits at the bottom of the content stack, above the nav */}
-      <div className="px-3 pb-2 animate-fade-up" style={{ animationDelay: '240ms' }}>
+      {/* Sword CTA — sits just beneath the hero, above the nav */}
+      <div className="px-3 pt-2 pb-2 animate-fade-up" style={{ animationDelay: '160ms' }}>
         <SwordCTA
           taskText={chosenTask && !pick.completed ? chosenTask.text : null}
           durationMin={chosenTask?.durationMin}

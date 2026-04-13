@@ -102,10 +102,12 @@ export default function DashboardHero() {
         {/* Sky */}
         <rect x="0" y="0" width="390" height="460" fill="url(#heroSky)" />
 
-        {/* Sun halo + disc — positioned behind the central keep */}
-        <circle cx="300" cy="120" r="130" fill="url(#heroSun)" />
-        <circle cx="300" cy="120" r="42" fill="#fff6dc" opacity="0.98" />
-        <circle cx="300" cy="120" r="32" fill="#ffdb7c" />
+        {/* Sun halo + disc — positioned behind the central keep, pulses */}
+        <g style={{ animation: 'sunPulse 4s ease-in-out infinite', transformOrigin: '300px 120px' }}>
+          <circle cx="300" cy="120" r="130" fill="url(#heroSun)" />
+          <circle cx="300" cy="120" r="42" fill="#fff6dc" opacity="0.98" />
+          <circle cx="300" cy="120" r="32" fill="#ffdb7c" />
+        </g>
 
         {/* Everything from mountains onward is shifted down so the castle
             sits in the lower portion of a 460-tall viewBox, with lots of
@@ -177,7 +179,9 @@ export default function DashboardHero() {
         <line x1="61" y1="116" x2="113" y2="116" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
         {/* Flag */}
         <line x1="87" y1="72" x2="87" y2="46" stroke="#0d0a06" strokeWidth="2" />
-        <path d="M87 48 L106 54 L87 62 Z" fill="#f0b840" stroke="#0d0a06" strokeWidth="1.5" />
+        <g style={{ transformOrigin: '87px 54px', animation: 'flagWave 2.4s ease-in-out infinite' }}>
+          <path d="M87 48 L106 54 L87 62 Z" fill="#f0b840" stroke="#0d0a06" strokeWidth="1.5" />
+        </g>
 
         {/* === RIGHT TOWER === */}
         <rect x="276" y="122" width="54" height="138" fill="url(#stoneLight)" stroke="#0d0a06" strokeWidth="3" />
@@ -194,7 +198,9 @@ export default function DashboardHero() {
         <line x1="285" y1="96" x2="321" y2="96" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
         <line x1="277" y1="116" x2="329" y2="116" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
         <line x1="303" y1="72" x2="303" y2="46" stroke="#0d0a06" strokeWidth="2" />
-        <path d="M303 48 L322 54 L303 62 Z" fill="#c0392b" stroke="#0d0a06" strokeWidth="1.5" />
+        <g style={{ transformOrigin: '303px 54px', animation: 'flagWave 2.4s ease-in-out infinite', animationDelay: '-0.6s' }}>
+          <path d="M303 48 L322 54 L303 62 Z" fill="#c0392b" stroke="#0d0a06" strokeWidth="1.5" />
+        </g>
 
         {/* === MAIN KEEP === */}
         <rect x="160" y="88" width="70" height="172" fill="url(#stoneLight)" stroke="#0d0a06" strokeWidth="3" />
@@ -224,10 +230,16 @@ export default function DashboardHero() {
           <line x1="195" y1="198" x2="195" y2="258" />
           <line x1="202" y1="208" x2="202" y2="258" />
         </g>
-        {/* Gate torches */}
-        <circle cx="172" cy="210" r="10" fill="url(#torchFlame)" />
+        {/* Gate torches — flicker */}
+        <g style={{ transformOrigin: '172px 210px', animation: 'torchFlicker 0.7s ease-in-out infinite' }}>
+          <circle cx="172" cy="210" r="10" fill="url(#torchFlame)" />
+          <circle cx="172" cy="207" r="5" fill="#fff2a0" opacity="0.9" />
+        </g>
         <rect x="170" y="210" width="4" height="10" fill="#3a1208" stroke="#0d0a06" strokeWidth="1" />
-        <circle cx="218" cy="210" r="10" fill="url(#torchFlame)" />
+        <g style={{ transformOrigin: '218px 210px', animation: 'torchFlicker 0.7s ease-in-out infinite', animationDelay: '-0.35s' }}>
+          <circle cx="218" cy="210" r="10" fill="url(#torchFlame)" />
+          <circle cx="218" cy="207" r="5" fill="#fff2a0" opacity="0.9" />
+        </g>
         <rect x="216" y="210" width="4" height="10" fill="#3a1208" stroke="#0d0a06" strokeWidth="1" />
         {/* Stone brick lines on keep */}
         <g stroke="#0d0a06" strokeWidth="1.2" opacity="0.6">
@@ -247,14 +259,20 @@ export default function DashboardHero() {
 
         {/* Golden banner + flagpole on keep */}
         <line x1="195" y1="30" x2="195" y2="6" stroke="#0d0a06" strokeWidth="2.5" />
-        <path d="M195 8 L220 14 L195 22 Z" fill="#f0b840" stroke="#0d0a06" strokeWidth="1.5" />
+        <g style={{ transformOrigin: '195px 14px', animation: 'flagWave 2s ease-in-out infinite', animationDelay: '-1.2s' }}>
+          <path d="M195 8 L220 14 L195 22 Z" fill="#f0b840" stroke="#0d0a06" strokeWidth="1.5" />
+        </g>
         <circle cx="195" cy="6" r="2.5" fill="#f0b840" stroke="#0d0a06" strokeWidth="1" />
 
-        {/* Smoke from keep top */}
-        <g opacity="0.35">
-          <circle cx="172" cy="60" r="4" fill="#eee" />
-          <circle cx="178" cy="54" r="5" fill="#eee" />
-          <circle cx="184" cy="48" r="4" fill="#eee" />
+        {/* Smoke from keep top — rising puffs */}
+        <g style={{ transformOrigin: '172px 60px', animation: 'smokeRise 3.2s ease-out infinite' }}>
+          <circle cx="172" cy="60" r="4" fill="#eee" opacity="0.55" />
+        </g>
+        <g style={{ transformOrigin: '178px 54px', animation: 'smokeRise 3.2s ease-out infinite', animationDelay: '-1s' }}>
+          <circle cx="178" cy="54" r="5" fill="#eee" opacity="0.5" />
+        </g>
+        <g style={{ transformOrigin: '184px 48px', animation: 'smokeRise 3.2s ease-out infinite', animationDelay: '-2s' }}>
+          <circle cx="184" cy="48" r="4" fill="#eee" opacity="0.45" />
         </g>
 
         {/* Ground + grass */}
@@ -273,8 +291,9 @@ export default function DashboardHero() {
           />
         ))}
 
-        {/* === KNIGHT (big, foreground) === */}
-        <g transform="translate(50 262) scale(1.3)">
+        {/* === KNIGHT (big, foreground) — breathing animation === */}
+        <g transform="translate(56 266) scale(1.55)">
+         <g style={{ animation: 'knightBob 3.4s ease-in-out infinite', transformBox: 'fill-box' }}>
           {/* Cape behind */}
           <path d="M-6 -30 L6 -30 L14 -2 L0 6 L-14 -2 Z" fill="#c0392b" stroke="#0d0a06" strokeWidth="2" strokeLinejoin="round" />
           {/* Legs */}
@@ -301,6 +320,34 @@ export default function DashboardHero() {
           {/* Helmet plume */}
           <path d="M-3 -40 Q-5 -48 0 -46 Q5 -48 3 -40 Z" fill="#c0392b" stroke="#0d0a06" strokeWidth="1.5" />
           <path d="M0 -46 L0 -40" stroke="#0d0a06" strokeWidth="1.5" opacity="0.8" />
+         </g>
+        </g>
+
+        {/* === PEASANT (right side of castle) — bobs slightly === */}
+        <g transform="translate(330 264) scale(1.2)">
+         <g style={{ animation: 'knightBob 2.6s ease-in-out infinite', animationDelay: '-0.8s', transformBox: 'fill-box' }}>
+          {/* Legs */}
+          <rect x="-4" y="-6" width="4" height="12" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1.5" />
+          <rect x="0" y="-6" width="4" height="12" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1.5" />
+          {/* Boots */}
+          <rect x="-5" y="4" width="5" height="4" fill="#2a1a0a" stroke="#0d0a06" strokeWidth="1" />
+          <rect x="0" y="4" width="5" height="4" fill="#2a1a0a" stroke="#0d0a06" strokeWidth="1" />
+          {/* Tunic */}
+          <path d="M-8 -22 L8 -22 L10 -6 L-10 -6 Z" fill="#7a4f2a" stroke="#0d0a06" strokeWidth="2" />
+          {/* Belt */}
+          <rect x="-10" y="-10" width="20" height="3" fill="#1a0f05" />
+          <rect x="-1.5" y="-10" width="3" height="3" fill="#f0b840" />
+          {/* Head */}
+          <rect x="-5" y="-34" width="10" height="12" rx="1" fill="#e0b088" stroke="#0d0a06" strokeWidth="1.5" />
+          {/* Hat */}
+          <path d="M-6 -34 L6 -34 L4 -40 L-4 -40 Z" fill="#7a1e0a" stroke="#0d0a06" strokeWidth="1.5" />
+          <rect x="-7" y="-34" width="14" height="2" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1" />
+          {/* Pitchfork in hand */}
+          <line x1="9" y1="-25" x2="14" y2="-44" stroke="#5c3a1e" strokeWidth="2" strokeLinecap="round" />
+          <line x1="12" y1="-42" x2="11" y2="-48" stroke="#5c3a1e" strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="14" y1="-44" x2="14" y2="-50" stroke="#5c3a1e" strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="16" y1="-42" x2="17" y2="-48" stroke="#5c3a1e" strokeWidth="1.5" strokeLinecap="round" />
+         </g>
         </g>
 
         </g>
@@ -316,14 +363,77 @@ export default function DashboardHero() {
         <div className="cloud-drift" style={{ position: 'absolute', top: '3%',  left: 0, width: 88, height: 20, borderRadius: 999, background: 'rgba(255,245,200,0.8)', animationDuration: '65s', animationDelay: '-28s' }} />
       </div>
 
-      {/* Birds */}
+      {/* Birds — 4 of them, different heights + speeds */}
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
-        <svg className="bird-fly absolute" style={{ top: '15%', left: 0, width: '100%', height: 14, animationDuration: '26s' }} viewBox="0 0 40 14">
+        <svg className="bird-fly absolute" style={{ top: '12%', left: 0, width: '100%', height: 14, animationDuration: '24s' }} viewBox="0 0 40 14">
           <path d="M0 8 Q5 0 10 8 Q15 0 20 8" fill="none" stroke="#0d0a06" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <svg className="bird-fly absolute" style={{ top: '24%', left: 0, width: '100%', height: 14, animationDuration: '32s', animationDelay: '-8s' }} viewBox="0 0 40 14">
+        <svg className="bird-fly absolute" style={{ top: '20%', left: 0, width: '100%', height: 14, animationDuration: '30s', animationDelay: '-6s' }} viewBox="0 0 40 14">
           <path d="M0 8 Q4 2 8 8 Q12 2 16 8" fill="none" stroke="#0d0a06" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
+        <svg className="bird-fly absolute" style={{ top: '28%', left: 0, width: '100%', height: 14, animationDuration: '36s', animationDelay: '-18s' }} viewBox="0 0 40 14">
+          <path d="M0 8 Q3 3 6 8 Q9 3 12 8" fill="none" stroke="#0d0a06" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <svg className="bird-fly absolute" style={{ top: '9%', left: 0, width: '100%', height: 14, animationDuration: '40s', animationDelay: '-24s' }} viewBox="0 0 40 14">
+          <path d="M0 8 Q5 1 10 8 Q15 1 20 8" fill="none" stroke="#0d0a06" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
+      {/* Fireflies — small golden dots that drift near ground and torches */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[
+          { left: '18%', top: '72%', delay: '0s',    duration: '8s'  },
+          { left: '25%', top: '78%', delay: '-2s',   duration: '10s' },
+          { left: '48%', top: '68%', delay: '-4s',   duration: '9s'  },
+          { left: '55%', top: '74%', delay: '-1s',   duration: '11s' },
+          { left: '70%', top: '76%', delay: '-5s',   duration: '8s'  },
+          { left: '82%', top: '70%', delay: '-3s',   duration: '10s' },
+        ].map((f, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              left: f.left,
+              top: f.top,
+              width: 4,
+              height: 4,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, #fff6a0 0%, #ffc040 55%, rgba(255,160,40,0) 80%)',
+              boxShadow: '0 0 8px 2px rgba(255, 200, 80, 0.8)',
+              animation: `fireflyDrift ${f.duration} ease-in-out infinite`,
+              animationDelay: f.delay,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Static faint stars in upper sky (becomes visible in the darker gradient zone) */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[
+          { left: '12%', top: '4%',  size: 2 },
+          { left: '38%', top: '7%',  size: 2 },
+          { left: '62%', top: '5%',  size: 3 },
+          { left: '88%', top: '3%',  size: 2 },
+          { left: '22%', top: '11%', size: 1.5 },
+          { left: '76%', top: '13%', size: 2 },
+        ].map((s, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              left: s.left,
+              top: s.top,
+              width: s.size,
+              height: s.size,
+              borderRadius: '50%',
+              background: '#fff',
+              boxShadow: `0 0 ${s.size * 3}px rgba(255, 255, 255, 0.8)`,
+              opacity: 0.85,
+              animation: 'softPulse 3s ease-in-out infinite',
+              animationDelay: `${i * 0.4}s`,
+            }}
+          />
+        ))}
       </div>
     </div>
   );
