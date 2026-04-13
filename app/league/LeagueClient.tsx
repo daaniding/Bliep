@@ -215,6 +215,14 @@ export default function LeagueClient() {
         {/* Menu */}
         {displayName && view === 'menu' && (
           <section className="space-y-3">
+            {myLeagues.length === 0 && (
+              <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 mb-2">
+                <p className="text-ink text-sm font-medium mb-1">👋 Eerste keer hier?</p>
+                <p className="text-muted text-xs leading-relaxed">
+                  Een Friend League is een klein groepje vrienden waar je trofeeën van iedereen kunt zien. Maak er één en stuur de 6-letter code naar je broer, vriendin of collega — dan zien jullie elkaars score op de ranglijst.
+                </p>
+              </div>
+            )}
             <button
               onClick={() => { setError(null); setView('create'); }}
               className="w-full card-elevated p-5 text-left active:scale-[0.99] transition-transform"

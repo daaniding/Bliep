@@ -12,6 +12,7 @@ interface Props {
   task: DailyTask;
   onClaim: (coins: number) => void;
   onAbort: () => void;
+  onFailLock: () => void;
 }
 
 function emptyState(): TimerState {
@@ -25,7 +26,7 @@ function fmt(ms: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function TaskTimer({ task, onClaim, onAbort }: Props) {
+export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props) {
   const [state, setState] = useState<TimerState>(() => loadTimer());
   const [, forceTick] = useState(0);
   const [confirmAbort, setConfirmAbort] = useState(false);
@@ -102,10 +103,11 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
     onAbort();
   }, [onAbort]);
 
-  const handleRetry = useCallback(() => {
+  const handleAcceptFail = useCallback(() => {
     abortTimer();
     setState(emptyState());
-  }, []);
+    onFailLock();
+  }, [onFailLock]);
 
   const cfg = TIER_CONFIG[task.tier];
   const isOurs = state.taskId === task.id;
@@ -195,7 +197,7 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
 
       {status === 'failed' && (
         <p className="text-center text-[12px] text-[#7a2e1a] mb-3">
-          Je was te lang weg van Bliep. Geen coins deze keer — je kunt het opnieuw proberen.
+          Je was te lang weg. Geen coins en geen tweede kans vandaag — kom morgen terug.
         </p>
       )}
 
@@ -210,10 +212,10 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
 
       {status === 'failed' && (
         <button
-          onClick={handleRetry}
-          className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl active:scale-[0.98] transition-transform text-sm"
+          onClick={handleAcceptFail}
+          className="w-full bg-[#C75B3D] text-white font-semibold py-3.5 rounded-2xl active:scale-[0.98] transition-transform text-sm"
         >
-          Probeer opnieuw
+          Sluit
         </button>
       )}
 

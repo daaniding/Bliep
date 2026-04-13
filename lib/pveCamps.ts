@@ -113,6 +113,13 @@ export interface BattleResult {
   rolledOutcome: number;
   coinsGained: number;     // 0 on loss
   trophiesDelta: number;   // negative on loss
+  refunded: number;        // coins returned on loss thanks to walls
+}
+
+// Walls reduce coin loss. Each wall level point gives 5% refund of hire cost,
+// capped at 80% so there's still a sting. Total wall level = sum of levels.
+export function wallRefundFraction(totalWallLevel: number): number {
+  return Math.min(0.8, totalWallLevel * 0.05);
 }
 
 export function winChance(camp: PveCamp, kazerneLvl: number): number {
@@ -123,15 +130,17 @@ export function winChance(camp: PveCamp, kazerneLvl: number): number {
   return Math.max(0.05, Math.min(0.95, raw));
 }
 
-export function resolveBattle(camp: PveCamp, kazerneLvl: number): BattleResult {
+export function resolveBattle(camp: PveCamp, kazerneLvl: number, totalWallLevel: number = 0): BattleResult {
   const chance = winChance(camp, kazerneLvl);
   const roll = Math.random();
   const won = roll < chance;
+  const refunded = won ? 0 : Math.floor(camp.hireCost * wallRefundFraction(totalWallLevel));
   return {
     won,
     rolledChance: chance,
     rolledOutcome: roll,
     coinsGained: won ? camp.rewardCoins : 0,
     trophiesDelta: won ? camp.rewardTrophies : -3,
+    refunded,
   };
 }

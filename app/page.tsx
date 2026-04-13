@@ -122,9 +122,11 @@ function Heatmap({ history }: { history: string[] }) {
 function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const steps = [
-    { emoji: '👋', title: 'Welkom bij Bliep', text: 'Een dagelijkse challenge waar focus echt iets oplevert.' },
-    { emoji: '⏱', title: '1 opdracht per dag', text: 'Kies uit 3 opdrachten en houd Bliep open tot de timer afloopt — de timer pauzeert als je de app verlaat.' },
-    { emoji: '🏰', title: 'Bouw je stad', text: 'Met de coins die je verdient bouw en upgrade je je eigen stad.' },
+    { emoji: '👋', title: 'Welkom bij Bliep', text: 'Een dagelijkse focus-challenge waar volhouden iets echts oplevert.' },
+    { emoji: '🎯', title: 'Kies één opdracht per dag', text: 'Elke dag drie keuzes — makkelijk, medium of lastig. Hoger tier = langere timer = meer beloning. Eén kans per dag.' },
+    { emoji: '⏱', title: 'Houd Bliep open', text: 'Tijdens de timer mag je de app niet verlaten. Wegklikken? Je hebt 10 seconden om terug te komen, anders mislukt de taak.' },
+    { emoji: '🏰', title: 'Bouw je stad', text: 'Voltooid? Coins en trofeeën komen binnen. Spendeer ze in je middeleeuwse stad — huizen, boerderijen, kazernes, muren.' },
+    { emoji: '⚔️', title: 'Vecht en concurreer', text: 'Val NPC kampen aan voor extra coins. Maak een Friend League met een 6-letter code en zie wie de meeste trofeeën heeft.' },
   ];
   const current = steps[step];
   const isLast = step === steps.length - 1;
@@ -206,7 +208,7 @@ export default function Home() {
   }, []);
 
   function handlePick(task: DailyTask) {
-    const next = { date: pick.date, chosenId: task.id, completed: false };
+    const next: typeof pick = { date: pick.date, chosenId: task.id, completed: false, outcome: null };
     saveDailyPick(next);
     setPick(next);
   }
@@ -216,16 +218,41 @@ export default function Home() {
     if (chosenTask) {
       awardTrophies(trophiesForTier(chosenTask.tier), `Taak voltooid (${chosenTask.tier})`);
     }
-    const next = { ...pick, completed: true };
+    const next: typeof pick = { ...pick, completed: true, outcome: 'won' };
     saveDailyPick(next);
     setPick(next);
     completeStreak();
+    if (confettiRef.current) launchConfetti(confettiRef.current);
+    if (chosenTask) {
+      showFloater(`+${chosenTask.coins} 🪙`, '#3a6a3a');
+      window.setTimeout(() => showFloater(`+${trophiesForTier(chosenTask.tier)} 🏆`, '#7a2e1a'), 350);
+    }
+  }
+
+  function showFloater(text: string, color: string) {
+    if (!confettiRef.current) return;
+    const el = document.createElement('div');
+    el.textContent = text;
+    el.style.cssText = `
+      position: fixed; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      font-size: 48px; font-weight: 600; color: ${color};
+      text-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      pointer-events: none; z-index: 9999;
+      will-change: transform, opacity;
+    `;
+    confettiRef.current.appendChild(el);
+    el.animate([
+      { transform: 'translate(-50%, -50%) scale(0.6)', opacity: 0 },
+      { transform: 'translate(-50%, -120%) scale(1.1)', opacity: 1, offset: 0.3 },
+      { transform: 'translate(-50%, -180%) scale(1)', opacity: 0 },
+    ], { duration: 1600, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }).onfinish = () => el.remove();
   }
 
   function handleAbort() {
-    // Allow re-pick for the day (relaxed for prototype). Keep date so streak
-    // logic can still gate to "1 per day" later.
-    const next = { date: pick.date, chosenId: null, completed: false };
+    // Hard 1-per-day lock: giving up locks the day. No retries, no re-pick.
+    const next: typeof pick = { ...pick, completed: true, outcome: 'gave-up' };
     saveDailyPick(next);
     setPick(next);
   }
@@ -326,7 +353,16 @@ export default function Home() {
         {/* Phase B: timer + dashboard */}
         {chosenTask && !pick.completed && (
           <div className="px-5 space-y-4">
-            <TaskTimer task={chosenTask} onClaim={handleClaim} onAbort={handleAbort} />
+            <TaskTimer
+              task={chosenTask}
+              onClaim={handleClaim}
+              onAbort={handleAbort}
+              onFailLock={() => {
+                const next: typeof pick = { ...pick, completed: true, outcome: 'failed-locked' };
+                saveDailyPick(next);
+                setPick(next);
+              }}
+            />
             <DashboardActions />
           </div>
         )}
@@ -335,9 +371,15 @@ export default function Home() {
         {pick.completed && (
           <div className="px-5 space-y-4">
             <section className="card-elevated p-6 text-center animate-fade-up">
-              <div className="text-3xl mb-2">🎉</div>
-              <h2 className="font-serif text-xl text-ink italic">Klaar voor vandaag</h2>
-              <p className="text-muted text-sm mt-1">Je opdracht is afgerond. Kom morgen terug voor een nieuwe.</p>
+              <div className="text-3xl mb-2">{pick.outcome === 'won' ? '🎉' : '💤'}</div>
+              <h2 className="font-serif text-xl text-ink italic">
+                {pick.outcome === 'won' ? 'Klaar voor vandaag' : 'Dag voorbij'}
+              </h2>
+              <p className="text-muted text-sm mt-1">
+                {pick.outcome === 'won' && 'Je hebt vandaag je opdracht volbracht. Kom morgen terug voor een nieuwe keuze.'}
+                {pick.outcome === 'gave-up' && 'Je hebt vandaag opgegeven. Geen opdracht meer mogelijk vandaag — kom morgen terug.'}
+                {pick.outcome === 'failed-locked' && 'Je was te lang weg van Bliep. Geen opdracht meer mogelijk vandaag — kom morgen terug.'}
+              </p>
             </section>
             <DashboardActions />
           </div>

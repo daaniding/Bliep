@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, resolveBattle, winChance, type PveCamp, type BattleResult } from '@/lib/pveCamps';
+import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, resolveBattle, winChance, wallRefundFraction, type PveCamp, type BattleResult } from '@/lib/pveCamps';
 import { loadCity, saveCity, addCoins, spendCoins } from '@/lib/cityStore';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -26,13 +26,17 @@ export default function AttackClient() {
   const [battling, setBattling] = useState(false);
   const [result, setResult] = useState<{ camp: PveCamp; result: BattleResult } | null>(null);
   const [kazerneLvl, setKazerneLvl] = useState(0);
+  const [totalWallLevel, setTotalWallLevel] = useState(0);
 
-  // Refresh kazerne level
+  // Refresh kazerne and wall stats
   useEffect(() => {
     const city = loadCity();
     const kazerne = city.buildings.filter(b => b.type === 'barracks');
     const max = kazerne.reduce((m, b) => Math.max(m, b.level), 0);
     setKazerneLvl(max);
+    const walls = city.buildings.filter(b => b.type === 'wall');
+    const wallSum = walls.reduce((s, b) => s + b.level, 0);
+    setTotalWallLevel(wallSum);
   }, []);
 
   // 1s tick to update cooldowns
@@ -58,7 +62,7 @@ export default function AttackClient() {
     // Dramatic pause
     await new Promise(res => setTimeout(res, 1400));
 
-    const battleResult = resolveBattle(confirmCamp, kazerneLvl);
+    const battleResult = resolveBattle(confirmCamp, kazerneLvl, totalWallLevel);
 
     if (battleResult.won) {
       const after = loadCity();
@@ -68,13 +72,17 @@ export default function AttackClient() {
       setPveState(next);
       awardTrophies(battleResult.trophiesDelta, `${confirmCamp.name} verslagen`);
     } else {
+      if (battleResult.refunded > 0) {
+        const after = loadCity();
+        saveCity(addCoins(after, battleResult.refunded));
+      }
       awardTrophies(battleResult.trophiesDelta, `${confirmCamp.name} verloren`);
     }
 
     setBattling(false);
     setResult({ camp: confirmCamp, result: battleResult });
     setConfirmCamp(null);
-  }, [confirmCamp, kazerneLvl, pveState, awardTrophies]);
+  }, [confirmCamp, kazerneLvl, totalWallLevel, pveState, awardTrophies]);
 
   return (
     <div className="min-h-dvh bg-surface relative pb-16">
@@ -101,9 +109,18 @@ export default function AttackClient() {
 
         <div className="px-5">
           <h1 className="font-serif text-3xl text-ink tracking-tight italic mb-1">Aanvallen</h1>
-          <p className="text-muted text-sm mb-6">
-            Huur huurlingen, val NPC kampen aan, win coins en trofeeën. Je <strong>Kazerne lvl {kazerneLvl}</strong> bepaalt je kans.
+          <p className="text-muted text-sm mb-4">
+            Huur huurlingen, val NPC kampen aan, win coins en trofeeën. <strong>Kazerne lvl {kazerneLvl}</strong> bepaalt je kans, <strong>muren totaal lvl {totalWallLevel}</strong> geeft {Math.round(wallRefundFraction(totalWallLevel) * 100)}% terug bij verlies.
           </p>
+
+          {kazerneLvl === 0 && coins < 20 && (
+            <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 mb-4">
+              <p className="text-ink text-sm font-medium mb-1">⚔️ Eerste keer hier?</p>
+              <p className="text-muted text-xs leading-relaxed">
+                Verdien eerst coins door een opdracht te voltooien. Dan kun je het Bandiet kamp aanvallen voor je eerste echte loot. Bouw daarna een Kazerne in je stad om de zwaardere kampen te kunnen winnen.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             {CAMPS.map(camp => {
@@ -231,7 +248,11 @@ export default function AttackClient() {
                 ) : (
                   <>
                     <p className="text-[#7a2e1a] font-bold text-lg">−3 🏆</p>
-                    <p className="text-faint text-xs mt-1">Je huurlingen zijn verslagen</p>
+                    {result.result.refunded > 0 ? (
+                      <p className="text-[#3a6a3a] font-bold text-sm mt-1">+{result.result.refunded} 🪙 terug van je muren</p>
+                    ) : (
+                      <p className="text-faint text-xs mt-1">Je huurlingen zijn verslagen</p>
+                    )}
                   </>
                 )}
               </div>

@@ -78,26 +78,33 @@ export function getDailyTasks(): DailyTask[] {
 
 const PICK_KEY = 'bliep:dailypick:v1';
 
+export type DayOutcome = 'won' | 'gave-up' | 'failed-locked' | null;
+
 export interface DailyPick {
   date: string;
   chosenId: string | null;
   completed: boolean;
+  outcome: DayOutcome;
 }
 
 export function loadDailyPick(): DailyPick {
-  if (typeof window === 'undefined') return { date: getTodayDateString(), chosenId: null, completed: false };
+  const today = getTodayDateString();
+  const empty: DailyPick = { date: today, chosenId: null, completed: false, outcome: null };
+  if (typeof window === 'undefined') return empty;
   try {
     const raw = localStorage.getItem(PICK_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as DailyPick;
-      // Reset on day change
-      if (parsed.date !== getTodayDateString()) {
-        return { date: getTodayDateString(), chosenId: null, completed: false };
-      }
-      return parsed;
+      const parsed = JSON.parse(raw) as Partial<DailyPick>;
+      if (parsed.date !== today) return empty;
+      return {
+        date: today,
+        chosenId: parsed.chosenId ?? null,
+        completed: parsed.completed ?? false,
+        outcome: (parsed.outcome as DayOutcome) ?? null,
+      };
     }
   } catch { /* ignore */ }
-  return { date: getTodayDateString(), chosenId: null, completed: false };
+  return empty;
 }
 
 export function saveDailyPick(pick: DailyPick) {
