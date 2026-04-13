@@ -102,8 +102,9 @@ export default function DashboardHero() {
         {/* Sky */}
         <rect x="0" y="0" width="390" height="460" fill="url(#heroSky)" />
 
-        {/* Sun halo + disc — positioned behind the central keep, pulses */}
-        <g style={{ animation: 'sunPulse 4s ease-in-out infinite', transformOrigin: '300px 120px' }}>
+        {/* Sun halo + disc — positioned behind the central keep, pulses.
+            No transform-box: sunPulse only animates filter, no transform. */}
+        <g style={{ animation: 'sunPulse 4s ease-in-out infinite' }}>
           <circle cx="300" cy="120" r="130" fill="url(#heroSun)" />
           <circle cx="300" cy="120" r="42" fill="#fff6dc" opacity="0.98" />
           <circle cx="300" cy="120" r="32" fill="#ffdb7c" />
@@ -177,9 +178,10 @@ export default function DashboardHero() {
         {/* Roof bands */}
         <line x1="69" y1="96" x2="105" y2="96" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
         <line x1="61" y1="116" x2="113" y2="116" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
-        {/* Flag */}
+        {/* Flag — the inner wrapper has the animation with transform-box
+            set via .hero-svg-anim; origin is the flag's own left edge */}
         <line x1="87" y1="72" x2="87" y2="46" stroke="#0d0a06" strokeWidth="2" />
-        <g style={{ transformOrigin: '87px 54px', animation: 'flagWave 2.4s ease-in-out infinite' }}>
+        <g className="hero-svg-anim" style={{ transformOrigin: 'left center', animation: 'flagWave 2.4s ease-in-out infinite' }}>
           <path d="M87 48 L106 54 L87 62 Z" fill="#f0b840" stroke="#0d0a06" strokeWidth="1.5" />
         </g>
 
@@ -198,7 +200,7 @@ export default function DashboardHero() {
         <line x1="285" y1="96" x2="321" y2="96" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
         <line x1="277" y1="116" x2="329" y2="116" stroke="#0d0a06" strokeWidth="1.5" opacity="0.6" />
         <line x1="303" y1="72" x2="303" y2="46" stroke="#0d0a06" strokeWidth="2" />
-        <g style={{ transformOrigin: '303px 54px', animation: 'flagWave 2.4s ease-in-out infinite', animationDelay: '-0.6s' }}>
+        <g className="hero-svg-anim" style={{ transformOrigin: 'left center', animation: 'flagWave 2.4s ease-in-out infinite', animationDelay: '-0.6s' }}>
           <path d="M303 48 L322 54 L303 62 Z" fill="#c0392b" stroke="#0d0a06" strokeWidth="1.5" />
         </g>
 
@@ -230,13 +232,14 @@ export default function DashboardHero() {
           <line x1="195" y1="198" x2="195" y2="258" />
           <line x1="202" y1="208" x2="202" y2="258" />
         </g>
-        {/* Gate torches — flicker */}
-        <g style={{ transformOrigin: '172px 210px', animation: 'torchFlicker 0.7s ease-in-out infinite' }}>
+        {/* Gate torches — flicker. Each torch flame is wrapped in a
+            hero-svg-anim group so transform-origin is its own center. */}
+        <g className="hero-svg-anim" style={{ animation: 'torchFlicker 0.7s ease-in-out infinite' }}>
           <circle cx="172" cy="210" r="10" fill="url(#torchFlame)" />
           <circle cx="172" cy="207" r="5" fill="#fff2a0" opacity="0.9" />
         </g>
         <rect x="170" y="210" width="4" height="10" fill="#3a1208" stroke="#0d0a06" strokeWidth="1" />
-        <g style={{ transformOrigin: '218px 210px', animation: 'torchFlicker 0.7s ease-in-out infinite', animationDelay: '-0.35s' }}>
+        <g className="hero-svg-anim" style={{ animation: 'torchFlicker 0.7s ease-in-out infinite', animationDelay: '-0.35s' }}>
           <circle cx="218" cy="210" r="10" fill="url(#torchFlame)" />
           <circle cx="218" cy="207" r="5" fill="#fff2a0" opacity="0.9" />
         </g>
@@ -259,19 +262,20 @@ export default function DashboardHero() {
 
         {/* Golden banner + flagpole on keep */}
         <line x1="195" y1="30" x2="195" y2="6" stroke="#0d0a06" strokeWidth="2.5" />
-        <g style={{ transformOrigin: '195px 14px', animation: 'flagWave 2s ease-in-out infinite', animationDelay: '-1.2s' }}>
+        <g className="hero-svg-anim" style={{ transformOrigin: 'left center', animation: 'flagWave 2s ease-in-out infinite', animationDelay: '-1.2s' }}>
           <path d="M195 8 L220 14 L195 22 Z" fill="#f0b840" stroke="#0d0a06" strokeWidth="1.5" />
         </g>
         <circle cx="195" cy="6" r="2.5" fill="#f0b840" stroke="#0d0a06" strokeWidth="1" />
 
-        {/* Smoke from keep top — rising puffs */}
-        <g style={{ transformOrigin: '172px 60px', animation: 'smokeRise 3.2s ease-out infinite' }}>
+        {/* Smoke from keep top — rising puffs. transform-box so the
+            puffs translate/scale around their own center. */}
+        <g className="hero-svg-anim" style={{ animation: 'smokeRise 3.2s ease-out infinite' }}>
           <circle cx="172" cy="60" r="4" fill="#eee" opacity="0.55" />
         </g>
-        <g style={{ transformOrigin: '178px 54px', animation: 'smokeRise 3.2s ease-out infinite', animationDelay: '-1s' }}>
+        <g className="hero-svg-anim" style={{ animation: 'smokeRise 3.2s ease-out infinite', animationDelay: '-1s' }}>
           <circle cx="178" cy="54" r="5" fill="#eee" opacity="0.5" />
         </g>
-        <g style={{ transformOrigin: '184px 48px', animation: 'smokeRise 3.2s ease-out infinite', animationDelay: '-2s' }}>
+        <g className="hero-svg-anim" style={{ animation: 'smokeRise 3.2s ease-out infinite', animationDelay: '-2s' }}>
           <circle cx="184" cy="48" r="4" fill="#eee" opacity="0.45" />
         </g>
 
@@ -291,9 +295,11 @@ export default function DashboardHero() {
           />
         ))}
 
-        {/* === KNIGHT (big, foreground) — breathing animation === */}
-        <g transform="translate(56 266) scale(1.55)">
-         <g style={{ animation: 'knightBob 3.4s ease-in-out infinite', transformBox: 'fill-box' }}>
+        {/* === KNIGHT (big, foreground) — walks + bobs === */}
+        <g transform="translate(56 266)">
+         <g className="hero-svg-anim" style={{ animation: 'npcWalk1 9s ease-in-out infinite' }}>
+          <g transform="scale(1.55)">
+           <g className="hero-svg-anim" style={{ animation: 'npcBob 1.2s ease-in-out infinite' }}>
           {/* Cape behind */}
           <path d="M-6 -30 L6 -30 L14 -2 L0 6 L-14 -2 Z" fill="#c0392b" stroke="#0d0a06" strokeWidth="2" strokeLinejoin="round" />
           {/* Legs */}
@@ -320,12 +326,16 @@ export default function DashboardHero() {
           {/* Helmet plume */}
           <path d="M-3 -40 Q-5 -48 0 -46 Q5 -48 3 -40 Z" fill="#c0392b" stroke="#0d0a06" strokeWidth="1.5" />
           <path d="M0 -46 L0 -40" stroke="#0d0a06" strokeWidth="1.5" opacity="0.8" />
+           </g>
+          </g>
          </g>
         </g>
 
-        {/* === PEASANT (right side of castle) — bobs slightly === */}
-        <g transform="translate(330 264) scale(1.2)">
-         <g style={{ animation: 'knightBob 2.6s ease-in-out infinite', animationDelay: '-0.8s', transformBox: 'fill-box' }}>
+        {/* === PEASANT (right side of castle) — walks + bobs === */}
+        <g transform="translate(330 264)">
+         <g className="hero-svg-anim" style={{ animation: 'npcWalk2 7s ease-in-out infinite', animationDelay: '-2s' }}>
+          <g transform="scale(1.2)">
+           <g className="hero-svg-anim" style={{ animation: 'npcBob 1s ease-in-out infinite', animationDelay: '-0.4s' }}>
           {/* Legs */}
           <rect x="-4" y="-6" width="4" height="12" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1.5" />
           <rect x="0" y="-6" width="4" height="12" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1.5" />
@@ -347,6 +357,87 @@ export default function DashboardHero() {
           <line x1="12" y1="-42" x2="11" y2="-48" stroke="#5c3a1e" strokeWidth="1.5" strokeLinecap="round" />
           <line x1="14" y1="-44" x2="14" y2="-50" stroke="#5c3a1e" strokeWidth="1.5" strokeLinecap="round" />
           <line x1="16" y1="-42" x2="17" y2="-48" stroke="#5c3a1e" strokeWidth="1.5" strokeLinecap="round" />
+           </g>
+          </g>
+         </g>
+        </g>
+
+        {/* === ARCHER (center-left, patrols widely) === */}
+        <g transform="translate(170 268)">
+         <g className="hero-svg-anim" style={{ animation: 'npcWalk3 11s ease-in-out infinite' }}>
+          <g transform="scale(1.05)">
+           <g className="hero-svg-anim" style={{ animation: 'npcBob 1.1s ease-in-out infinite', animationDelay: '-0.2s' }}>
+            {/* Legs */}
+            <rect x="-3" y="-6" width="3" height="10" fill="#3a5a3a" stroke="#0d0a06" strokeWidth="1.4" />
+            <rect x="0" y="-6" width="3" height="10" fill="#3a5a3a" stroke="#0d0a06" strokeWidth="1.4" />
+            {/* Boots */}
+            <rect x="-4" y="2" width="4" height="3" fill="#2a1a0a" stroke="#0d0a06" strokeWidth="1" />
+            <rect x="0" y="2" width="4" height="3" fill="#2a1a0a" stroke="#0d0a06" strokeWidth="1" />
+            {/* Leather tunic */}
+            <path d="M-7 -20 L7 -20 L8 -6 L-8 -6 Z" fill="#5a7a3a" stroke="#0d0a06" strokeWidth="1.8" />
+            <path d="M-7 -14 L7 -14" stroke="#0d0a06" strokeWidth="0.9" opacity="0.6" />
+            {/* Bow */}
+            <path d="M-12 -22 Q-18 -12 -12 -2" fill="none" stroke="#7a4f2a" strokeWidth="1.8" strokeLinecap="round" />
+            <line x1="-12" y1="-22" x2="-12" y2="-2" stroke="#fff" strokeWidth="0.6" />
+            {/* Head */}
+            <rect x="-4" y="-30" width="8" height="10" rx="1" fill="#c8a078" stroke="#0d0a06" strokeWidth="1.3" />
+            {/* Hood */}
+            <path d="M-5 -30 L5 -30 L5 -34 Q0 -38 -5 -34 Z" fill="#3a5a3a" stroke="#0d0a06" strokeWidth="1.4" />
+           </g>
+          </g>
+         </g>
+        </g>
+
+        {/* === MERCHANT (left-of-castle, small patrol) === */}
+        <g transform="translate(100 264)">
+         <g className="hero-svg-anim" style={{ animation: 'npcWalk4 13s ease-in-out infinite', animationDelay: '-5s' }}>
+          <g transform="scale(1.15)">
+           <g className="hero-svg-anim" style={{ animation: 'npcBob 1.3s ease-in-out infinite' }}>
+            {/* Legs */}
+            <rect x="-3" y="-5" width="3" height="10" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1.4" />
+            <rect x="0" y="-5" width="3" height="10" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1.4" />
+            <rect x="-4" y="3" width="4" height="3" fill="#2a1a0a" stroke="#0d0a06" strokeWidth="1" />
+            <rect x="0" y="3" width="4" height="3" fill="#2a1a0a" stroke="#0d0a06" strokeWidth="1" />
+            {/* Rich blue robe */}
+            <path d="M-9 -22 L9 -22 L11 -4 L-11 -4 Z" fill="#2a4a6a" stroke="#0d0a06" strokeWidth="1.8" />
+            <path d="M-9 -12 L9 -12" stroke="#f0b840" strokeWidth="1.2" />
+            {/* Head */}
+            <rect x="-4" y="-32" width="8" height="10" rx="1" fill="#e0b088" stroke="#0d0a06" strokeWidth="1.3" />
+            {/* Fancy hat */}
+            <path d="M-6 -32 L6 -32 L5 -38 L-5 -38 Z" fill="#5a1a3a" stroke="#0d0a06" strokeWidth="1.4" />
+            <circle cx="0" cy="-40" r="1.5" fill="#f0b840" stroke="#0d0a06" strokeWidth="0.8" />
+            {/* Small coin bag in hand */}
+            <circle cx="8" cy="-4" r="3" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1.2" />
+            <circle cx="8" cy="-4" r="1" fill="#f0b840" />
+           </g>
+          </g>
+         </g>
+        </g>
+
+        {/* === DOG (runs faster) === */}
+        <g transform="translate(230 274)">
+         <g className="hero-svg-anim" style={{ animation: 'npcWalk5 6s ease-in-out infinite' }}>
+          <g transform="scale(0.9)">
+           <g className="hero-svg-anim" style={{ animation: 'npcBob 0.6s ease-in-out infinite' }}>
+            {/* Body */}
+            <ellipse cx="0" cy="-4" rx="8" ry="4" fill="#7a4f2a" stroke="#0d0a06" strokeWidth="1.4" />
+            {/* Head */}
+            <circle cx="7" cy="-6" r="3.5" fill="#7a4f2a" stroke="#0d0a06" strokeWidth="1.4" />
+            {/* Ears */}
+            <path d="M6 -9 L4 -13 L8 -11 Z" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1" />
+            {/* Tail */}
+            <path d="M-7 -5 Q-11 -10 -9 -13" fill="none" stroke="#0d0a06" strokeWidth="2" strokeLinecap="round" />
+            <path d="M-7 -5 Q-11 -10 -9 -13" fill="none" stroke="#7a4f2a" strokeWidth="1.2" strokeLinecap="round" />
+            {/* Legs */}
+            <line x1="-5" y1="-1" x2="-5" y2="2" stroke="#0d0a06" strokeWidth="1.8" strokeLinecap="round" />
+            <line x1="-2" y1="-1" x2="-2" y2="2" stroke="#0d0a06" strokeWidth="1.8" strokeLinecap="round" />
+            <line x1="3" y1="-1" x2="3" y2="2" stroke="#0d0a06" strokeWidth="1.8" strokeLinecap="round" />
+            <line x1="6" y1="-1" x2="6" y2="2" stroke="#0d0a06" strokeWidth="1.8" strokeLinecap="round" />
+            {/* Eye */}
+            <circle cx="8.5" cy="-7" r="0.8" fill="#fff" />
+            <circle cx="8.5" cy="-7" r="0.4" fill="#0d0a06" />
+           </g>
+          </g>
          </g>
         </g>
 

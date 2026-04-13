@@ -340,59 +340,91 @@ body {
 }
 .animate-soft-pulse { animation: softPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
-/* === HERO SCENE ANIMATIONS === */
+/* === HERO SCENE ANIMATIONS ===
+   Every animated SVG element uses transform-box: fill-box so
+   transform-origin is the element's own bounding box, not the
+   SVG viewport. Without this, SVG transform animations spin
+   around (0,0) of the whole scene and look broken. */
 
-/* Knight: gentle bob (applied to inner group; outer group handles
-   positioning via SVG attribute transform) */
-@keyframes knightBob {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(-1.5px) scale(1.005); }
+.hero-svg-anim {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-/* Flag: wave via skew */
+/* Knight / peasant bob — applied to an inner wrapper group. */
+@keyframes npcBob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* NPC walk cycles — each NPC has their own keyframe because the
+   translateX distances differ. Using pure CSS so it runs without JS. */
+@keyframes npcWalk1 { /* Knight: patrol between -20 and 20 */
+  0%, 100% { transform: translateX(-22px); }
+  50%      { transform: translateX(22px); }
+}
+@keyframes npcWalk2 { /* Peasant right: stays near stall */
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(10px); }
+  75%      { transform: translateX(-10px); }
+}
+@keyframes npcWalk3 { /* Archer mid: wider patrol */
+  0%, 100% { transform: translateX(-30px); }
+  50%      { transform: translateX(30px); }
+}
+@keyframes npcWalk4 { /* Merchant left of castle */
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(-18px); }
+}
+@keyframes npcWalk5 { /* Dog runs faster */
+  0%, 100% { transform: translateX(-40px); }
+  50%      { transform: translateX(40px); }
+}
+
+/* Flag wave — rotates around the flagpole attachment (left edge of
+   the flag). Using transform-box: fill-box with transform-origin
+   at the left edge pins it to the pole correctly. */
 @keyframes flagWave {
-  0%, 100% { transform: skewX(0deg) scaleX(1); }
-  25%      { transform: skewX(-8deg) scaleX(0.95); }
-  50%      { transform: skewX(0deg) scaleX(1); }
-  75%      { transform: skewX(8deg) scaleX(0.95); }
+  0%, 100% { transform: skewX(-6deg) scaleX(0.96); }
+  50%      { transform: skewX(6deg) scaleX(0.96); }
 }
 
-/* Torch: flicker via scale + opacity */
+/* Torch flame: scale + opacity flicker */
 @keyframes torchFlicker {
   0%, 100% { transform: scale(1, 1); opacity: 1; }
-  25%      { transform: scale(1.08, 1.12); opacity: 0.92; }
-  50%      { transform: scale(0.96, 1.04); opacity: 1; }
-  75%      { transform: scale(1.04, 0.94); opacity: 0.95; }
+  25%      { transform: scale(1.12, 1.18); opacity: 0.9; }
+  50%      { transform: scale(0.94, 1.06); opacity: 1; }
+  75%      { transform: scale(1.06, 0.92); opacity: 0.93; }
 }
 
-/* Smoke: rise and fade */
+/* Smoke rise — translateY upward + fade */
 @keyframes smokeRise {
-  0%   { transform: translate(0, 0) scale(1); opacity: 0.5; }
-  50%  { transform: translate(-2px, -6px) scale(1.15); opacity: 0.35; }
-  100% { transform: translate(-4px, -14px) scale(1.4); opacity: 0; }
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  50%  { transform: translate(-2px, -8px) scale(1.2); opacity: 0.4; }
+  100% { transform: translate(-4px, -18px) scale(1.5); opacity: 0; }
 }
 
-/* Sun: subtle pulse glow */
+/* Sun pulse glow */
 @keyframes sunPulse {
-  0%, 100% { filter: drop-shadow(0 0 12px rgba(255, 200, 80, 0.55)); }
-  50%      { filter: drop-shadow(0 0 24px rgba(255, 220, 100, 0.85)); }
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(255, 200, 80, 0.5)); }
+  50%      { filter: drop-shadow(0 0 28px rgba(255, 220, 100, 0.85)); }
 }
 
-/* Window glow: warm pulse */
+/* Window glow flicker */
 @keyframes windowFlicker {
   0%, 100% { opacity: 0.9; }
-  30%      { opacity: 0.65; }
+  30%      { opacity: 0.6; }
   55%      { opacity: 1; }
-  85%      { opacity: 0.8; }
+  85%      { opacity: 0.75; }
 }
 
 /* Firefly drift */
 @keyframes fireflyDrift {
   0%   { transform: translate(0, 0); opacity: 0; }
   15%  { opacity: 1; }
-  50%  { transform: translate(-12px, -20px); opacity: 0.8; }
+  50%  { transform: translate(-14px, -22px); opacity: 0.85; }
   85%  { opacity: 1; }
-  100% { transform: translate(18px, -40px); opacity: 0; }
+  100% { transform: translate(20px, -44px); opacity: 0; }
 }
 
 /* === CLOUD DRIFT — used over hero scene === */
