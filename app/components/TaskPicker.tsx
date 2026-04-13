@@ -1,6 +1,7 @@
 'use client';
 
 import { TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
+import { trophiesForTier } from '@/lib/trophies';
 
 interface Props {
   tasks: DailyTask[];
@@ -35,9 +36,10 @@ export default function TaskPicker({ tasks, onPick }: Props) {
                 <span>{cfg.emoji}</span>
                 <span>{cfg.label}</span>
               </div>
-              <div className="flex items-center gap-1 text-ink font-bold text-sm">
-                <span>{task.coins}</span>
-                <span>🪙</span>
+              <div className="flex items-center gap-2 text-ink font-bold text-sm">
+                <span className="flex items-center gap-1"><span>{task.coins}</span><span>🪙</span></span>
+                <span className="text-faint">·</span>
+                <span className="flex items-center gap-1"><span>+{trophiesForTier(task.tier)}</span><span>🏆</span></span>
               </div>
             </div>
             <p className="text-ink text-[15px] leading-relaxed">{task.text}</p>

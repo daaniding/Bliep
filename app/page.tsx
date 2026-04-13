@@ -6,6 +6,8 @@ import TaskPicker from './components/TaskPicker';
 import TaskTimer from './components/TaskTimer';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
+import { useTrophies } from '@/lib/useTrophies';
+import { trophiesForTier } from '@/lib/trophies';
 
 interface TodayData {
   compliment: string | null;
@@ -165,6 +167,7 @@ export default function Home() {
   const [attackToast, setAttackToast] = useState(false);
   const confettiRef = useRef<HTMLDivElement>(null);
   const { coins, award } = useCoins();
+  const { trophies, awardTrophies } = useTrophies();
 
   const greeting = getGreeting();
   const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
@@ -211,6 +214,9 @@ export default function Home() {
 
   function handleClaim(coinAmount: number) {
     award(coinAmount);
+    if (chosenTask) {
+      awardTrophies(trophiesForTier(chosenTask.tier), `Taak voltooid (${chosenTask.tier})`);
+    }
     const next = { ...pick, completed: true };
     saveDailyPick(next);
     setPick(next);
@@ -298,6 +304,10 @@ export default function Home() {
                 <span className="text-xs">🪙</span>
                 <span className="text-[#8a6320] text-xs font-bold tabular-nums">{coins}</span>
               </div>
+              <Link href="/league" className="flex items-center gap-1 bg-[#7A2E1A]/10 rounded-full px-3 py-1.5 hover:bg-[#7A2E1A]/15 transition-colors">
+                <span className="text-xs">🏆</span>
+                <span className="text-[#7a2e1a] text-xs font-bold tabular-nums">{trophies}</span>
+              </Link>
               {streak.current > 0 && (
                 <div className="flex items-center gap-1 bg-accent/8 rounded-full px-3 py-1.5">
                   <span className="text-xs">🔥</span>
