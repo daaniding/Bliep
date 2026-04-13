@@ -4,21 +4,17 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import TaskPicker from './components/TaskPicker';
 import TaskTimer from './components/TaskTimer';
+import GameShell from './components/GameShell';
+import GameButton from './components/GameButton';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { trophiesForTier } from '@/lib/trophies';
 import { useUser } from '@/lib/useUser';
+import { useStreak } from '@/lib/useStreak';
 
 interface TodayData {
   compliment: string | null;
-}
-
-interface StreakData {
-  current: number;
-  longest: number;
-  lastCompletedDate: string;
-  history: string[];
 }
 
 function getGreeting(): string {
@@ -39,7 +35,7 @@ function getYesterday(): string {
   return d.toISOString().split('T')[0];
 }
 
-function loadStreak(): StreakData {
+function loadStreakLS() {
   try {
     const raw = localStorage.getItem('bliep:streak');
     if (raw) {
@@ -50,7 +46,7 @@ function loadStreak(): StreakData {
   return { current: 0, longest: 0, lastCompletedDate: '', history: [] };
 }
 
-function saveStreak(streak: StreakData) {
+function saveStreakLS(streak: { current: number; longest: number; lastCompletedDate: string; history: string[] }) {
   localStorage.setItem('bliep:streak', JSON.stringify(streak));
 }
 
@@ -63,24 +59,25 @@ function urlBase64ToUint8Array(b64: string): Uint8Array {
 }
 
 function launchConfetti(container: HTMLElement) {
-  const colors = ['#FF6B35', '#34C759', '#007AFF', '#AF52DE', '#FF3B30', '#FFA03D', '#00C7BE'];
-  for (let i = 0; i < 50; i++) {
+  const colors = ['#E8B84A', '#F5D068', '#C75B3D', '#6BA368', '#7A4ABF', '#FFE99A'];
+  for (let i = 0; i < 60; i++) {
     const el = document.createElement('div');
-    const size = Math.random() * 8 + 4;
+    const size = Math.random() * 10 + 5;
     const isCircle = Math.random() > 0.5;
     el.style.cssText = `
       position: fixed; width: ${size}px; height: ${isCircle ? size : size * 2.5}px;
       background: ${colors[Math.floor(Math.random() * colors.length)]};
       border-radius: ${isCircle ? '50%' : '2px'}; pointer-events: none; z-index: 9999;
-      left: 50%; top: 50%; opacity: 1;
+      left: 50%; top: 40%; opacity: 1;
+      box-shadow: 0 0 8px rgba(232,184,74,0.4);
     `;
     container.appendChild(el);
     const angle = (Math.random() * 360) * (Math.PI / 180);
-    const velocity = Math.random() * 400 + 200;
+    const velocity = Math.random() * 500 + 250;
     el.animate([
       { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
-      { transform: `translate(${Math.cos(angle) * velocity}px, ${Math.sin(angle) * velocity + 400}px) rotate(${Math.random() * 720 - 360}deg)`, opacity: 0 },
-    ], { duration: Math.random() * 800 + 800, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' }).onfinish = () => el.remove();
+      { transform: `translate(${Math.cos(angle) * velocity}px, ${Math.sin(angle) * velocity + 500}px) rotate(${Math.random() * 720 - 360}deg)`, opacity: 0 },
+    ], { duration: Math.random() * 900 + 900, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' }).onfinish = () => el.remove();
   }
 }
 
@@ -106,10 +103,10 @@ function Heatmap({ history }: { history: string[] }) {
               key={cell.date}
               className={`w-[14px] h-[14px] rounded-[3px] transition-colors ${
                 cell.active
-                  ? 'bg-green'
+                  ? 'bg-[var(--color-forest-400)]'
                   : cell.isToday
-                    ? 'bg-accent/20 ring-1 ring-accent/40'
-                    : 'bg-subtle'
+                    ? 'bg-[var(--color-gold-200)]/30 ring-1 ring-[var(--color-gold-300)]/60'
+                    : 'bg-[var(--color-parchment-300)]/40'
               }`}
               title={cell.date}
             />
@@ -133,24 +130,22 @@ function Onboarding({ onComplete }: { onComplete: () => void }) {
   const isLast = step === steps.length - 1;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-white flex items-center justify-center px-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-6"
+      style={{ background: 'radial-gradient(circle at 50% 50%, #1b2a4e 0%, #0d1426 100%)' }}>
       <div className="max-w-sm w-full text-center">
-        <div className="text-5xl mb-6 animate-fade-up">{current.emoji}</div>
-        <h2 className="font-serif text-2xl text-ink italic mb-3 animate-fade-up" style={{ animationDelay: '80ms' }}>{current.title}</h2>
-        <p className="text-muted text-sm leading-relaxed mb-10 animate-fade-up" style={{ animationDelay: '160ms' }}>{current.text}</p>
+        <div className="text-6xl mb-6 animate-fade-up drop-shadow-[0_0_24px_rgba(232,184,74,0.4)]">{current.emoji}</div>
+        <h2 className="font-display font-bold text-3xl text-[var(--color-gold-100)] mb-3 animate-fade-up" style={{ animationDelay: '80ms' }}>{current.title}</h2>
+        <p className="text-[var(--color-parchment-200)] text-sm leading-relaxed mb-10 animate-fade-up" style={{ animationDelay: '160ms' }}>{current.text}</p>
         <div className="flex items-center justify-center gap-2 mb-8">
           {steps.map((_, i) => (
-            <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === step ? 'w-6 bg-accent' : 'w-2 bg-text-tertiary/30'}`} />
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? 'w-7 bg-[var(--color-gold-300)]' : 'w-1.5 bg-[var(--color-night-500)]'}`} />
           ))}
         </div>
-        <button
-          onClick={() => isLast ? onComplete() : setStep(step + 1)}
-          className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl transition-transform active:scale-[0.98] glow-accent text-sm"
-        >
+        <GameButton fullWidth onClick={() => isLast ? onComplete() : setStep(step + 1)}>
           {isLast ? 'Aan de slag!' : 'Volgende'}
-        </button>
+        </GameButton>
         {!isLast && (
-          <button onClick={onComplete} className="mt-4 text-faint text-xs hover:text-muted transition-colors">Overslaan</button>
+          <button onClick={onComplete} className="mt-4 text-[var(--color-night-500)] text-xs font-display font-semibold uppercase tracking-wider hover:text-[var(--color-gold-300)] transition-colors">Overslaan</button>
         )}
       </div>
     </div>
@@ -163,21 +158,20 @@ export default function Home() {
   const [subscribing, setSubscribing] = useState(false);
   const [notifStatus, setNotifStatus] = useState('');
   const [installPrompt, setInstallPrompt] = useState(false);
-  const [streak, setStreak] = useState<StreakData>({ current: 0, longest: 0, lastCompletedDate: '', history: [] });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [tasks] = useState<DailyTask[]>(() => getDailyTasks());
   const [pick, setPick] = useState(() => loadDailyPick());
   const confettiRef = useRef<HTMLDivElement>(null);
-  const { coins, award } = useCoins();
-  const { trophies, awardTrophies } = useTrophies();
+  const { award } = useCoins();
+  const { awardTrophies } = useTrophies();
   const { user } = useUser();
+  const streak = useStreak();
 
   const greeting = getGreeting();
   const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
 
   useEffect(() => {
     fetch('/api/today').then(r => r.json()).then(setData).catch(console.error);
-    setStreak(loadStreak());
     if (!localStorage.getItem('bliep:onboarded')) setShowOnboarding(true);
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(reg => {
@@ -193,19 +187,18 @@ export default function Home() {
   }, []);
 
   const completeStreak = useCallback(() => {
-    const s = loadStreak();
+    const s = loadStreakLS();
     const today = getToday();
     if (s.lastCompletedDate === today) return;
     const isConsecutive = s.lastCompletedDate === getYesterday();
     const newCurrent = isConsecutive ? s.current + 1 : 1;
-    const updated: StreakData = {
+    const updated = {
       current: newCurrent,
       longest: Math.max(s.longest, newCurrent),
       lastCompletedDate: today,
       history: [...(s.history || []), today],
     };
-    saveStreak(updated);
-    setStreak(updated);
+    saveStreakLS(updated);
     if (confettiRef.current) launchConfetti(confettiRef.current);
   }, []);
 
@@ -226,8 +219,8 @@ export default function Home() {
     completeStreak();
     if (confettiRef.current) launchConfetti(confettiRef.current);
     if (chosenTask) {
-      showFloater(`+${chosenTask.coins} 🪙`, '#3a6a3a');
-      window.setTimeout(() => showFloater(`+${trophiesForTier(chosenTask.tier)} 🏆`, '#7a2e1a'), 350);
+      showFloater(`+${chosenTask.coins} 🪙`, 'var(--color-gold-300)');
+      window.setTimeout(() => showFloater(`+${trophiesForTier(chosenTask.tier)} 🏆`, 'var(--color-magic-300)'), 350);
     }
   }
 
@@ -236,24 +229,26 @@ export default function Home() {
     const el = document.createElement('div');
     el.textContent = text;
     el.style.cssText = `
-      position: fixed; left: 50%; top: 50%;
+      position: fixed; left: 50%; top: 45%;
       transform: translate(-50%, -50%);
-      font-family: 'Instrument Serif', serif; font-style: italic;
-      font-size: 48px; font-weight: 600; color: ${color};
-      text-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      font-family: var(--font-fredoka), system-ui, sans-serif;
+      font-weight: 700;
+      font-size: 56px;
+      color: ${color};
+      text-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 40px ${color};
       pointer-events: none; z-index: 9999;
       will-change: transform, opacity;
+      letter-spacing: -0.025em;
     `;
     confettiRef.current.appendChild(el);
     el.animate([
-      { transform: 'translate(-50%, -50%) scale(0.6)', opacity: 0 },
-      { transform: 'translate(-50%, -120%) scale(1.1)', opacity: 1, offset: 0.3 },
-      { transform: 'translate(-50%, -180%) scale(1)', opacity: 0 },
-    ], { duration: 1600, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }).onfinish = () => el.remove();
+      { transform: 'translate(-50%, -50%) scale(0.4)', opacity: 0 },
+      { transform: 'translate(-50%, -130%) scale(1.15)', opacity: 1, offset: 0.3 },
+      { transform: 'translate(-50%, -200%) scale(1)', opacity: 0 },
+    ], { duration: 1700, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }).onfinish = () => el.remove();
   }
 
   function handleAbort() {
-    // Hard 1-per-day lock: giving up locks the day. No retries, no re-pick.
     const next: typeof pick = { ...pick, completed: true, outcome: 'gave-up' };
     saveDailyPick(next);
     setPick(next);
@@ -311,46 +306,34 @@ export default function Home() {
   const dateStr = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
 
   return (
-    <div className="min-h-dvh bg-surface relative">
+    <GameShell>
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
       <div ref={confettiRef} className="fixed inset-0 pointer-events-none z-[9999]" />
 
-      <main className="relative z-10 pt-14 pb-8 max-w-[560px] mx-auto">
-        <header className="px-5 mb-6 animate-fade-up">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-serif text-2xl text-ink italic tracking-tight">{greeting}{user ? `, ${user.displayName}` : ''}</h1>
-              <p className="text-muted text-[13px] mt-0.5">{dateStr}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-[#E8B84A]/15 rounded-full px-3 py-1.5">
-                <span className="text-xs">🪙</span>
-                <span className="text-[#8a6320] text-xs font-bold tabular-nums">{coins}</span>
-              </div>
-              <Link href="/league" className="flex items-center gap-1 bg-[#7A2E1A]/10 rounded-full px-3 py-1.5 hover:bg-[#7A2E1A]/15 transition-colors">
-                <span className="text-xs">🏆</span>
-                <span className="text-[#7a2e1a] text-xs font-bold tabular-nums">{trophies}</span>
-              </Link>
-              {streak.current > 0 && (
-                <div className="flex items-center gap-1 bg-accent/8 rounded-full px-3 py-1.5">
-                  <span className="text-xs">🔥</span>
-                  <span className="text-accent text-xs font-bold">{streak.current}</span>
-                </div>
-              )}
-              {!user && (
-                <Link href="/login" className="text-accent text-xs font-semibold px-3 py-1.5 rounded-full bg-accent/10 hover:bg-accent/15 transition-colors">
-                  Inloggen
-                </Link>
-              )}
-              <Link href="/settings" className="w-9 h-9 rounded-full bg-subtle flex items-center justify-center text-faint hover:text-ink hover:bg-text-tertiary/10 transition-colors active:scale-95">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </Link>
-            </div>
-          </div>
+      <div className="px-4 max-w-md mx-auto">
+        {/* Hero greeting */}
+        <header className="text-center pt-2 pb-6 animate-fade-up">
+          <p className="text-[var(--color-gold-200)]/70 text-[10px] font-display font-bold uppercase tracking-[0.25em] mb-1">
+            {dateStr}
+          </p>
+          <h1 className="font-display-bold text-3xl text-[var(--color-gold-100)] drop-shadow-[0_2px_8px_rgba(232,184,74,0.3)]">
+            {greeting}{user ? `, ${user.displayName}` : ''}
+          </h1>
         </header>
+
+        {/* Login banner if anonymous */}
+        {!user && (
+          <Link href="/signup" className="block mb-4 surface-raised p-3 active:scale-[0.99] transition-transform animate-fade-up" style={{ animationDelay: '60ms' }}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🛡️</span>
+              <div className="flex-1">
+                <p className="font-display font-bold text-sm text-[var(--color-ink-900)]">Maak een account</p>
+                <p className="text-[var(--color-ink-600)] text-xs">Je trofeeën volgen je naar elk apparaat</p>
+              </div>
+              <span className="text-[var(--color-gold-500)] font-display font-bold text-lg">→</span>
+            </div>
+          </Link>
+        )}
 
         {/* Phase A: pick task */}
         {!chosenTask && !pick.completed && (
@@ -359,7 +342,7 @@ export default function Home() {
 
         {/* Phase B: timer + dashboard */}
         {chosenTask && !pick.completed && (
-          <div className="px-5 space-y-4">
+          <div className="space-y-4">
             <TaskTimer
               task={chosenTask}
               onClaim={handleClaim}
@@ -376,13 +359,13 @@ export default function Home() {
 
         {/* Phase C: completed for today */}
         {pick.completed && (
-          <div className="px-5 space-y-4">
-            <section className="card-elevated p-6 text-center animate-fade-up">
-              <div className="text-3xl mb-2">{pick.outcome === 'won' ? '🎉' : '💤'}</div>
-              <h2 className="font-serif text-xl text-ink italic">
+          <div className="space-y-4">
+            <section className="surface-floating p-6 text-center animate-fade-up">
+              <div className="text-5xl mb-3 drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]">{pick.outcome === 'won' ? '🎉' : '💤'}</div>
+              <h2 className="font-display-bold text-2xl text-[var(--color-ink-900)]">
                 {pick.outcome === 'won' ? 'Klaar voor vandaag' : 'Dag voorbij'}
               </h2>
-              <p className="text-muted text-sm mt-1">
+              <p className="text-[var(--color-ink-600)] text-sm mt-2">
                 {pick.outcome === 'won' && 'Je hebt vandaag je opdracht volbracht. Kom morgen terug voor een nieuwe keuze.'}
                 {pick.outcome === 'gave-up' && 'Je hebt vandaag opgegeven. Geen opdracht meer mogelijk vandaag — kom morgen terug.'}
                 {pick.outcome === 'failed-locked' && 'Je was te lang weg van Bliep. Geen opdracht meer mogelijk vandaag — kom morgen terug.'}
@@ -392,57 +375,51 @@ export default function Home() {
           </div>
         )}
 
-        <div className="px-5 mt-6 space-y-4">
+        <div className="mt-6 space-y-4">
           {data?.compliment && (
-            <section className="animate-fade-up card p-6" style={{ animationDelay: '160ms' }}>
-              <p className="text-accent text-[10px] font-semibold uppercase tracking-wider mb-3">Dagelijkse quote</p>
-              <p className="font-serif text-ink text-lg leading-snug italic">&ldquo;{data.compliment}&rdquo;</p>
+            <section className="animate-fade-up surface-raised p-5" style={{ animationDelay: '160ms' }}>
+              <p className="text-[var(--color-magic-700)] text-[10px] font-display font-bold uppercase tracking-[0.2em] mb-3">Dagelijkse quote</p>
+              <p className="font-display text-[var(--color-ink-900)] text-lg leading-snug">&ldquo;{data.compliment}&rdquo;</p>
             </section>
           )}
 
           {streak.history.length > 0 && (
-            <section className="animate-fade-up card p-5" style={{ animationDelay: '180ms' }}>
+            <section className="animate-fade-up surface-raised p-5" style={{ animationDelay: '180ms' }}>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-muted text-[11px] font-semibold uppercase tracking-wider">Je voortgang</p>
-                <p className="text-faint text-[11px]">{streak.current} {streak.current === 1 ? 'dag' : 'dagen'} streak</p>
+                <p className="text-[var(--color-ink-600)] text-[10px] font-display font-bold uppercase tracking-[0.2em]">Je voortgang</p>
+                <p className="text-[var(--color-ink-500)] text-[11px] font-display font-semibold">
+                  {streak.current} {streak.current === 1 ? 'dag' : 'dagen'} 🔥
+                </p>
               </div>
               <Heatmap history={streak.history} />
             </section>
           )}
 
           {!subscribed && (
-            <section className="animate-fade-up card p-5" style={{ animationDelay: '240ms' }}>
+            <section className="animate-fade-up surface-raised p-5" style={{ animationDelay: '240ms' }}>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <span className="text-lg">🔔</span>
+                <div className="w-12 h-12 rounded-2xl bg-[var(--color-gold-300)]/20 flex items-center justify-center shrink-0 border-2 border-[var(--color-gold-300)]">
+                  <span className="text-2xl">🔔</span>
                 </div>
                 <div>
-                  <h3 className="text-ink font-semibold text-[15px]">Mis geen dag</h3>
-                  <p className="text-muted text-[12px]">Ontvang elke ochtend en avond een Bliep</p>
+                  <h3 className="text-[var(--color-ink-900)] font-display font-bold text-base">Mis geen dag</h3>
+                  <p className="text-[var(--color-ink-600)] text-xs">Ontvang elke ochtend en avond een Bliep</p>
                 </div>
               </div>
               {installPrompt && (
-                <div className="bg-subtle rounded-xl p-3 mb-3 text-[11px] text-muted">
-                  <p className="text-ink font-medium mb-1">Eerst installeren:</p>
+                <div className="bg-[var(--color-parchment-200)] rounded-xl p-3 mb-3 text-[11px] text-[var(--color-ink-600)]">
+                  <p className="text-[var(--color-ink-900)] font-bold mb-1">Eerst installeren:</p>
                   <p>Safari → deel-icoon → &quot;Zet op beginscherm&quot;</p>
                 </div>
               )}
-              <button
-                onClick={subscribe}
-                disabled={subscribing}
-                className="w-full bg-accent text-white font-semibold py-3 rounded-xl transition-transform active:scale-[0.98] disabled:opacity-50 glow-accent text-sm"
-              >
+              <GameButton fullWidth onClick={subscribe} disabled={subscribing}>
                 {subscribing ? (notifStatus || 'Activeren...') : 'Notificaties aanzetten'}
-              </button>
+              </GameButton>
             </section>
           )}
         </div>
-
-        <footer className="mt-12 pb-4 text-center">
-          <p className="text-[10px] text-faint tracking-[0.2em] uppercase font-medium">Bliep</p>
-        </footer>
-      </main>
-    </div>
+      </div>
+    </GameShell>
   );
 }
 
@@ -451,25 +428,35 @@ function DashboardActions() {
     <div className="grid grid-cols-2 gap-3 animate-fade-up" style={{ animationDelay: '140ms' }}>
       <Link
         href="/stad"
-        className="rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform"
+        className="rounded-2xl overflow-hidden relative active:scale-[0.96] transition-transform"
+        style={{
+          background: 'linear-gradient(180deg, var(--color-forest-300) 0%, var(--color-forest-500) 100%)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.25), 0 4px 0 var(--color-forest-900), 0 6px 12px rgba(0,0,0,0.4)',
+          border: '2px solid var(--color-forest-900)',
+        }}
       >
-        <div className="relative h-28 bg-gradient-to-br from-[#6BA368] via-[#8BC17E] to-[#E8B84A] p-4 flex flex-col justify-between">
-          <p className="relative text-white/90 text-[10px] font-semibold uppercase tracking-wider">Naar je stad</p>
+        <div className="relative h-28 p-4 flex flex-col justify-between">
+          <p className="relative text-white/90 text-[10px] font-display font-bold uppercase tracking-[0.15em]" style={{ textShadow: '0 1px 0 rgba(0,0,0,0.3)' }}>Naar je stad</p>
           <div className="relative flex items-center justify-between">
-            <p className="font-serif text-xl text-white italic drop-shadow">Bouwen →</p>
-            <span className="text-2xl drop-shadow">🏰</span>
+            <p className="font-display-bold text-xl text-white" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>Bouwen</p>
+            <span className="text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">🏰</span>
           </div>
         </div>
       </Link>
       <Link
         href="/aanvallen"
-        className="rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform"
+        className="rounded-2xl overflow-hidden relative active:scale-[0.96] transition-transform"
+        style={{
+          background: 'linear-gradient(180deg, var(--color-blood-300) 0%, var(--color-blood-500) 100%)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.3), 0 4px 0 var(--color-blood-900), 0 6px 12px rgba(0,0,0,0.4)',
+          border: '2px solid var(--color-blood-900)',
+        }}
       >
-        <div className="relative h-28 bg-gradient-to-br from-[#7A2E1A] via-[#C75B3D] to-[#E8B84A] p-4 flex flex-col justify-between">
-          <p className="relative text-white/90 text-[10px] font-semibold uppercase tracking-wider">Aanvallen</p>
+        <div className="relative h-28 p-4 flex flex-col justify-between">
+          <p className="relative text-white/90 text-[10px] font-display font-bold uppercase tracking-[0.15em]" style={{ textShadow: '0 1px 0 rgba(0,0,0,0.3)' }}>Aanvallen</p>
           <div className="relative flex items-center justify-between">
-            <p className="font-serif text-xl text-white italic drop-shadow">Strijden →</p>
-            <span className="text-2xl drop-shadow">⚔️</span>
+            <p className="font-display-bold text-xl text-white" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>Strijden</p>
+            <span className="text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">⚔️</span>
           </div>
         </div>
       </Link>

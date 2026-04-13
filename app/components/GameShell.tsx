@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import GameChip from './GameChip';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
+import { useStreak } from '@/lib/useStreak';
 
 interface Props {
   children: ReactNode;
@@ -68,13 +69,19 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
   const pathname = usePathname();
   const { coins } = useCoins();
   const { trophies } = useTrophies();
+  const streak = useStreak();
 
   return (
     <div className="app-shell relative">
       {!hideTopBar && (
         <div className="top-bar flex items-center justify-between gap-2">
           <GameChip variant="gold" value={coins} icon="🪙" />
-          <GameChip variant="trophy" value={trophies} icon="🏆" href="/league" />
+          <div className="flex items-center gap-2">
+            {streak.current > 0 && (
+              <GameChip variant="streak" value={streak.current} icon="🔥" />
+            )}
+            <GameChip variant="trophy" value={trophies} icon="🏆" href="/league" />
+          </div>
         </div>
       )}
 
