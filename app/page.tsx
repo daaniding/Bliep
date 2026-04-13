@@ -175,28 +175,28 @@ export default function Home() {
       {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
 
       {/* Hero — animated castle scene */}
-      <div className="pt-24 animate-fade-up">
+      <div className="animate-fade-up">
         <DashboardHero />
       </div>
 
       {/* Quest line */}
-      <div className="px-5 pt-4 pb-2 text-center animate-fade-up" style={{ animationDelay: '80ms' }}>
-        <p className="font-display text-[15px] text-[var(--color-gold-100)] text-stroke-dark leading-snug">
+      <div className="px-5 pt-3 pb-1 text-center animate-fade-up" style={{ animationDelay: '80ms' }}>
+        <p className="font-display text-[14px] text-[var(--color-gold-100)] text-stroke-dark leading-snug">
           {questLine}
         </p>
       </div>
 
       {/* Completed state — short message */}
       {pick.completed && (
-        <div className="px-6 pt-3 animate-fade-up" style={{ animationDelay: '160ms' }}>
-          <div className="text-center py-4">
-            <div className="text-5xl mb-2 drop-shadow-[0_4px_0_#0d0a06]">
+        <div className="px-6 pt-2 animate-fade-up" style={{ animationDelay: '160ms' }}>
+          <div className="text-center py-2">
+            <div className="text-4xl mb-1 drop-shadow-[0_4px_0_#0d0a06]">
               {pick.outcome === 'won' ? '🏆' : pick.outcome === 'failed-locked' ? '⚔️' : '💤'}
             </div>
-            <p className="font-display text-[18px] text-[var(--color-gold-100)] text-stroke-dark mb-1">
+            <p className="font-display text-[16px] text-[var(--color-gold-100)] text-stroke-dark mb-1">
               {pick.outcome === 'won' ? 'De dag is gewonnen' : 'Dag is voorbij'}
             </p>
-            <p className="text-[var(--color-parch-200)] text-xs font-body">
+            <p className="text-[var(--color-parch-200)] text-[11px] font-body">
               {pick.outcome === 'won' && 'Kom morgen terug voor een nieuwe uitdaging.'}
               {pick.outcome === 'gave-up' && 'Je hebt opgegeven. Morgen nieuwe kans.'}
               {pick.outcome === 'failed-locked' && 'Te lang weg van Bliep. Morgen opnieuw.'}
@@ -205,11 +205,11 @@ export default function Home() {
         </div>
       )}
 
-      {/* Sword CTA at bottom, above stone arch nav */}
-      <div
-        className="absolute left-0 right-0 animate-fade-up"
-        style={{ bottom: 'calc(120px + env(safe-area-inset-bottom))', padding: '0 14px', animationDelay: '240ms' }}
-      >
+      {/* Spacer — pushes sword to just above the nav */}
+      <div className="content-spacer" />
+
+      {/* Sword CTA — sits at the bottom of the content stack, above the nav */}
+      <div className="px-3 pb-2 animate-fade-up" style={{ animationDelay: '240ms' }}>
         <SwordCTA
           taskText={chosenTask && !pick.completed ? chosenTask.text : null}
           durationMin={chosenTask?.durationMin}

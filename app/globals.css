@@ -130,11 +130,27 @@ body {
 
 .app-shell {
   min-height: 100dvh;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 90px); /* room for stone arch nav */
+  /* Banners hang over the hero scene — no top content padding.
+     Nav is position: fixed so we reserve space via bottom padding. */
+  padding-top: 0;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 108px);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell > .content-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-shell > .content-stack > .content-spacer {
+  flex: 1;
+  min-height: 8px;
 }
 
 /* === HANGING BANNERS (top bar chips) ===
@@ -147,7 +163,7 @@ body {
   left: 0;
   right: 0;
   z-index: 40;
-  padding: 0 12px;
+  padding: 0 8px;
   padding-top: env(safe-area-inset-top);
   pointer-events: none;
 }
@@ -156,9 +172,18 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  flex-wrap: nowrap;
+  width: 100%;
   max-width: 420px;
   margin: 0 auto;
   pointer-events: none;
+  gap: 8px;
+}
+.hanging-banner-row > .banner-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: flex-start;
 }
 
 .hanging-banner {

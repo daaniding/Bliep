@@ -24,15 +24,17 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
         <div className="hanging-banner-container">
           <div className="hanging-banner-row">
             <BannerChip variant="gold" value={coins} label="Coins" />
-            {streak.current > 0 && (
-              <BannerChip variant="blood" value={streak.current} label="Streak" />
-            )}
-            <BannerChip variant="magic" value={trophies} label="Trofee" href="/league" />
+            <div className="banner-group">
+              {streak.current > 0 && (
+                <BannerChip variant="blood" value={streak.current} label="Streak" />
+              )}
+              <BannerChip variant="magic" value={trophies} label="Trofee" href="/league" />
+            </div>
           </div>
         </div>
       )}
 
-      <div className="relative z-10">
+      <div className="content-stack relative z-10">
         {children}
       </div>
 
