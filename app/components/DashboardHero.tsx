@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
 import { useStreak } from '@/lib/useStreak';
 
@@ -29,6 +29,47 @@ export default function DashboardHero(_props: Props = {}) {
   const streak = useStreak();
   const showStreakFlame = streak.current > 0;
 
+  // Ping-pong loop: when the video reaches the end, it plays backward;
+  // when it reaches the start, it plays forward again. This hides any
+  // hard cut between the last frame and the first frame of an AI video.
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    let dir: 1 | -1 = 1;
+    let raf = 0;
+    let lastTs = 0;
+
+    const tick = (ts: number) => {
+      if (v.paused || v.ended) { raf = requestAnimationFrame(tick); return; }
+      if (lastTs === 0) lastTs = ts;
+      const dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      if (dir === -1) {
+        v.currentTime = Math.max(0, v.currentTime - dt);
+        if (v.currentTime <= 0.02) { dir = 1; v.play().catch(() => {}); }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    const onEnded = () => {
+      dir = -1;
+      v.pause();
+      lastTs = 0;
+      raf = requestAnimationFrame(tick);
+    };
+
+    // The video element has loop={false} so 'ended' fires; we flip
+    // direction and start the rAF-driven reverse playback.
+    v.addEventListener('ended', onEnded);
+    v.play().catch(() => {});
+
+    return () => {
+      v.removeEventListener('ended', onEnded);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
   // Night tint colour + opacity for mix-blend
   const nightTint = tod.darkness > 0.3;
   const duskTint = tod.phase === 'dusk';
@@ -41,18 +82,17 @@ export default function DashboardHero(_props: Props = {}) {
         boxShadow: 'inset 0 -18px 36px -8px rgba(0, 0, 0, 0.65)',
       }}
     >
-      {/* === Background video === */}
+      {/* === Background video (ping-pong loop via JS) === */}
       <video
+        ref={videoRef}
         src="/dashboard-hero.mp4"
         autoPlay
-        loop
         muted
         playsInline
         preload="auto"
         className="absolute inset-0 w-full h-full"
         style={{
           objectFit: 'cover',
-          // Slight brightness bump so the scene stays warm
           filter: 'saturate(1.08)',
         }}
       />
