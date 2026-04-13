@@ -13,11 +13,6 @@ import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { trophiesForTier } from '@/lib/trophies';
 import { useUser } from '@/lib/useUser';
-import { useStreak } from '@/lib/useStreak';
-
-interface TodayData {
-  compliment: string | null;
-}
 
 function getGreeting(): string {
   const h = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })).getHours();
@@ -52,14 +47,6 @@ function saveStreakLS(streak: { current: number; longest: number; lastCompletedD
   localStorage.setItem('bliep:streak', JSON.stringify(streak));
 }
 
-function urlBase64ToUint8Array(b64: string): Uint8Array {
-  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
-  const raw = window.atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
-  const arr = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; ++i) arr[i] = raw.charCodeAt(i);
-  return arr;
-}
-
 function launchConfetti(container: HTMLElement) {
   const colors = ['#E8B84A', '#F5D068', '#C75B3D', '#6BA368', '#7A4ABF', '#FFE99A'];
   for (let i = 0; i < 60; i++) {
@@ -81,42 +68,6 @@ function launchConfetti(container: HTMLElement) {
       { transform: `translate(${Math.cos(angle) * velocity}px, ${Math.sin(angle) * velocity + 500}px) rotate(${Math.random() * 720 - 360}deg)`, opacity: 0 },
     ], { duration: Math.random() * 900 + 900, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' }).onfinish = () => el.remove();
   }
-}
-
-function Heatmap({ history }: { history: string[] }) {
-  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' }));
-  const historySet = new Set(history);
-  const cells: { date: string; active: boolean; isToday: boolean }[] = [];
-  for (let i = 48; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    cells.push({ date: dateStr, active: historySet.has(dateStr), isToday: i === 0 });
-  }
-  const weeks: typeof cells[] = [];
-  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
-
-  return (
-    <div className="flex gap-[3px]">
-      {weeks.map((week, wi) => (
-        <div key={wi} className="flex flex-col gap-[3px]">
-          {week.map((cell) => (
-            <div
-              key={cell.date}
-              className={`w-[14px] h-[14px] rounded-[3px] transition-colors ${
-                cell.active
-                  ? 'bg-[var(--color-forest-400)]'
-                  : cell.isToday
-                    ? 'bg-[var(--color-gold-200)]/30 ring-1 ring-[var(--color-gold-300)]/60'
-                    : 'bg-[var(--color-parchment-300)]/40'
-              }`}
-              title={cell.date}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function Onboarding({ onComplete }: { onComplete: () => void }) {
@@ -155,11 +106,6 @@ function Onboarding({ onComplete }: { onComplete: () => void }) {
 }
 
 export default function Home() {
-  const [data, setData] = useState<TodayData | null>(null);
-  const [subscribed, setSubscribed] = useState(false);
-  const [subscribing, setSubscribing] = useState(false);
-  const [notifStatus, setNotifStatus] = useState('');
-  const [installPrompt, setInstallPrompt] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [tasks] = useState<DailyTask[]>(() => getDailyTasks());
   const [pick, setPick] = useState(() => loadDailyPick());
@@ -167,21 +113,12 @@ export default function Home() {
   const { award } = useCoins();
   const { awardTrophies } = useTrophies();
   const { user } = useUser();
-  const streak = useStreak();
 
   const greeting = getGreeting();
   const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
 
   useEffect(() => {
-    fetch('/api/today').then(r => r.json()).then(setData).catch(console.error);
     if (!localStorage.getItem('bliep:onboarded')) setShowOnboarding(true);
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(reg => {
-        reg.pushManager.getSubscription().then(sub => { if (sub) setSubscribed(true); });
-      });
-    }
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    if (!isStandalone && /iPhone|iPad/.test(navigator.userAgent)) setInstallPrompt(true);
   }, []);
 
   useEffect(() => {
@@ -233,9 +170,11 @@ export default function Home() {
     el.style.cssText = `
       position: fixed; left: 50%; top: 45%;
       transform: translate(-50%, -50%);
-      font-family: var(--font-fredoka), system-ui, sans-serif;
-      font-weight: 700;
-      font-size: 56px;
+      font-family: var(--font-cinzel), 'Cinzel', serif;
+      font-weight: 800;
+      font-size: 52px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       color: ${color};
       text-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 40px ${color};
       pointer-events: none; z-index: 9999;
@@ -254,50 +193,6 @@ export default function Home() {
     const next: typeof pick = { ...pick, completed: true, outcome: 'gave-up' };
     saveDailyPick(next);
     setPick(next);
-  }
-
-  async function subscribe() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      alert('Installeer de app eerst via Safari → Deel → Zet op beginscherm');
-      return;
-    }
-    if ('Notification' in window && Notification.permission === 'denied') {
-      alert('Je hebt notificaties geblokkeerd. Ga naar je instellingen om dit te wijzigen.');
-      return;
-    }
-    setSubscribing(true);
-    setNotifStatus('Toestemming vragen...');
-    try {
-      if ('Notification' in window && Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') { setNotifStatus(''); setSubscribing(false); return; }
-      }
-      setNotifStatus('Activeren...');
-      const reg = await navigator.serviceWorker.ready;
-      const existingSub = await reg.pushManager.getSubscription();
-      if (existingSub) {
-        await existingSub.unsubscribe();
-        await fetch('/api/subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: existingSub.endpoint }) }).catch(() => {});
-      }
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!.trim()) as BufferSource,
-      });
-      const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON() }) });
-      if (res.ok) {
-        setSubscribed(true);
-        setNotifStatus('Test versturen...');
-        await fetch('/api/test-push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON() }) });
-        setNotifStatus('');
-        if (confettiRef.current) launchConfetti(confettiRef.current);
-      }
-    } catch (err) {
-      console.error('Subscribe error:', err);
-      alert('Kon notificaties niet activeren.');
-      setNotifStatus('');
-    } finally {
-      setSubscribing(false);
-    }
   }
 
   function handleOnboardingComplete() {
@@ -389,52 +284,8 @@ export default function Home() {
         </div>
 
         {/* Secondary actions */}
-        <div className="mt-5">
+        <div className="mt-4">
           <DashboardActions />
-        </div>
-
-        <div className="mt-6 space-y-4">
-          {data?.compliment && (
-            <section className="animate-fade-up surface-raised p-5" style={{ animationDelay: '160ms' }}>
-              <p className="text-[var(--color-magic-700)] text-[10px] font-display font-bold uppercase tracking-[0.2em] mb-3">Dagelijkse quote</p>
-              <p className="font-display text-[var(--color-ink-900)] text-lg leading-snug">&ldquo;{data.compliment}&rdquo;</p>
-            </section>
-          )}
-
-          {streak.history.length > 0 && (
-            <section className="animate-fade-up surface-raised p-5" style={{ animationDelay: '180ms' }}>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[var(--color-ink-600)] text-[10px] font-display font-bold uppercase tracking-[0.2em]">Je voortgang</p>
-                <p className="text-[var(--color-ink-500)] text-[11px] font-display font-semibold">
-                  {streak.current} {streak.current === 1 ? 'dag' : 'dagen'} 🔥
-                </p>
-              </div>
-              <Heatmap history={streak.history} />
-            </section>
-          )}
-
-          {!subscribed && (
-            <section className="animate-fade-up surface-raised p-5" style={{ animationDelay: '240ms' }}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-2xl bg-[var(--color-gold-300)]/20 flex items-center justify-center shrink-0 border-2 border-[var(--color-gold-300)]">
-                  <span className="text-2xl">🔔</span>
-                </div>
-                <div>
-                  <h3 className="text-[var(--color-ink-900)] font-display font-bold text-base">Mis geen dag</h3>
-                  <p className="text-[var(--color-ink-600)] text-xs">Ontvang elke ochtend en avond een Bliep</p>
-                </div>
-              </div>
-              {installPrompt && (
-                <div className="bg-[var(--color-parchment-200)] rounded-xl p-3 mb-3 text-[11px] text-[var(--color-ink-600)]">
-                  <p className="text-[var(--color-ink-900)] font-bold mb-1">Eerst installeren:</p>
-                  <p>Safari → deel-icoon → &quot;Zet op beginscherm&quot;</p>
-                </div>
-              )}
-              <GameButton fullWidth onClick={subscribe} disabled={subscribing}>
-                {subscribing ? (notifStatus || 'Activeren...') : 'Notificaties aanzetten'}
-              </GameButton>
-            </section>
-          )}
         </div>
       </div>
     </GameShell>

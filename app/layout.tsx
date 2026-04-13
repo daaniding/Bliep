@@ -1,11 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Fredoka, Manrope } from "next/font/google";
+import { Cinzel, Cinzel_Decorative, Manrope } from "next/font/google";
 import "./globals.css";
 
-const fredoka = Fredoka({
-  variable: "--font-fredoka",
+// Display: Cinzel — Roman classical caps, used heavily in fantasy & medieval games.
+// Body: Manrope — clean modern sans for legibility.
+// Headline accent: Cinzel Decorative — flourished version for hero titles.
+
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+});
+
+const cinzelDecorative = Cinzel_Decorative({
+  variable: "--font-cinzel-decorative",
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
 });
 
 const manrope = Manrope({
@@ -39,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl" className={`${fredoka.variable} ${manrope.variable}`}>
+    <html lang="nl" className={`${cinzel.variable} ${cinzelDecorative.variable} ${manrope.variable}`}>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>

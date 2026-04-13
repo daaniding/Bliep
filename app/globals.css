@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-display: var(--font-fredoka);
+  --font-display: var(--font-cinzel);
+  --font-display-decorative: var(--font-cinzel-decorative);
   --font-sans: var(--font-manrope);
 
   /* === ROYAL BLIEP PALETTE ===
@@ -83,7 +84,7 @@ html {
 }
 
 body {
-  background: var(--color-night-900);
+  background: #0a0e18;
   color: var(--color-text);
   font-family: var(--font-sans), system-ui, sans-serif;
   font-weight: 500;
@@ -91,34 +92,58 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   min-height: 100dvh;
-  /* Persistent night-sky gradient background, even when content is
-     parchment surfaces overlaid on it */
+  /* Dungeon stone wall — layered radial highlights + dark base + grain
+     via SVG noise data URI for texture */
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(125, 90, 30, 0.25), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(74, 42, 110, 0.18), transparent 60%),
-    linear-gradient(180deg, var(--color-night-900) 0%, var(--color-night-800) 100%);
+    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(232, 184, 74, 0.18), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(122, 46, 26, 0.15), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(74, 42, 110, 0.15), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.05 0 0 0 0 0.08 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #0a0e18 0%, #131826 50%, #0a0e18 100%);
+  background-attachment: fixed, fixed, fixed, fixed, fixed;
+  background-size: auto, auto, auto, 200px 200px, auto;
 }
 
 /* === TYPOGRAPHY === */
 
+/* Cinzel is a serif Roman caps face — looks weird in lowercase, so all
+   display classes implicitly uppercase the text. Body stays Manrope. */
+
 .font-display {
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-display), 'Cinzel', serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .font-display-bold {
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-display), 'Cinzel', serif;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.font-display-fancy {
+  font-family: var(--font-display-decorative), 'Cinzel Decorative', serif;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Body sans for prose lowercase content */
+.font-body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* Override Tailwind's font-serif and font-sans to map to our system,
    so legacy class usage doesn't break catastrophically while we migrate */
 .font-serif {
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-display), serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.03em;
   font-style: normal;
 }
 
@@ -466,12 +491,16 @@ body {
 .parchment-panel {
   background:
     radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.4) 0%, transparent 30%),
-    radial-gradient(circle at 80% 90%, rgba(0, 0, 0, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(91, 60, 20, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(91, 60, 20, 0.06) 0%, transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.32 0 0 0 0 0.18 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n2)'/%3E%3C/svg%3E"),
     linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-100) 50%, var(--color-parchment-200) 100%);
+  background-size: auto, auto, auto, 160px 160px, auto;
   border-radius: 14px;
   box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+    inset 0 2px 6px rgba(91, 60, 20, 0.25),
+    inset 0 -2px 4px rgba(91, 60, 20, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .gold-frame > .parchment-panel,
@@ -510,7 +539,7 @@ body {
   gap: 10px;
   padding: 18px 32px;
   border-radius: 20px;
-  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-family: var(--font-display), 'Cinzel', serif;
   font-weight: 700;
   letter-spacing: 0.02em;
   font-size: 22px;
@@ -550,45 +579,56 @@ body {
   filter: grayscale(0.4);
 }
 
-/* === RIBBON / BANNER (for "TODAY" or category labels above the hero) === */
+/* === RIBBON / BANNER ===
+   Heraldic banner with swallow-tail ends + gold gem center.
+   Wrap text in <span class="ribbon-inner"></span> for proper layering. */
 
 .ribbon {
+  position: relative;
   display: inline-block;
-  padding: 6px 22px;
-  font-family: var(--font-fredoka), system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 11px;
+  padding: 0 28px;
+  height: 36px;
+  line-height: 36px;
+  font-family: var(--font-display), 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: var(--color-gold-100);
-  background:
-    linear-gradient(180deg, var(--color-night-600) 0%, var(--color-night-800) 100%);
-  border: 2px solid var(--color-gold-400);
-  border-radius: 6px;
+  background: linear-gradient(180deg, var(--color-blood-500) 0%, var(--color-blood-700) 50%, var(--color-blood-900) 100%);
+  border-top: 2px solid var(--color-gold-300);
+  border-bottom: 2px solid var(--color-gold-600);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    0 3px 0 rgba(0, 0, 0, 0.4),
-    0 6px 12px rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 8px 18px rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(232, 184, 74, 0.2);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.5),
-    0 0 8px rgba(232, 184, 74, 0.4);
-  position: relative;
+    0 1px 0 rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(232, 184, 74, 0.5);
 }
 
+/* Swallow-tail cuts on either end via clip-path */
 .ribbon::before,
 .ribbon::after {
   content: '';
   position: absolute;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  background: var(--color-gold-400);
-  transform: translateY(-50%) rotate(45deg);
-  z-index: -1;
+  top: -2px;
+  bottom: -2px;
+  width: 18px;
+  background: linear-gradient(180deg, var(--color-blood-500) 0%, var(--color-blood-700) 50%, var(--color-blood-900) 100%);
+  border-top: 2px solid var(--color-gold-300);
+  border-bottom: 2px solid var(--color-gold-600);
 }
-.ribbon::before { left: -8px; }
-.ribbon::after { right: -8px; }
+.ribbon::before {
+  left: -16px;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%, 50% 50%, 0 0);
+}
+.ribbon::after {
+  right: -16px;
+  clip-path: polygon(0 0, 100% 0, 50% 50%, 100% 100%, 0 100%);
+}
 
 /* === GLOW PULSE (for chest slots ready to claim) === */
 
