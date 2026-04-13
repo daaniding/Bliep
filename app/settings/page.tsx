@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { getDisplayName, setDisplayName, getMyLeagues, forgetLeague } from '@/lib/league';
 import { useTrophies } from '@/lib/useTrophies';
 import { useCoins } from '@/lib/useCoins';
+import { useUser, apiLogout, apiUpdateDisplayName } from '@/lib/useUser';
+import { useRouter } from 'next/navigation';
 
 interface Settings {
   name: string;
@@ -27,6 +29,8 @@ function loadStreak(): StreakData {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { user, refresh } = useUser();
   const { trophies } = useTrophies();
   const { coins } = useCoins();
   const [settings, setSettings] = useState<Settings>({ name: '', notifications: true });
@@ -76,10 +80,19 @@ export default function SettingsPage() {
     setSaving(false);
   }
 
-  function handleSaveDisplayName() {
+  async function handleSaveDisplayName() {
     setDisplayName(displayName.trim());
+    if (user) {
+      try { await apiUpdateDisplayName(displayName.trim()); refresh(); } catch { /* ignore */ }
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleLogout() {
+    await apiLogout();
+    router.push('/');
+    router.refresh();
   }
 
   function handleResetAll() {
@@ -120,6 +133,37 @@ export default function SettingsPage() {
         </header>
 
         <div className="space-y-4 stagger">
+          {/* Account */}
+          <section className="animate-fade-up card p-5">
+            <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Account</p>
+            {user ? (
+              <>
+                <div className="bg-subtle rounded-xl p-4 mb-3">
+                  <p className="text-ink font-semibold text-sm">{user.displayName}</p>
+                  <p className="text-faint text-xs mt-0.5">@{user.username}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full bg-subtle text-[#7a2e1a] font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform"
+                >
+                  Uitloggen
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted text-xs mb-3">Maak een account zodat je trofeeën en league-stand op elk apparaat hetzelfde zijn.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link href="/login" className="text-center bg-subtle text-ink font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
+                    Inloggen
+                  </Link>
+                  <Link href="/signup" className="text-center bg-accent text-white font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
+                    Account maken
+                  </Link>
+                </div>
+              </>
+            )}
+          </section>
+
           {/* Stats */}
           <section className="animate-fade-up card p-5">
             <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-4">Jouw stats</p>

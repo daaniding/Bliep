@@ -8,6 +8,7 @@ import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/l
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { trophiesForTier } from '@/lib/trophies';
+import { useUser } from '@/lib/useUser';
 
 interface TodayData {
   compliment: string | null;
@@ -169,6 +170,7 @@ export default function Home() {
   const confettiRef = useRef<HTMLDivElement>(null);
   const { coins, award } = useCoins();
   const { trophies, awardTrophies } = useTrophies();
+  const { user } = useUser();
 
   const greeting = getGreeting();
   const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
@@ -317,7 +319,7 @@ export default function Home() {
         <header className="px-5 mb-6 animate-fade-up">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="font-serif text-2xl text-ink italic tracking-tight">{greeting}</h1>
+              <h1 className="font-serif text-2xl text-ink italic tracking-tight">{greeting}{user ? `, ${user.displayName}` : ''}</h1>
               <p className="text-muted text-[13px] mt-0.5">{dateStr}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -334,6 +336,11 @@ export default function Home() {
                   <span className="text-xs">🔥</span>
                   <span className="text-accent text-xs font-bold">{streak.current}</span>
                 </div>
+              )}
+              {!user && (
+                <Link href="/login" className="text-accent text-xs font-semibold px-3 py-1.5 rounded-full bg-accent/10 hover:bg-accent/15 transition-colors">
+                  Inloggen
+                </Link>
               )}
               <Link href="/settings" className="w-9 h-9 rounded-full bg-subtle flex items-center justify-center text-faint hover:text-ink hover:bg-text-tertiary/10 transition-colors active:scale-95">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">

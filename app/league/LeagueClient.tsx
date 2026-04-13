@@ -9,11 +9,13 @@ import {
   type League,
 } from '@/lib/league';
 import { useTrophies } from '@/lib/useTrophies';
+import { useUser } from '@/lib/useUser';
 
 type View = 'menu' | 'create' | 'join' | 'view';
 
 export default function LeagueClient() {
   const { trophies } = useTrophies();
+  const { user } = useUser();
   const [clientId, setClientId] = useState('');
   const [displayName, setName] = useState('');
   const [view, setView] = useState<View>('menu');
@@ -28,20 +30,27 @@ export default function LeagueClient() {
   const [joinCode, setJoinCode] = useState('');
   const [pendingDisplayName, setPendingDisplayName] = useState('');
 
-  // Init
+  // Init — when logged in, use the server identity. Otherwise fall back to
+  // the per-device clientId + locally stored display name.
   useEffect(() => {
-    const id = getClientId();
-    setClientId(id);
-    const stored = getDisplayName();
-    setName(stored);
-    setPendingDisplayName(stored);
+    if (user) {
+      setClientId(user.id);
+      setName(user.displayName);
+      setPendingDisplayName(user.displayName);
+    } else {
+      const id = getClientId();
+      setClientId(id);
+      const stored = getDisplayName();
+      setName(stored);
+      setPendingDisplayName(stored);
+    }
     const list = getMyLeagues();
     setMyLeagues(list);
     if (list.length > 0) {
       setActiveCode(list[0]);
       setView('view');
     }
-  }, []);
+  }, [user]);
 
   // Load active league
   const refreshLeague = useCallback(async (code: string) => {
@@ -170,7 +179,19 @@ export default function LeagueClient() {
         </div>
 
         <h1 className="font-serif text-3xl text-ink tracking-tight italic mb-1">Friend League</h1>
-        <p className="text-muted text-sm mb-6">Speel met een groepje vrienden op een ranglijst van trofeeën.</p>
+        <p className="text-muted text-sm mb-4">Speel met een groepje vrienden op een ranglijst van trofeeën.</p>
+
+        {!user && (
+          <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 mb-4 text-center">
+            <p className="text-ink text-sm font-medium mb-1">📱 Maak een account voor cross-device</p>
+            <p className="text-muted text-xs leading-relaxed mb-3">
+              Zonder account word je herkend per apparaat. Met account zien je vrienden jou op elke telefoon en laptop.
+            </p>
+            <Link href="/signup" className="inline-block bg-accent text-white text-xs font-semibold px-4 py-2 rounded-full">
+              Account maken
+            </Link>
+          </div>
+        )}
 
         {/* Display name setup */}
         {!displayName && (
