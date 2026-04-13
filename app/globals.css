@@ -1,87 +1,328 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-dm-sans);
-  --font-serif: var(--font-instrument);
+  --font-display: var(--font-fredoka);
+  --font-sans: var(--font-manrope);
 
-  /* Light, fresh palette */
-  --color-surface: #F5F5F7;
-  --color-card: #FFFFFF;
-  --color-subtle: #F0F0F2;
+  /* === ROYAL BLIEP PALETTE ===
+     Direction: neo-medieval mobile game. Deep navy night sky as world,
+     royal gold as energy, parchment cream as surface, blood red and
+     forest green as semantic. Three explicit depth layers. */
 
-  --color-ink: #1D1D1F;
-  --color-muted: #6E6E73;
-  --color-faint: #AEAEB2;
+  /* Night — the world background */
+  --color-night-900: #0d1426;
+  --color-night-800: #131e3a;
+  --color-night-700: #1b2a4e;
+  --color-night-600: #2b3f6b;
+  --color-night-500: #3d5687;
 
-  --color-accent: #FF6B35;
-  --color-accentlight: #FF8F5E;
-  --color-accentsoft: #FFF0E8;
+  /* Royal Gold — energy, coins, primary actions */
+  --color-gold-50:  #FFF7DC;
+  --color-gold-100: #FFE99A;
+  --color-gold-200: #F5D068;
+  --color-gold-300: #E8B84A;
+  --color-gold-400: #C99738;
+  --color-gold-500: #A77526;
+  --color-gold-600: #7C521A;
 
-  --color-blue: #007AFF;
-  --color-bluesoft: #E8F2FF;
-  --color-green: #34C759;
-  --color-greensoft: #E5F9EC;
-  --color-purple: #AF52DE;
-  --color-purplesoft: #F4E8FA;
-  --color-mint: #00C7BE;
-  --color-mintsoft: #E0F9F8;
-  --color-red: #FF3B30;
+  /* Parchment — warm cream surface */
+  --color-parchment-50:  #FBF3DD;
+  --color-parchment-100: #F4E9D1;
+  --color-parchment-200: #E8DAB8;
+  --color-parchment-300: #D9C7A0;
 
-  --color-amber-400: #FFA03D;
-  --color-amber-500: #F28C28;
+  /* Ink — text on parchment */
+  --color-ink-900: #1A1108;
+  --color-ink-800: #2E1F10;
+  --color-ink-700: #4D3520;
+  --color-ink-600: #6B4520;
+  --color-ink-500: #8B6A40;
+  --color-ink-400: #A88A60;
+
+  /* Blood red — danger, loss, fail */
+  --color-blood-900: #4A0F00;
+  --color-blood-700: #7A2E1A;
+  --color-blood-500: #C75B3D;
+  --color-blood-300: #F08C6A;
+  --color-blood-100: #FBDED1;
+
+  /* Forest — victory, growth, farms */
+  --color-forest-900: #14331C;
+  --color-forest-700: #2E5C32;
+  --color-forest-500: #4A7D4A;
+  --color-forest-400: #6BA368;
+  --color-forest-300: #8BC17E;
+  --color-forest-100: #DDF1D6;
+
+  /* Magic — accent for trophies/league/special */
+  --color-magic-700: #4A2A6E;
+  --color-magic-500: #7A4ABF;
+  --color-magic-300: #B080E0;
+
+  /* Semantic shortcuts (used heavily) */
+  --color-bg: var(--color-night-900);
+  --color-surface: var(--color-parchment-100);
+  --color-surface-raised: var(--color-parchment-50);
+  --color-border-gold: var(--color-gold-300);
+  --color-text: var(--color-ink-900);
+  --color-text-muted: var(--color-ink-600);
+  --color-text-faint: var(--color-ink-500);
 }
+
+/* === GLOBAL RESET === */
 
 * {
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html {
+  background: var(--color-night-900);
+  /* iOS safe area support */
+  height: 100%;
 }
 
 body {
-  background: var(--color-surface);
-  color: var(--color-ink);
+  background: var(--color-night-900);
+  color: var(--color-text);
   font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  min-height: 100dvh;
+  /* Persistent night-sky gradient background, even when content is
+     parchment surfaces overlaid on it */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(125, 90, 30, 0.25), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(74, 42, 110, 0.18), transparent 60%),
+    linear-gradient(180deg, var(--color-night-900) 0%, var(--color-night-800) 100%);
 }
 
+/* === TYPOGRAPHY === */
+
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.font-display-bold {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* Override Tailwind's font-serif and font-sans to map to our system,
+   so legacy class usage doesn't break catastrophically while we migrate */
 .font-serif {
-  font-family: var(--font-serif), Georgia, serif;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-style: normal;
 }
 
-/* Cards */
-.card {
-  background: var(--color-card);
+/* === SURFACES — three explicit depth layers === */
+
+/* Layer 1: parchment surface, sits on world bg */
+.surface {
+  background: var(--color-parchment-100);
   border-radius: 20px;
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    0 4px 12px rgba(0, 0, 0, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    0 2px 0 rgba(0, 0, 0, 0.15),
+    0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-parchment-200);
+}
+
+/* Layer 2: raised — for cards within surfaces */
+.surface-raised {
+  background:
+    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-100) 100%);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 1px 0 rgba(0, 0, 0, 0.08),
+    0 4px 12px -2px rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--color-gold-300);
+}
+
+/* Layer 3: floating — for chips, modals, the elite stuff */
+.surface-floating {
+  background:
+    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-200) 100%);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(232, 184, 74, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.2),
+    0 12px 32px -6px rgba(0, 0, 0, 0.5),
+    0 0 0 2px var(--color-gold-300);
+}
+
+/* Legacy aliases so old code keeps working during migration */
+.card {
+  background: var(--color-parchment-100);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.12),
+    0 6px 16px -2px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-parchment-200);
 }
 
 .card-elevated {
-  background: var(--color-card);
-  border-radius: 24px;
+  background:
+    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-100) 100%);
+  border-radius: 22px;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    0 8px 24px rgba(0, 0, 0, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(232, 184, 74, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.18),
+    0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--color-gold-300);
 }
 
-/* Fade in animation */
+/* === BUTTONS — the bevel === */
+
+.btn-game {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 16px;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 15px;
+  color: var(--color-ink-900);
+  border: 2px solid var(--color-gold-500);
+  background: linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 50%, var(--color-gold-400) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.18),
+    0 4px 0 var(--color-gold-600),
+    0 6px 12px rgba(0, 0, 0, 0.35);
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+  cursor: pointer;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.btn-game:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 1px 0 var(--color-gold-600),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.btn-game:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+.btn-game-blood {
+  border-color: var(--color-blood-900);
+  background: linear-gradient(180deg, var(--color-blood-300) 0%, var(--color-blood-500) 50%, var(--color-blood-700) 100%);
+  color: #FFF;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    0 4px 0 var(--color-blood-900),
+    0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn-game-blood:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 1px 0 var(--color-blood-900),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.btn-game-forest {
+  border-color: var(--color-forest-900);
+  background: linear-gradient(180deg, var(--color-forest-300) 0%, var(--color-forest-400) 50%, var(--color-forest-500) 100%);
+  color: #FFF;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 4px 0 var(--color-forest-900),
+    0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn-game-forest:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 1px 0 var(--color-forest-900),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.btn-game-night {
+  border-color: var(--color-night-900);
+  background: linear-gradient(180deg, var(--color-night-500) 0%, var(--color-night-700) 50%, var(--color-night-800) 100%);
+  color: var(--color-gold-100);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 4px 0 var(--color-night-900),
+    0 6px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* === CHIPS — the small status indicators === */
+
+.chip-game {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid var(--color-gold-500);
+  background: linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 100%);
+  color: var(--color-ink-900);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 1px 0 rgba(0, 0, 0, 0.15),
+    0 3px 6px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.chip-trophy {
+  border-color: var(--color-magic-700);
+  background: linear-gradient(180deg, var(--color-magic-300) 0%, var(--color-magic-500) 100%);
+  color: #FFF;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.chip-streak {
+  border-color: var(--color-blood-900);
+  background: linear-gradient(180deg, var(--color-blood-300) 0%, var(--color-blood-500) 100%);
+  color: #FFF;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* === ANIMATIONS === */
+
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-up {
   animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Stagger children */
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
 .stagger > *:nth-child(2) { animation-delay: 60ms; }
 .stagger > *:nth-child(3) { animation-delay: 120ms; }
@@ -89,17 +330,62 @@ body {
 .stagger > *:nth-child(5) { animation-delay: 240ms; }
 .stagger > *:nth-child(6) { animation-delay: 300ms; }
 
-/* Loading pulse */
 @keyframes softPulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
-
 .animate-soft-pulse {
   animation: softPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Swipe cards container */
+@keyframes goldShimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gold-shimmer {
+  background-size: 200% 200%;
+  animation: goldShimmer 3s ease-in-out infinite;
+}
+
+@keyframes spin360 {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin360 4s linear infinite;
+}
+
+/* === LAYOUT — full bleed with safe areas === */
+
+.app-shell {
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 80px); /* leave room for bottom nav */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(13, 20, 38, 0.92) 0%, var(--color-night-900) 100%);
+  border-top: 2px solid var(--color-gold-400);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
+  background: linear-gradient(180deg, var(--color-night-900) 0%, rgba(13, 20, 38, 0.85) 70%, transparent 100%);
+}
+
+/* === SWIPE CONTAINERS (legacy, used by older cards) === */
+
 .swipe-container {
   display: flex;
   gap: 12px;
@@ -119,12 +405,14 @@ body {
   flex-shrink: 0;
 }
 
-/* Custom scrollbar — hidden */
-::-webkit-scrollbar { width: 0; }
+::-webkit-scrollbar { width: 0; height: 0; }
 
-/* Button glow */
+/* === LEGACY CLASS BACKWARDS COMPAT ===
+   Old code references things like bg-surface, text-ink, glow-accent.
+   These can stay during migration but they map to the new tokens. */
+
 .glow-accent {
   box-shadow:
-    0 0 0 1px rgba(255, 107, 53, 0.1),
-    0 4px 16px -4px rgba(255, 107, 53, 0.25);
+    0 0 0 1px var(--color-gold-500),
+    0 4px 16px -4px rgba(232, 184, 74, 0.6);
 }
