@@ -7,6 +7,7 @@ import {
   type TimerState,
 } from '@/lib/focusTimer';
 import { TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
+import GameButton from './GameButton';
 
 interface Props {
   task: DailyTask;
@@ -123,38 +124,47 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
     status === 'done' ? '#6BA368' :
     status === 'running' ? '#6BA368' : '#9A8470';
 
-  const RADIUS = 100;
-  const STROKE = 10;
+  const RADIUS = 92;
+  const STROKE = 12;
   const C = 2 * Math.PI * RADIUS;
 
   return (
-    <section className="card-elevated p-6 animate-fade-up" style={{ animationDelay: '120ms' }}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+    <div className="animate-fade-up">
+      <div className="flex items-center justify-between mb-3">
+        <div className="inline-flex items-center gap-1.5 bg-[var(--color-night-700)] text-[var(--color-gold-100)] px-2.5 py-1 rounded-md text-[10px] font-display font-bold uppercase tracking-wider border-2 border-[var(--color-gold-400)]">
           <span>{cfg.emoji}</span>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink">{cfg.label}</p>
+          <span>{cfg.label}</span>
         </div>
-        <div className="flex items-center gap-1 text-ink font-bold text-sm">
+        <div className="flex items-center gap-1 text-[var(--color-ink-900)] font-display font-bold text-sm">
           <span>{task.coins}</span>
           <span>🪙</span>
         </div>
       </div>
-      <p className="text-ink text-[15px] leading-relaxed mb-5">{task.text}</p>
+      <p className="text-[var(--color-ink-900)] text-[15px] leading-snug font-medium mb-4">{task.text}</p>
 
-      <div className="flex items-center justify-center mb-5">
+      <div className="flex items-center justify-center mb-4">
         <div className="relative">
-          <svg width={RADIUS * 2 + STROKE} height={RADIUS * 2 + STROKE}>
+          <svg width={RADIUS * 2 + STROKE * 2} height={RADIUS * 2 + STROKE * 2}>
+            <defs>
+              <filter id="ringGlow">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
             <circle
-              cx={RADIUS + STROKE / 2}
-              cy={RADIUS + STROKE / 2}
+              cx={RADIUS + STROKE}
+              cy={RADIUS + STROKE}
               r={RADIUS}
-              fill="none"
-              stroke="#00000010"
+              fill="rgba(0,0,0,0.08)"
+              stroke="rgba(0,0,0,0.15)"
               strokeWidth={STROKE}
             />
             <circle
-              cx={RADIUS + STROKE / 2}
-              cy={RADIUS + STROKE / 2}
+              cx={RADIUS + STROKE}
+              cy={RADIUS + STROKE}
               r={RADIUS}
               fill="none"
               stroke={ringColor}
@@ -162,27 +172,28 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
               strokeLinecap="round"
               strokeDasharray={C}
               strokeDashoffset={C * (1 - Math.min(1, progress))}
-              transform={`rotate(-90 ${RADIUS + STROKE / 2} ${RADIUS + STROKE / 2})`}
+              transform={`rotate(-90 ${RADIUS + STROKE} ${RADIUS + STROKE})`}
               style={{ transition: 'stroke-dashoffset 250ms linear' }}
+              filter="url(#ringGlow)"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             {status === 'failed' ? (
               <>
-                <p className="font-serif text-3xl text-[#C75B3D]">Mislukt</p>
-                <p className="text-[#C75B3D] text-[10px] uppercase tracking-wider mt-1">Te lang weg</p>
+                <p className="font-display-bold text-3xl text-[#7a2e1a]">Mislukt</p>
+                <p className="text-[#7a2e1a] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Te lang weg</p>
               </>
             ) : (
               <>
-                <p className="font-serif text-4xl text-ink tabular-nums">{fmt(remaining)}</p>
-                {status === 'running' && <p className="text-faint text-[10px] uppercase tracking-wider mt-1">Bezig</p>}
+                <p className="font-display-bold text-5xl text-[var(--color-ink-900)] tabular-nums">{fmt(remaining)}</p>
+                {status === 'running' && <p className="text-[var(--color-forest-700)] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Bezig</p>}
                 {status === 'grace' && (
-                  <p className="text-[#a87320] text-[10px] uppercase tracking-wider mt-1 tabular-nums">
+                  <p className="text-[#8a6320] text-[10px] uppercase tracking-wider mt-1 tabular-nums font-display font-bold">
                     Kom terug · {Math.ceil(graceLeft / 1000)}s
                   </p>
                 )}
-                {status === 'done' && <p className="text-[#3a6a3a] text-[10px] uppercase tracking-wider mt-1">Klaar!</p>}
-                {status === 'idle' && <p className="text-faint text-[10px] uppercase tracking-wider mt-1">Klaar om te starten</p>}
+                {status === 'done' && <p className="text-[var(--color-forest-700)] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Klaar!</p>}
+                {status === 'idle' && <p className="text-[var(--color-ink-500)] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Klaar om te starten</p>}
               </>
             )}
           </div>
@@ -190,39 +201,33 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
       </div>
 
       {status === 'grace' && (
-        <p className="text-center text-[12px] text-[#8a6320] mb-3 font-medium">
+        <p className="text-center text-[12px] text-[#8a6320] mb-3 font-display font-bold">
           Open Bliep binnen {Math.ceil(graceLeft / 1000)} sec of de taak mislukt
         </p>
       )}
 
       {status === 'failed' && (
-        <p className="text-center text-[12px] text-[#7a2e1a] mb-3">
-          Je was te lang weg. Geen coins en geen tweede kans vandaag — kom morgen terug.
+        <p className="text-center text-[12px] text-[#7a2e1a] mb-3 font-display font-semibold">
+          Je was te lang weg. Geen coins en geen tweede kans vandaag.
         </p>
       )}
 
       {status === 'idle' && (
-        <button
-          onClick={handleStart}
-          className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl glow-accent active:scale-[0.98] transition-transform text-sm"
-        >
-          Start timer ({task.durationMin} min)
-        </button>
+        <GameButton variant="xl" fullWidth onClick={handleStart}>
+          Start
+        </GameButton>
       )}
 
       {status === 'failed' && (
-        <button
-          onClick={handleAcceptFail}
-          className="w-full bg-[#C75B3D] text-white font-semibold py-3.5 rounded-2xl active:scale-[0.98] transition-transform text-sm"
-        >
+        <GameButton variant="blood" fullWidth onClick={handleAcceptFail}>
           Sluit
-        </button>
+        </GameButton>
       )}
 
       {(status === 'running' || status === 'grace') && !confirmAbort && (
         <button
           onClick={() => setConfirmAbort(true)}
-          className="w-full text-faint text-xs font-medium py-2 hover:text-muted transition-colors"
+          className="w-full text-[var(--color-ink-500)] text-xs font-display font-bold uppercase tracking-wider py-2 hover:text-[var(--color-ink-700)] transition-colors"
         >
           Ik geef op
         </button>
@@ -230,29 +235,20 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
 
       {confirmAbort && (
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleAbort}
-            className="flex-1 bg-[#C75B3D] text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform text-sm"
-          >
-            Ja, geef op
-          </button>
-          <button
-            onClick={() => setConfirmAbort(false)}
-            className="flex-1 bg-subtle text-ink font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform text-sm"
-          >
+          <GameButton variant="blood" fullWidth onClick={handleAbort}>
+            Ja, opgeven
+          </GameButton>
+          <GameButton variant="night" fullWidth onClick={() => setConfirmAbort(false)}>
             Annuleer
-          </button>
+          </GameButton>
         </div>
       )}
 
       {status === 'done' && (
-        <button
-          onClick={handleClaim}
-          className="w-full bg-[#6BA368] text-white font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-transform text-sm flex items-center justify-center gap-2 shadow-lg"
-        >
+        <GameButton variant="xl" fullWidth onClick={handleClaim}>
           Klaim {task.coins} 🪙
-        </button>
+        </GameButton>
       )}
-    </section>
+    </div>
   );
 }

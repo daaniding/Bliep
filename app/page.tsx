@@ -6,6 +6,8 @@ import TaskPicker from './components/TaskPicker';
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import GameButton from './components/GameButton';
+import HeroPanel from './components/HeroPanel';
+import ChestSlots from './components/ChestSlots';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -337,12 +339,14 @@ export default function Home() {
 
         {/* Phase A: pick task */}
         {!chosenTask && !pick.completed && (
-          <TaskPicker tasks={tasks} onPick={handlePick} />
+          <HeroPanel ribbonText="Vandaag">
+            <TaskPicker tasks={tasks} onPick={handlePick} />
+          </HeroPanel>
         )}
 
         {/* Phase B: timer + dashboard */}
         {chosenTask && !pick.completed && (
-          <div className="space-y-4">
+          <HeroPanel ribbonText="Bezig">
             <TaskTimer
               task={chosenTask}
               onClaim={handleClaim}
@@ -353,27 +357,41 @@ export default function Home() {
                 setPick(next);
               }}
             />
-            <DashboardActions />
-          </div>
+          </HeroPanel>
         )}
 
         {/* Phase C: completed for today */}
         {pick.completed && (
-          <div className="space-y-4">
-            <section className="surface-floating p-6 text-center animate-fade-up">
-              <div className="text-5xl mb-3 drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]">{pick.outcome === 'won' ? '🎉' : '💤'}</div>
+          <HeroPanel ribbonText="Vandaag">
+            <div className="text-center py-2">
+              <div className="text-6xl mb-3 drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]">{pick.outcome === 'won' ? '🎉' : '💤'}</div>
               <h2 className="font-display-bold text-2xl text-[var(--color-ink-900)]">
                 {pick.outcome === 'won' ? 'Klaar voor vandaag' : 'Dag voorbij'}
               </h2>
               <p className="text-[var(--color-ink-600)] text-sm mt-2">
-                {pick.outcome === 'won' && 'Je hebt vandaag je opdracht volbracht. Kom morgen terug voor een nieuwe keuze.'}
-                {pick.outcome === 'gave-up' && 'Je hebt vandaag opgegeven. Geen opdracht meer mogelijk vandaag — kom morgen terug.'}
-                {pick.outcome === 'failed-locked' && 'Je was te lang weg van Bliep. Geen opdracht meer mogelijk vandaag — kom morgen terug.'}
+                {pick.outcome === 'won' && 'Je hebt je opdracht volbracht. Kom morgen terug voor een nieuwe keuze.'}
+                {pick.outcome === 'gave-up' && 'Je hebt opgegeven. Kom morgen terug.'}
+                {pick.outcome === 'failed-locked' && 'Je was te lang weg van Bliep. Kom morgen terug.'}
               </p>
-            </section>
-            <DashboardActions />
-          </div>
+            </div>
+          </HeroPanel>
         )}
+
+        {/* Chest slots: live PvE camp status */}
+        <div className="mt-5 animate-fade-up" style={{ animationDelay: '120ms' }}>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <p className="text-[var(--color-gold-200)]/80 text-[10px] font-display font-bold uppercase tracking-[0.2em]">Aanvallen</p>
+            <Link href="/aanvallen" className="text-[var(--color-gold-200)]/60 text-[10px] font-display font-bold uppercase tracking-wider hover:text-[var(--color-gold-100)]">
+              Alles →
+            </Link>
+          </div>
+          <ChestSlots />
+        </div>
+
+        {/* Secondary actions */}
+        <div className="mt-5">
+          <DashboardActions />
+        </div>
 
         <div className="mt-6 space-y-4">
           {data?.compliment && (

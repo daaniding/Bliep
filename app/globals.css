@@ -416,3 +416,186 @@ body {
     0 0 0 1px var(--color-gold-500),
     0 4px 16px -4px rgba(232, 184, 74, 0.6);
 }
+
+/* === GOLD FRAME SYSTEM ===
+   The signature visual: thick gold border with bevel, around any panel.
+   Three sizes for hierarchy. */
+
+.gold-frame-xl {
+  position: relative;
+  border-radius: 24px;
+  padding: 6px;
+  background:
+    linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 30%, var(--color-gold-500) 70%, var(--color-gold-600) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 0 32px rgba(232, 184, 74, 0.15);
+}
+
+.gold-frame {
+  position: relative;
+  border-radius: 18px;
+  padding: 4px;
+  background:
+    linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 50%, var(--color-gold-500) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 3px 0 rgba(0, 0, 0, 0.35),
+    0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.gold-frame-sm {
+  position: relative;
+  border-radius: 14px;
+  padding: 3px;
+  background: linear-gradient(180deg, var(--color-gold-200) 0%, var(--color-gold-400) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.3),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* === PARCHMENT TEXTURE ===
+   Inner panel for inside a gold frame. Layered gradients fake a worn
+   parchment / stone surface without needing image assets. */
+
+.parchment-panel {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.4) 0%, transparent 30%),
+    radial-gradient(circle at 80% 90%, rgba(0, 0, 0, 0.06) 0%, transparent 40%),
+    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-100) 50%, var(--color-parchment-200) 100%);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.gold-frame > .parchment-panel,
+.gold-frame-sm > .parchment-panel {
+  border-radius: 12px;
+}
+
+.gold-frame-xl > .parchment-panel {
+  border-radius: 18px;
+}
+
+/* === STONE PANEL (alt: darker, for night-themed slots) === */
+
+.stone-panel {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.08) 0%, transparent 35%),
+    radial-gradient(circle at 80% 90%, rgba(0, 0, 0, 0.4) 0%, transparent 50%),
+    linear-gradient(180deg, var(--color-night-600) 0%, var(--color-night-700) 50%, var(--color-night-800) 100%);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.gold-frame > .stone-panel,
+.gold-frame-sm > .stone-panel {
+  border-radius: 12px;
+}
+
+/* === XL PRIMARY BUTTON (the BATTLE-style dominant action) === */
+
+.btn-game-xl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 32px;
+  border-radius: 20px;
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-size: 22px;
+  text-transform: uppercase;
+  color: #FFF;
+  border: 4px solid var(--color-gold-600);
+  background:
+    linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-200) 30%, var(--color-gold-300) 50%, var(--color-gold-400) 80%, var(--color-gold-500) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+    0 6px 0 var(--color-gold-600),
+    0 10px 20px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(232, 184, 74, 0.4);
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  color: var(--color-ink-900);
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.btn-game-xl:active {
+  transform: translateY(4px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 2px 0 var(--color-gold-600),
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(232, 184, 74, 0.3);
+}
+
+.btn-game-xl:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+/* === RIBBON / BANNER (for "TODAY" or category labels above the hero) === */
+
+.ribbon {
+  display: inline-block;
+  padding: 6px 22px;
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-gold-100);
+  background:
+    linear-gradient(180deg, var(--color-night-600) 0%, var(--color-night-800) 100%);
+  border: 2px solid var(--color-gold-400);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(0, 0, 0, 0.4),
+    0 6px 12px rgba(0, 0, 0, 0.4);
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 0 8px rgba(232, 184, 74, 0.4);
+  position: relative;
+}
+
+.ribbon::before,
+.ribbon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: var(--color-gold-400);
+  transform: translateY(-50%) rotate(45deg);
+  z-index: -1;
+}
+.ribbon::before { left: -8px; }
+.ribbon::after { right: -8px; }
+
+/* === GLOW PULSE (for chest slots ready to claim) === */
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 184, 74, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(232, 184, 74, 0), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+}
+.animate-glow-pulse {
+  animation: glowPulse 1.6s ease-out infinite;
+}

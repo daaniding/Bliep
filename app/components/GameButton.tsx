@@ -2,7 +2,7 @@
 
 import { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'gold' | 'blood' | 'forest' | 'night';
+type Variant = 'gold' | 'blood' | 'forest' | 'night' | 'xl';
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -14,6 +14,7 @@ const VARIANT_CLASS: Record<Variant, string> = {
   blood: 'btn-game btn-game-blood',
   forest: 'btn-game btn-game-forest',
   night: 'btn-game btn-game-night',
+  xl: 'btn-game-xl',
 };
 
 export default function GameButton({
