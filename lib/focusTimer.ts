@@ -1,21 +1,30 @@
 // Focus-aware timer: only counts down while document is visible AND focused.
-// Persists accumulated focus-ms to localStorage so refresh keeps progress.
+// 10-second grace period when you blur — long enough for a notification swipe,
+// short enough to fail you when you actually leave the app.
 
 const TIMER_KEY = 'bliep:timer:v1';
+export const GRACE_PERIOD_MS = 10_000;
 
-export type TimerStatus = 'idle' | 'running' | 'paused' | 'done';
+export type TimerStatus = 'idle' | 'running' | 'grace' | 'failed' | 'done';
 
 export interface TimerState {
   taskId: string;
   durationMs: number;
   accumulatedMs: number;
   status: TimerStatus;
-  // wall-clock timestamp of the last resume; null when paused
-  resumedAt: number | null;
+  resumedAt: number | null;     // wall-clock of last resume; null when not running
+  blurredAt: number | null;     // wall-clock of last blur; only set while in grace
 }
 
 function emptyState(): TimerState {
-  return { taskId: '', durationMs: 0, accumulatedMs: 0, status: 'idle', resumedAt: null };
+  return {
+    taskId: '',
+    durationMs: 0,
+    accumulatedMs: 0,
+    status: 'idle',
+    resumedAt: null,
+    blurredAt: null,
+  };
 }
 
 export function loadTimer(): TimerState {
@@ -24,11 +33,11 @@ export function loadTimer(): TimerState {
     const raw = localStorage.getItem(TIMER_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as TimerState;
-      // If the saved state was 'running' but we don't know how long the user
-      // had the app open since then, conservatively pause it. The user has
-      // to click resume.
+      // Refresh while running: we don't know how long the user was away,
+      // so demote to grace and let the next focus event decide.
       if (parsed.status === 'running') {
-        parsed.status = 'paused';
+        parsed.status = 'grace';
+        parsed.blurredAt = Date.now();
         parsed.resumedAt = null;
       }
       return parsed;
@@ -59,27 +68,59 @@ export function startTimer(taskId: string, durationMs: number): TimerState {
     accumulatedMs: 0,
     status: 'running',
     resumedAt: Date.now(),
+    blurredAt: null,
   };
   saveTimer(s);
   return s;
 }
 
-export function pauseTimer(state: TimerState): TimerState {
+// Called when the document blurs while we're running.
+export function enterGrace(state: TimerState): TimerState {
   if (state.status !== 'running' || state.resumedAt == null) return state;
   const elapsed = Date.now() - state.resumedAt;
   const next: TimerState = {
     ...state,
     accumulatedMs: state.accumulatedMs + elapsed,
-    status: 'paused',
+    status: 'grace',
     resumedAt: null,
+    blurredAt: Date.now(),
   };
   saveTimer(next);
   return next;
 }
 
-export function resumeTimer(state: TimerState): TimerState {
-  if (state.status !== 'paused') return state;
-  const next: TimerState = { ...state, status: 'running', resumedAt: Date.now() };
+// Called when the document focuses while we're in grace.
+export function exitGrace(state: TimerState): TimerState {
+  if (state.status !== 'grace') return state;
+  const awayMs = state.blurredAt != null ? Date.now() - state.blurredAt : 0;
+  if (awayMs > GRACE_PERIOD_MS) {
+    return failTimer(state);
+  }
+  const next: TimerState = {
+    ...state,
+    status: 'running',
+    resumedAt: Date.now(),
+    blurredAt: null,
+  };
+  saveTimer(next);
+  return next;
+}
+
+// Called from a tick while in grace, in case the user never refocuses.
+export function enforceGraceLimit(state: TimerState): TimerState {
+  if (state.status !== 'grace' || state.blurredAt == null) return state;
+  const awayMs = Date.now() - state.blurredAt;
+  if (awayMs > GRACE_PERIOD_MS) return failTimer(state);
+  return state;
+}
+
+export function failTimer(state: TimerState): TimerState {
+  const next: TimerState = {
+    ...state,
+    status: 'failed',
+    resumedAt: null,
+    blurredAt: null,
+  };
   saveTimer(next);
   return next;
 }
@@ -115,4 +156,9 @@ export function elapsedMs(state: TimerState): number {
 
 export function remainingMs(state: TimerState): number {
   return Math.max(0, state.durationMs - elapsedMs(state));
+}
+
+export function graceRemainingMs(state: TimerState): number {
+  if (state.status !== 'grace' || state.blurredAt == null) return 0;
+  return Math.max(0, GRACE_PERIOD_MS - (Date.now() - state.blurredAt));
 }

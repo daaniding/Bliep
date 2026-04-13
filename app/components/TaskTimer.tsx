@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  loadTimer, startTimer, pauseTimer, resumeTimer, abortTimer,
-  tickIfRunning, elapsedMs, remainingMs, isFocused,
+  loadTimer, startTimer, abortTimer, enterGrace, exitGrace, enforceGraceLimit,
+  tickIfRunning, elapsedMs, remainingMs, graceRemainingMs, isFocused,
   type TimerState,
 } from '@/lib/focusTimer';
 import { TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
@@ -12,6 +12,10 @@ interface Props {
   task: DailyTask;
   onClaim: (coins: number) => void;
   onAbort: () => void;
+}
+
+function emptyState(): TimerState {
+  return { taskId: '', durationMs: 0, accumulatedMs: 0, status: 'idle', resumedAt: null, blurredAt: null };
 }
 
 function fmt(ms: number): string {
@@ -27,25 +31,21 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
   const [confirmAbort, setConfirmAbort] = useState(false);
   const tickRef = useRef<number | null>(null);
 
-  // If the loaded state is for a different task, reset
+  // Reset if loaded state belongs to another task
   useEffect(() => {
     if (state.taskId && state.taskId !== task.id && state.status !== 'done') {
       abortTimer();
-      setState({ taskId: '', durationMs: 0, accumulatedMs: 0, status: 'idle', resumedAt: null });
+      setState(emptyState());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id]);
 
-  // Focus listeners
+  // Visibility/focus handlers — drive grace period
   useEffect(() => {
     function onVisibility() {
       setState(prev => {
-        if (prev.status === 'running' && !isFocused()) {
-          return pauseTimer(prev);
-        }
-        if (prev.status === 'paused' && isFocused()) {
-          return resumeTimer(prev);
-        }
+        if (prev.status === 'running' && !isFocused()) return enterGrace(prev);
+        if (prev.status === 'grace' && isFocused()) return exitGrace(prev);
         return prev;
       });
     }
@@ -59,9 +59,9 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
     };
   }, []);
 
-  // Tick loop while running
+  // Tick loop: runs while running OR in grace (so we can fail without a return)
   useEffect(() => {
-    if (state.status !== 'running') {
+    if (state.status !== 'running' && state.status !== 'grace') {
       if (tickRef.current) {
         clearInterval(tickRef.current);
         tickRef.current = null;
@@ -70,8 +70,9 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
     }
     tickRef.current = window.setInterval(() => {
       setState(prev => {
-        const next = tickIfRunning(prev);
-        return next;
+        if (prev.status === 'running') return tickIfRunning(prev);
+        if (prev.status === 'grace') return enforceGraceLimit(prev);
+        return prev;
       });
       forceTick(t => t + 1);
     }, 250);
@@ -90,16 +91,21 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
 
   const handleClaim = useCallback(() => {
     abortTimer();
-    setState({ taskId: '', durationMs: 0, accumulatedMs: 0, status: 'idle', resumedAt: null });
+    setState(emptyState());
     onClaim(task.coins);
   }, [onClaim, task.coins]);
 
   const handleAbort = useCallback(() => {
     abortTimer();
-    setState({ taskId: '', durationMs: 0, accumulatedMs: 0, status: 'idle', resumedAt: null });
+    setState(emptyState());
     setConfirmAbort(false);
     onAbort();
   }, [onAbort]);
+
+  const handleRetry = useCallback(() => {
+    abortTimer();
+    setState(emptyState());
+  }, []);
 
   const cfg = TIER_CONFIG[task.tier];
   const isOurs = state.taskId === task.id;
@@ -107,8 +113,14 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
   const remaining = isOurs ? remainingMs(state) : task.durationMin * 60_000;
   const elapsed = isOurs ? elapsedMs(state) : 0;
   const progress = task.durationMin * 60_000 > 0 ? elapsed / (task.durationMin * 60_000) : 0;
+  const graceLeft = isOurs ? graceRemainingMs(state) : 0;
 
-  // SVG ring
+  const ringColor =
+    status === 'failed' ? '#C75B3D' :
+    status === 'grace' ? '#E8B84A' :
+    status === 'done' ? '#6BA368' :
+    status === 'running' ? '#6BA368' : '#9A8470';
+
   const RADIUS = 100;
   const STROKE = 10;
   const C = 2 * Math.PI * RADIUS;
@@ -143,7 +155,7 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
               cy={RADIUS + STROKE / 2}
               r={RADIUS}
               fill="none"
-              stroke={status === 'paused' ? '#E8B84A' : status === 'done' ? '#6BA368' : '#C75B3D'}
+              stroke={ringColor}
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={C}
@@ -153,18 +165,37 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <p className="font-serif text-4xl text-ink tabular-nums">{fmt(remaining)}</p>
-            {status === 'running' && <p className="text-faint text-[10px] uppercase tracking-wider mt-1">Bezig</p>}
-            {status === 'paused' && <p className="text-[#a87320] text-[10px] uppercase tracking-wider mt-1">Pauze</p>}
-            {status === 'done' && <p className="text-[#3a6a3a] text-[10px] uppercase tracking-wider mt-1">Klaar!</p>}
-            {status === 'idle' && <p className="text-faint text-[10px] uppercase tracking-wider mt-1">Klaar om te starten</p>}
+            {status === 'failed' ? (
+              <>
+                <p className="font-serif text-3xl text-[#C75B3D]">Mislukt</p>
+                <p className="text-[#C75B3D] text-[10px] uppercase tracking-wider mt-1">Te lang weg</p>
+              </>
+            ) : (
+              <>
+                <p className="font-serif text-4xl text-ink tabular-nums">{fmt(remaining)}</p>
+                {status === 'running' && <p className="text-faint text-[10px] uppercase tracking-wider mt-1">Bezig</p>}
+                {status === 'grace' && (
+                  <p className="text-[#a87320] text-[10px] uppercase tracking-wider mt-1 tabular-nums">
+                    Kom terug · {Math.ceil(graceLeft / 1000)}s
+                  </p>
+                )}
+                {status === 'done' && <p className="text-[#3a6a3a] text-[10px] uppercase tracking-wider mt-1">Klaar!</p>}
+                {status === 'idle' && <p className="text-faint text-[10px] uppercase tracking-wider mt-1">Klaar om te starten</p>}
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {status === 'paused' && (
-        <p className="text-center text-[12px] text-[#8a6320] mb-3">
-          Pauze — open Bliep en houd hem op je scherm om door te gaan
+      {status === 'grace' && (
+        <p className="text-center text-[12px] text-[#8a6320] mb-3 font-medium">
+          Open Bliep binnen {Math.ceil(graceLeft / 1000)} sec of de taak mislukt
+        </p>
+      )}
+
+      {status === 'failed' && (
+        <p className="text-center text-[12px] text-[#7a2e1a] mb-3">
+          Je was te lang weg van Bliep. Geen coins deze keer — je kunt het opnieuw proberen.
         </p>
       )}
 
@@ -177,7 +208,16 @@ export default function TaskTimer({ task, onClaim, onAbort }: Props) {
         </button>
       )}
 
-      {(status === 'running' || status === 'paused') && !confirmAbort && (
+      {status === 'failed' && (
+        <button
+          onClick={handleRetry}
+          className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl active:scale-[0.98] transition-transform text-sm"
+        >
+          Probeer opnieuw
+        </button>
+      )}
+
+      {(status === 'running' || status === 'grace') && !confirmAbort && (
         <button
           onClick={() => setConfirmAbort(true)}
           className="w-full text-faint text-xs font-medium py-2 hover:text-muted transition-colors"
