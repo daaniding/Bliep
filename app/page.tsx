@@ -164,33 +164,38 @@ export default function Home() {
 
       {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
 
-      {/* Hero — animated castle scene fills all available space */}
-      <div className="hero-fill animate-fade-up">
+      {/* Hero — animated castle scene fills all available space,
+          sword CTA floats absolutely on top of it near the bottom */}
+      <div className="hero-fill animate-fade-up relative">
         <DashboardHero />
-      </div>
 
-      {/* Completed state — short message */}
-      {pick.completed && (
-        <div className="px-6 pt-2 animate-fade-up" style={{ animationDelay: '160ms' }}>
-          <div className="text-center py-1">
+        {/* Completed state — short message, overlay at top of hero */}
+        {pick.completed && (
+          <div
+            className="absolute left-0 right-0 top-4 flex justify-center z-10 pointer-events-none animate-fade-up"
+            style={{ animationDelay: '160ms' }}
+          >
             <p className="font-display text-[15px] text-[var(--color-gold-100)] text-stroke-dark">
               {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
               {pick.outcome === 'gave-up' && '💤 Dag is voorbij'}
               {pick.outcome === 'failed-locked' && '⚔️ Dag is voorbij'}
             </p>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Sword CTA — sits just beneath the hero, above the nav */}
-      <div className="px-3 pt-2 pb-2 animate-fade-up" style={{ animationDelay: '160ms' }}>
-        <SwordCTA
-          taskText={chosenTask && !pick.completed ? chosenTask.text : null}
-          durationMin={chosenTask?.durationMin}
-          tierLabel={chosenTask ? TIER_CONFIG[chosenTask.tier].label.toUpperCase() : undefined}
-          disabled={!chosenTask || pick.completed}
-          onTap={handleSwordTap}
-        />
+        {/* Sword CTA — absolutely positioned over the video near the bottom */}
+        <div
+          className="absolute left-0 right-0 px-3 z-10 animate-fade-up"
+          style={{ bottom: 12, animationDelay: '160ms' }}
+        >
+          <SwordCTA
+            taskText={chosenTask && !pick.completed ? chosenTask.text : null}
+            durationMin={chosenTask?.durationMin}
+            tierLabel={chosenTask ? TIER_CONFIG[chosenTask.tier].label.toUpperCase() : undefined}
+            disabled={!chosenTask || pick.completed}
+            onTap={handleSwordTap}
+          />
+        </div>
       </div>
 
       {/* Timer modal — opens when user taps the sword */}

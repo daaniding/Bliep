@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
 import { useStreak } from '@/lib/useStreak';
 
@@ -29,56 +29,6 @@ export default function DashboardHero(_props: Props = {}) {
   const streak = useStreak();
   const showStreakFlame = streak.current > 0;
 
-  // Slow ping-pong loop: the video plays forward at 0.5x native speed,
-  // when it ends we rAF-reverse it at the same slow rate, then flip
-  // again at the start. Forward and reverse are symmetric so there's
-  // no perceptible cut at either end.
-  const videoRef = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-
-    const SLOW = 0.5;           // 50% speed
-    let dir: 1 | -1 = 1;
-    let raf = 0;
-    let lastTs = 0;
-
-    v.playbackRate = SLOW;
-
-    const tick = (ts: number) => {
-      if (!v) return;
-      if (lastTs === 0) lastTs = ts;
-      const dt = (ts - lastTs) / 1000;
-      lastTs = ts;
-      if (dir === -1) {
-        const next = v.currentTime - dt * SLOW;
-        if (next <= 0.02) {
-          v.currentTime = 0;
-          dir = 1;
-          v.play().catch(() => {});
-        } else {
-          v.currentTime = next;
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-
-    const onEnded = () => {
-      dir = -1;
-      v.pause();
-      lastTs = 0;
-    };
-
-    v.addEventListener('ended', onEnded);
-    v.play().catch(() => {});
-    raf = requestAnimationFrame(tick);
-
-    return () => {
-      v.removeEventListener('ended', onEnded);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
   // Night tint colour + opacity for mix-blend
   const nightTint = tod.darkness > 0.3;
   const duskTint = tod.phase === 'dusk';
@@ -92,11 +42,11 @@ export default function DashboardHero(_props: Props = {}) {
         // like it sits inside the same world.
       }}
     >
-      {/* === Background video (ping-pong loop via JS) === */}
+      {/* === Background video (native loop — Runway already made a loop) === */}
       <video
-        ref={videoRef}
         src="/dashboard-hero.mp4"
         autoPlay
+        loop
         muted
         playsInline
         preload="auto"
@@ -249,21 +199,6 @@ export default function DashboardHero(_props: Props = {}) {
           />
         ))}
       </div>
-
-      {/* === Smooth fade to the app background at the bottom === */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: '28%',
-          background:
-            'linear-gradient(180deg, rgba(13, 10, 6, 0) 0%, rgba(13, 10, 6, 0.35) 40%, rgba(13, 10, 6, 0.85) 80%, rgba(13, 10, 6, 1) 100%)',
-          pointerEvents: 'none',
-        }}
-      />
 
       {/* === Falling leaves / embers === */}
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
