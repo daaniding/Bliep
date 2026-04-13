@@ -164,7 +164,6 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [tasks] = useState<DailyTask[]>(() => getDailyTasks());
   const [pick, setPick] = useState(() => loadDailyPick());
-  const [attackToast, setAttackToast] = useState(false);
   const confettiRef = useRef<HTMLDivElement>(null);
   const { coins, award } = useCoins();
   const { trophies, awardTrophies } = useTrophies();
@@ -229,11 +228,6 @@ export default function Home() {
     const next = { date: pick.date, chosenId: null, completed: false };
     saveDailyPick(next);
     setPick(next);
-  }
-
-  function showAttackToast() {
-    setAttackToast(true);
-    window.setTimeout(() => setAttackToast(false), 2200);
   }
 
   async function subscribe() {
@@ -333,7 +327,7 @@ export default function Home() {
         {chosenTask && !pick.completed && (
           <div className="px-5 space-y-4">
             <TaskTimer task={chosenTask} onClaim={handleClaim} onAbort={handleAbort} />
-            <DashboardActions onAttack={showAttackToast} />
+            <DashboardActions />
           </div>
         )}
 
@@ -345,7 +339,7 @@ export default function Home() {
               <h2 className="font-serif text-xl text-ink italic">Klaar voor vandaag</h2>
               <p className="text-muted text-sm mt-1">Je opdracht is afgerond. Kom morgen terug voor een nieuwe.</p>
             </section>
-            <DashboardActions onAttack={showAttackToast} />
+            <DashboardActions />
           </div>
         )}
 
@@ -395,12 +389,6 @@ export default function Home() {
           )}
         </div>
 
-        {attackToast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 bg-[#3a2a18] text-white px-4 py-2 rounded-full text-sm shadow-lg pointer-events-none">
-            ⚔️ Aanvallen komt later (Fase 5)
-          </div>
-        )}
-
         <footer className="mt-12 pb-4 text-center">
           <p className="text-[10px] text-faint tracking-[0.2em] uppercase font-medium">Bliep</p>
         </footer>
@@ -409,7 +397,7 @@ export default function Home() {
   );
 }
 
-function DashboardActions({ onAttack }: { onAttack: () => void }) {
+function DashboardActions() {
   return (
     <div className="grid grid-cols-2 gap-3 animate-fade-up" style={{ animationDelay: '140ms' }}>
       <Link
@@ -424,9 +412,9 @@ function DashboardActions({ onAttack }: { onAttack: () => void }) {
           </div>
         </div>
       </Link>
-      <button
-        onClick={onAttack}
-        className="rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform text-left"
+      <Link
+        href="/aanvallen"
+        className="rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform"
       >
         <div className="relative h-28 bg-gradient-to-br from-[#7A2E1A] via-[#C75B3D] to-[#E8B84A] p-4 flex flex-col justify-between">
           <p className="relative text-white/90 text-[10px] font-semibold uppercase tracking-wider">Aanvallen</p>
@@ -435,7 +423,7 @@ function DashboardActions({ onAttack }: { onAttack: () => void }) {
             <span className="text-2xl drop-shadow">⚔️</span>
           </div>
         </div>
-      </button>
+      </Link>
     </div>
   );
 }
