@@ -346,6 +346,21 @@ export default function Home() {
             </section>
           )}
 
+          <Link
+            href="/stad"
+            className="block animate-fade-up rounded-3xl overflow-hidden relative group active:scale-[0.99] transition-transform"
+            style={{ animationDelay: '135ms' }}
+          >
+            <div className="relative h-32 bg-gradient-to-br from-[#6BA368] via-[#8BC17E] to-[#E8B84A] p-5 flex flex-col justify-between">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, #fff 0, transparent 40%), radial-gradient(circle at 80% 60%, #fff 0, transparent 35%)' }} />
+              <p className="relative text-white/90 text-[10px] font-semibold uppercase tracking-wider">Je stad</p>
+              <div className="relative flex items-center justify-between">
+                <p className="font-serif text-2xl text-white italic drop-shadow">Bouw verder →</p>
+                <div className="text-3xl drop-shadow">🏰</div>
+              </div>
+            </div>
+          </Link>
+
           {data?.compliment && (
             <section className="animate-fade-up card p-6" style={{ animationDelay: '150ms' }}>
               <p className="text-accent text-[10px] font-semibold uppercase tracking-wider mb-3">Dagelijkse quote</p>

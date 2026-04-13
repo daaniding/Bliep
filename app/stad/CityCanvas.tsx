@@ -5,6 +5,7 @@ import { Application, Container, Graphics, FederatedPointerEvent } from 'pixi.js
 import { TILE_W, TILE_H, GRID_SIZE, gridToScreen, screenToGrid, inBounds, centerOrigin } from '@/lib/game/iso';
 import { PALETTE } from '@/lib/game/palette';
 import { buildBuildingGraphics } from '@/lib/game/drawBuilding';
+import { createNPC, tickNPC, randomStartTile, type NPC } from '@/lib/game/npc';
 import type { CityState, PlacedBuilding } from '@/lib/cityStore';
 
 interface Props {
@@ -27,6 +28,8 @@ export default function CityCanvas({ state, onTapTile, onTapBuilding }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const buildingLayerRef = useRef<Container | null>(null);
+  const npcLayerRef = useRef<Container | null>(null);
+  const npcsRef = useRef<NPC[]>([]);
   const originRef = useRef<{ originX: number; originY: number }>({ originX: 0, originY: 0 });
   const stateRef = useRef<CityState>(state);
   const callbacksRef = useRef({ onTapTile, onTapBuilding });
@@ -67,10 +70,25 @@ export default function CityCanvas({ state, onTapTile, onTapBuilding }: Props) {
       const hoverLayer = new Container();
       world.addChild(hoverLayer);
 
-      const buildingLayer = new Container();
-      buildingLayer.sortableChildren = true;
-      world.addChild(buildingLayer);
-      buildingLayerRef.current = buildingLayer;
+      const entityLayer = new Container();
+      entityLayer.sortableChildren = true;
+      world.addChild(entityLayer);
+      buildingLayerRef.current = entityLayer;
+
+      const npcLayer = entityLayer; // share layer so NPCs depth-sort with buildings
+      npcLayerRef.current = npcLayer;
+
+      // Spawn 2 NPCs
+      const npcs: NPC[] = [
+        createNPC(PALETTE.gold, PALETTE.wood),
+        createNPC(PALETTE.woodDark, PALETTE.stone),
+      ];
+      npcs.forEach(n => {
+        const start = randomStartTile();
+        n.gx = start.gx; n.gy = start.gy; n.targetGx = start.gx; n.targetGy = start.gy;
+        npcLayer.addChild(n.container);
+      });
+      npcsRef.current = npcs;
 
       const { originX, originY } = centerOrigin(app.renderer.width, app.renderer.height);
       originRef.current = { originX, originY };
@@ -138,6 +156,17 @@ export default function CityCanvas({ state, onTapTile, onTapBuilding }: Props) {
 
       // Initial render
       syncBuildings();
+
+      // Ticker for NPCs
+      const tickerFn = (ticker: { deltaTime: number }) => {
+        const { originX: ox, originY: oy } = originRef.current;
+        const blocked = (gx: number, gy: number) =>
+          stateRef.current.buildings.some(b => b.gx === gx && b.gy === gy);
+        for (const npc of npcsRef.current) {
+          tickNPC(npc, ticker.deltaTime, ox, oy, blocked);
+        }
+      };
+      app.ticker.add(tickerFn);
 
       (app as Application & { __cleanup?: () => void }).__cleanup = () => {
         ro.disconnect();
