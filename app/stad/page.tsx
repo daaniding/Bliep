@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import CityClient from './CityClient';
 
 export const metadata = {
@@ -5,5 +6,9 @@ export const metadata = {
 };
 
 export default function StadPage() {
-  return <CityClient />;
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-[#F4E9D1]" />}>
+      <CityClient />
+    </Suspense>
+  );
 }
