@@ -13,9 +13,15 @@ function fmt(ms: number): string {
   return `${totalSec}s`;
 }
 
-// Show the first 4 PvE camps as chest-style slots — gold frame, big icon,
-// status badge with either "READY" or live countdown. Each tile links to
-// /aanvallen.
+// Map each camp to a Kenney structure sprite (pixel-art tile).
+const CAMP_SPRITE: Record<string, string> = {
+  bandiet: '/assets/kenney/buildings/medievalStructure_03.png', // small hut
+  wolven: '/assets/kenney/environment/medievalEnvironment_08.png', // tree-ish
+  fort: '/assets/kenney/buildings/medievalStructure_18.png',   // larger structure
+  goblin: '/assets/kenney/buildings/medievalStructure_21.png', // dark structure
+  draak: '/assets/kenney/buildings/medievalStructure_23.png',  // biggest
+};
+
 export default function ChestSlots() {
   const [pveState, setPveState] = useState<Record<string, number>>({});
   const [, setNow] = useState(Date.now());
@@ -43,26 +49,34 @@ export default function ChestSlots() {
 function ChestSlot({ camp, pveState }: { camp: PveCamp; pveState: Record<string, number> }) {
   const cdLeft = cooldownRemainingMs(camp, pveState);
   const ready = !isOnCooldown(camp, pveState);
+  const sprite = CAMP_SPRITE[camp.id] ?? '/assets/kenney/buildings/medievalStructure_01.png';
 
   return (
     <Link
       href="/aanvallen"
       className="block active:scale-95 transition-transform"
     >
-      <div className={`gold-frame-sm ${ready ? 'animate-glow-pulse' : ''}`}>
-        <div className="stone-panel p-2 flex flex-col items-center justify-between aspect-[3/4]">
-          <span className="text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">{camp.emoji}</span>
-          <div className="w-full">
-            {ready ? (
-              <div className="bg-[var(--color-forest-500)] border border-[var(--color-forest-900)] rounded-md py-0.5 px-1 text-center">
-                <p className="font-display font-bold text-[9px] text-white uppercase tracking-wider">Klaar</p>
-              </div>
-            ) : (
-              <div className="bg-[var(--color-night-900)]/80 border border-[var(--color-gold-500)]/40 rounded-md py-0.5 px-1 text-center">
-                <p className="font-display font-bold text-[10px] text-[var(--color-gold-200)] tabular-nums">{fmt(cdLeft)}</p>
-              </div>
-            )}
+      <div className={`kenney-panel-inset-brown relative ${ready ? 'animate-glow-pulse' : ''}`} style={{ padding: 0, aspectRatio: '3 / 4' }}>
+        <div className="h-full flex flex-col items-center justify-between p-2">
+          {/* Sprite */}
+          <div className="flex-1 flex items-center justify-center w-full pt-1">
+            <img
+              src={sprite}
+              alt=""
+              className="sprite-pixel"
+              style={{ width: 48, height: 48, imageRendering: 'pixelated' }}
+            />
           </div>
+          {/* Status badge */}
+          {ready ? (
+            <div className="w-full bg-[var(--color-forest-500)] border-2 border-[var(--color-forest-900)] rounded-sm py-0.5 px-1 text-center">
+              <p className="font-display font-bold text-[9px] text-white uppercase tracking-wider">Klaar</p>
+            </div>
+          ) : (
+            <div className="w-full bg-[var(--color-night-900)]/85 border border-[var(--color-gold-500)]/50 rounded-sm py-0.5 px-1 text-center">
+              <p className="font-display font-bold text-[10px] text-[var(--color-gold-200)] tabular-nums">{fmt(cdLeft)}</p>
+            </div>
+          )}
         </div>
       </div>
     </Link>

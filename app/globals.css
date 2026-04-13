@@ -442,6 +442,129 @@ body {
     0 4px 16px -4px rgba(232, 184, 74, 0.6);
 }
 
+/* === KENNEY 9-SLICE PANELS + BUTTONS ===
+   Real game sprites from Kenney (CC0). border-image stretches them
+   cleanly so the corner ornaments stay crisp while the middle fills. */
+
+.kenney-panel {
+  border: 14px solid transparent;
+  border-image: url('/assets/kenney/ui-panels/panel_beige.png') 14 14 14 14 fill stretch;
+  padding: 8px 12px;
+  image-rendering: auto;
+}
+.kenney-panel-brown {
+  border: 14px solid transparent;
+  border-image: url('/assets/kenney/ui-panels/panel_brown.png') 14 14 14 14 fill stretch;
+  padding: 8px 12px;
+}
+.kenney-panel-inset {
+  border: 14px solid transparent;
+  border-image: url('/assets/kenney/ui-panels/panelInset_beige.png') 14 14 14 14 fill stretch;
+  padding: 8px 12px;
+}
+.kenney-panel-inset-brown {
+  border: 14px solid transparent;
+  border-image: url('/assets/kenney/ui-panels/panelInset_brown.png') 14 14 14 14 fill stretch;
+  padding: 8px 12px;
+}
+.kenney-panel-blue {
+  border: 14px solid transparent;
+  border-image: url('/assets/kenney/ui-panels/panel_blue.png') 14 14 14 14 fill stretch;
+  padding: 8px 12px;
+}
+
+.kenney-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border: 10px solid transparent;
+  border-image: url('/assets/kenney/ui-buttons/buttonLong_beige.png') 10 10 10 10 fill stretch;
+  font-family: var(--font-display), 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #3d2a15;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: transform 80ms ease-out, filter 80ms ease-out;
+  min-height: 50px;
+}
+.kenney-btn:active {
+  transform: translateY(2px);
+  filter: brightness(0.92);
+}
+.kenney-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.kenney-btn-brown {
+  border-image: url('/assets/kenney/ui-buttons/buttonLong_brown.png') 10 10 10 10 fill stretch;
+  color: #f4e8d0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+.kenney-btn-blue {
+  border-image: url('/assets/kenney/ui-buttons/buttonLong_blue.png') 10 10 10 10 fill stretch;
+  color: #f4e8d0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+.kenney-btn-grey {
+  border-image: url('/assets/kenney/ui-buttons/buttonLong_grey.png') 10 10 10 10 fill stretch;
+  color: #f4e8d0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* XL variant: the dominant BATTLE button — bigger padding, bigger font */
+.kenney-btn-xl {
+  padding: 20px 36px;
+  font-size: 22px;
+  min-height: 72px;
+  letter-spacing: 0.12em;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.55));
+}
+
+/* Square variant for bottom-nav tabs */
+.kenney-btn-square {
+  border: 10px solid transparent;
+  border-image: url('/assets/kenney/ui-buttons/buttonSquare_beige.png') 10 10 10 10 fill stretch;
+  padding: 10px 8px;
+  min-height: 60px;
+  min-width: 60px;
+  font-family: var(--font-display), 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #3d2a15;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: transform 80ms ease-out;
+}
+.kenney-btn-square:active { transform: translateY(2px); }
+.kenney-btn-square-brown {
+  border-image: url('/assets/kenney/ui-buttons/buttonSquare_brown.png') 10 10 10 10 fill stretch;
+  color: #f4e8d0;
+}
+.kenney-btn-square-blue {
+  border-image: url('/assets/kenney/ui-buttons/buttonSquare_blue.png') 10 10 10 10 fill stretch;
+  color: #f4e8d0;
+}
+
+/* Pixelated rendering for structure/unit sprites — they're tiny so
+   scaling must be crisp, not blurry. */
+.sprite-pixel {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 /* === GOLD FRAME SYSTEM ===
    The signature visual: thick gold border with bevel, around any panel.
    Three sizes for hierarchy. */

@@ -7,7 +7,7 @@ import {
   type TimerState,
 } from '@/lib/focusTimer';
 import { TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
-import GameButton from './GameButton';
+import KenneyButton from './KenneyButton';
 
 interface Props {
   task: DailyTask;
@@ -213,15 +213,15 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
       )}
 
       {status === 'idle' && (
-        <GameButton variant="xl" fullWidth onClick={handleStart}>
-          Start
-        </GameButton>
+        <KenneyButton xl fullWidth onClick={handleStart}>
+          ⚔ Start
+        </KenneyButton>
       )}
 
       {status === 'failed' && (
-        <GameButton variant="blood" fullWidth onClick={handleAcceptFail}>
+        <KenneyButton variant="brown" fullWidth onClick={handleAcceptFail}>
           Sluit
-        </GameButton>
+        </KenneyButton>
       )}
 
       {(status === 'running' || status === 'grace') && !confirmAbort && (
@@ -235,19 +235,19 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
 
       {confirmAbort && (
         <div className="flex items-center gap-2">
-          <GameButton variant="blood" fullWidth onClick={handleAbort}>
+          <KenneyButton variant="brown" fullWidth onClick={handleAbort}>
             Ja, opgeven
-          </GameButton>
-          <GameButton variant="night" fullWidth onClick={() => setConfirmAbort(false)}>
+          </KenneyButton>
+          <KenneyButton variant="grey" fullWidth onClick={() => setConfirmAbort(false)}>
             Annuleer
-          </GameButton>
+          </KenneyButton>
         </div>
       )}
 
       {status === 'done' && (
-        <GameButton variant="xl" fullWidth onClick={handleClaim}>
+        <KenneyButton xl fullWidth onClick={handleClaim}>
           Klaim {task.coins} 🪙
-        </GameButton>
+        </KenneyButton>
       )}
     </div>
   );

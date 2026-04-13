@@ -8,6 +8,7 @@ import GameShell from './components/GameShell';
 import GameButton from './components/GameButton';
 import HeroPanel from './components/HeroPanel';
 import ChestSlots from './components/ChestSlots';
+import TownScene from './components/TownScene';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -200,37 +201,21 @@ export default function Home() {
     setShowOnboarding(false);
   }
 
-  const dateStr = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
-
   return (
     <GameShell>
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
       <div ref={confettiRef} className="fixed inset-0 pointer-events-none z-[9999]" />
 
       <div className="px-4 max-w-md mx-auto">
-        {/* Hero greeting */}
-        <header className="text-center pt-2 pb-6 animate-fade-up">
-          <p className="text-[var(--color-gold-200)]/70 text-[10px] font-display font-bold uppercase tracking-[0.25em] mb-1">
-            {dateStr}
-          </p>
-          <h1 className="font-display-bold text-3xl text-[var(--color-gold-100)] drop-shadow-[0_2px_8px_rgba(232,184,74,0.3)]">
-            {greeting}{user ? `, ${user.displayName}` : ''}
-          </h1>
-        </header>
+        {/* Town scene hero */}
+        <div className="pt-2 pb-3 animate-fade-up">
+          <TownScene />
+        </div>
 
-        {/* Login banner if anonymous */}
-        {!user && (
-          <Link href="/signup" className="block mb-4 surface-raised p-3 active:scale-[0.99] transition-transform animate-fade-up" style={{ animationDelay: '60ms' }}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🛡️</span>
-              <div className="flex-1">
-                <p className="font-display font-bold text-sm text-[var(--color-ink-900)]">Maak een account</p>
-                <p className="text-[var(--color-ink-600)] text-xs">Je trofeeën volgen je naar elk apparaat</p>
-              </div>
-              <span className="text-[var(--color-gold-500)] font-display font-bold text-lg">→</span>
-            </div>
-          </Link>
-        )}
+        {/* Compact greeting */}
+        <p className="text-center text-[var(--color-gold-100)] text-[13px] font-display font-bold uppercase tracking-[0.15em] mb-2 animate-fade-up" style={{ animationDelay: '60ms' }}>
+          {greeting}{user ? `, ${user.displayName}` : ''}
+        </p>
 
         {/* Phase A: pick task */}
         {!chosenTask && !pick.completed && (
