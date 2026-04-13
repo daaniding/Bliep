@@ -1,73 +1,55 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-display: var(--font-cinzel);
-  --font-display-decorative: var(--font-cinzel-decorative);
+  --font-display: var(--font-lilita);
   --font-sans: var(--font-manrope);
 
-  /* === ROYAL BLIEP PALETTE ===
-     Direction: neo-medieval mobile game. Deep navy night sky as world,
-     royal gold as energy, parchment cream as surface, blood red and
-     forest green as semantic. Three explicit depth layers. */
+  /* === WARM MEDIEVAL PALETTE ===
+     Deep warm browns + royal gold + blood red + parchment.
+     Inspired by Clash Royale / Clash of Clans warm daylight. */
 
-  /* Night — the world background */
-  --color-night-900: #0d1426;
-  --color-night-800: #131e3a;
-  --color-night-700: #1b2a4e;
-  --color-night-600: #2b3f6b;
-  --color-night-500: #3d5687;
+  /* Deep browns — darkest surfaces, background, outlines */
+  --color-wood-900: #1a0f05;
+  --color-wood-800: #2a1a0a;
+  --color-wood-700: #3d2813;
+  --color-wood-600: #5c3a1e;
+  --color-wood-500: #7a4f2a;
+  --color-wood-400: #9b6838;
 
-  /* Royal Gold — energy, coins, primary actions */
-  --color-gold-50:  #FFF7DC;
-  --color-gold-100: #FFE99A;
-  --color-gold-200: #F5D068;
-  --color-gold-300: #E8B84A;
-  --color-gold-400: #C99738;
-  --color-gold-500: #A77526;
-  --color-gold-600: #7C521A;
+  /* Royal Gold — accents, coins, highlights */
+  --color-gold-50: #fff8d9;
+  --color-gold-100: #ffe8a0;
+  --color-gold-200: #fdd069;
+  --color-gold-300: #f0b840;
+  --color-gold-400: #d19225;
+  --color-gold-500: #a3701a;
+  --color-gold-600: #6e4c10;
 
-  /* Parchment — warm cream surface */
-  --color-parchment-50:  #FBF3DD;
-  --color-parchment-100: #F4E9D1;
-  --color-parchment-200: #E8DAB8;
-  --color-parchment-300: #D9C7A0;
+  /* Parchment — warm cream for UI surfaces */
+  --color-parch-50: #fff6dc;
+  --color-parch-100: #fae6b6;
+  --color-parch-200: #ecd29a;
+  --color-parch-300: #d6b67a;
 
-  /* Ink — text on parchment */
-  --color-ink-900: #1A1108;
-  --color-ink-800: #2E1F10;
-  --color-ink-700: #4D3520;
-  --color-ink-600: #6B4520;
-  --color-ink-500: #8B6A40;
-  --color-ink-400: #A88A60;
+  /* Blood — primary/danger, PvE, attacks */
+  --color-blood-900: #3d0a00;
+  --color-blood-700: #7a1e0a;
+  --color-blood-500: #c0392b;
+  --color-blood-300: #e67260;
 
-  /* Blood red — danger, loss, fail */
-  --color-blood-900: #4A0F00;
-  --color-blood-700: #7A2E1A;
-  --color-blood-500: #C75B3D;
-  --color-blood-300: #F08C6A;
-  --color-blood-100: #FBDED1;
+  /* Forest — success, farms, quests complete */
+  --color-forest-700: #1e4a26;
+  --color-forest-500: #3d7a3f;
+  --color-forest-400: #5ea05c;
 
-  /* Forest — victory, growth, farms */
-  --color-forest-900: #14331C;
-  --color-forest-700: #2E5C32;
-  --color-forest-500: #4A7D4A;
-  --color-forest-400: #6BA368;
-  --color-forest-300: #8BC17E;
-  --color-forest-100: #DDF1D6;
+  /* Sky — for illustration backgrounds */
+  --color-sky-day-top: #ffc16b;
+  --color-sky-day-mid: #ff9548;
+  --color-sky-day-bottom: #5a2f1a;
 
-  /* Magic — accent for trophies/league/special */
-  --color-magic-700: #4A2A6E;
-  --color-magic-500: #7A4ABF;
-  --color-magic-300: #B080E0;
-
-  /* Semantic shortcuts (used heavily) */
-  --color-bg: var(--color-night-900);
-  --color-surface: var(--color-parchment-100);
-  --color-surface-raised: var(--color-parchment-50);
-  --color-border-gold: var(--color-gold-300);
-  --color-text: var(--color-ink-900);
-  --color-text-muted: var(--color-ink-600);
-  --color-text-faint: var(--color-ink-500);
+  --color-sky-dusk-top: #6b3a5a;
+  --color-sky-dusk-mid: #3a1f36;
+  --color-sky-dusk-bottom: #0f0818;
 }
 
 /* === GLOBAL RESET === */
@@ -77,688 +59,296 @@
   -webkit-touch-callout: none;
 }
 
-html {
-  background: var(--color-night-900);
-  /* iOS safe area support */
-  height: 100%;
+html, body {
+  background: #0d0a06;
+  color: var(--color-parch-100);
+  min-height: 100dvh;
 }
 
 body {
-  background: #0a0e18;
-  color: var(--color-text);
   font-family: var(--font-sans), system-ui, sans-serif;
   font-weight: 500;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  min-height: 100dvh;
-  /* Dungeon stone wall — layered radial highlights + dark base + grain
-     via SVG noise data URI for texture */
+  /* Warm firelight gradient on deep brown, plus subtle noise */
   background-image:
-    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(232, 184, 74, 0.18), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(122, 46, 26, 0.15), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(74, 42, 110, 0.15), transparent 60%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.05 0 0 0 0 0.08 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #0a0e18 0%, #131826 50%, #0a0e18 100%);
-  background-attachment: fixed, fixed, fixed, fixed, fixed;
-  background-size: auto, auto, auto, 200px 200px, auto;
+    radial-gradient(ellipse 70% 55% at 50% 0%, rgba(240, 184, 64, 0.28), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 100%, rgba(192, 57, 43, 0.22), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.07 0 0 0 0 0.03 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #15100a 0%, #0d0a06 60%, #0a0604 100%);
+  background-attachment: fixed, fixed, fixed, fixed;
+  background-size: auto, auto, 200px 200px, auto;
 }
 
-/* === TYPOGRAPHY === */
-
-/* Cinzel is a serif Roman caps face — looks weird in lowercase, so all
-   display classes implicitly uppercase the text. Body stays Manrope. */
+/* === TYPOGRAPHY ===
+   Lilita One = chunky display caps. Use for headings and buttons.
+   Manrope for body text where readability matters. */
 
 .font-display {
-  font-family: var(--font-display), 'Cinzel', serif;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-family: var(--font-display), 'Lilita One', system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
-.font-display-bold {
-  font-family: var(--font-display), 'Cinzel', serif;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.font-display-fancy {
-  font-family: var(--font-display-decorative), 'Cinzel Decorative', serif;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-/* Body sans for prose lowercase content */
 .font-body {
   font-family: var(--font-sans), system-ui, sans-serif;
   font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
 }
 
-/* Override Tailwind's font-serif and font-sans to map to our system,
-   so legacy class usage doesn't break catastrophically while we migrate */
-.font-serif {
-  font-family: var(--font-display), serif;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+/* Legacy aliases — map old class names onto the new display font
+   so nothing explodes during migration */
+.font-serif,
+.font-display-bold,
+.font-display-fancy {
+  font-family: var(--font-display), 'Lilita One', system-ui, sans-serif;
+  font-weight: 400;
   font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
-/* === SURFACES — three explicit depth layers === */
+/* === STROKE HELPERS ===
+   Text with a dark stroke around it, mobile-game style */
 
-/* Layer 1: parchment surface, sits on world bg */
-.surface {
-  background: var(--color-parchment-100);
-  border-radius: 20px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
-    0 2px 0 rgba(0, 0, 0, 0.15),
-    0 8px 24px -4px rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--color-parchment-200);
+.text-stroke-dark {
+  -webkit-text-stroke: 2px #1a0f05;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #1a0f05;
 }
 
-/* Layer 2: raised — for cards within surfaces */
-.surface-raised {
-  background:
-    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-100) 100%);
-  border-radius: 18px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 1px 0 rgba(0, 0, 0, 0.08),
-    0 4px 12px -2px rgba(0, 0, 0, 0.18);
-  border: 1px solid var(--color-gold-300);
+.text-stroke-gold {
+  color: var(--color-gold-100);
+  -webkit-text-stroke: 2px var(--color-wood-900);
+  paint-order: stroke fill;
+  text-shadow:
+    0 2px 0 var(--color-wood-900),
+    0 0 18px rgba(240, 184, 64, 0.4);
 }
 
-/* Layer 3: floating — for chips, modals, the elite stuff */
-.surface-floating {
-  background:
-    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-200) 100%);
-  border-radius: 22px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    inset 0 0 0 1px rgba(232, 184, 74, 0.4),
-    0 2px 0 rgba(0, 0, 0, 0.2),
-    0 12px 32px -6px rgba(0, 0, 0, 0.5),
-    0 0 0 2px var(--color-gold-300);
+/* === APP SHELL LAYOUT === */
+
+.app-shell {
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 90px); /* room for stone arch nav */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  position: relative;
 }
 
-/* Legacy aliases so old code keeps working during migration */
-.card {
-  background: var(--color-parchment-100);
-  border-radius: 20px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 2px 0 rgba(0, 0, 0, 0.12),
-    0 6px 16px -2px rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--color-parchment-200);
+/* === HANGING BANNERS (top bar chips) ===
+   Banners hanging from ropes at the top of the screen. Each banner
+   is an SVG shape with a fabric drape, gold border, and score text. */
+
+.hanging-banner-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 0 12px;
+  padding-top: env(safe-area-inset-top);
+  pointer-events: none;
 }
 
-.card-elevated {
-  background:
-    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-100) 100%);
-  border-radius: 22px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    inset 0 0 0 1px rgba(232, 184, 74, 0.5),
-    0 2px 0 rgba(0, 0, 0, 0.18),
-    0 8px 24px -4px rgba(0, 0, 0, 0.4);
-  border: 2px solid var(--color-gold-300);
+.hanging-banner-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  max-width: 420px;
+  margin: 0 auto;
+  pointer-events: none;
 }
 
-/* === BUTTONS — the bevel === */
-
-.btn-game {
+.hanging-banner {
+  pointer-events: auto;
+  position: relative;
   display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: top center;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+  animation: bannerSway 6s ease-in-out infinite;
+}
+
+.hanging-banner.blood { animation-delay: -1s; }
+.hanging-banner.gold { animation-delay: 0s; }
+.hanging-banner.magic { animation-delay: -2s; }
+
+@keyframes bannerSway {
+  0%, 100% { transform: rotate(-0.8deg); }
+  50%      { transform: rotate(0.8deg); }
+}
+
+/* === STONE ARCH BOTTOM NAV ===
+   The bottom nav is a SVG stone arch, with 5 niches for icons.
+   BATTLE center is the biggest keystone.
+   The inner container is absolutely positioned; the arch SVG is a
+   background layer. */
+
+.stone-arch-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding: 0 0 env(safe-area-inset-bottom) 0;
+  pointer-events: none;
+}
+
+.stone-arch-nav .arch-bg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  pointer-events: none;
+}
+
+.stone-arch-nav .arch-row {
+  position: relative;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  pointer-events: auto;
+}
+
+.arch-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  color: var(--color-parch-200);
+  text-decoration: none;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: transform 120ms ease-out;
+  cursor: pointer;
+  position: relative;
+}
+.arch-tab:active { transform: translateY(2px); }
+.arch-tab.active { color: var(--color-gold-100); }
+.arch-tab.active .arch-tab-icon {
+  filter: drop-shadow(0 0 10px rgba(240, 184, 64, 0.8));
+}
+.arch-tab-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px 24px;
-  border-radius: 16px;
-  font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  font-size: 15px;
-  color: var(--color-ink-900);
-  border: 2px solid var(--color-gold-500);
-  background: linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 50%, var(--color-gold-400) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.18),
-    0 4px 0 var(--color-gold-600),
-    0 6px 12px rgba(0, 0, 0, 0.35);
-  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
-  cursor: pointer;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
-.btn-game:active {
-  transform: translateY(3px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 1px 0 var(--color-gold-600),
-    0 2px 4px rgba(0, 0, 0, 0.3);
+.arch-tab.center {
+  transform: translateY(-22px);
+  z-index: 2;
+}
+.arch-tab.center .arch-tab-icon {
+  width: 56px;
+  height: 56px;
+}
+.arch-tab.center:active {
+  transform: translateY(-19px);
 }
 
-.btn-game:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  filter: grayscale(0.4);
-}
+/* === GEM GLOW — used on sword pommel and ready indicators === */
 
-.btn-game-blood {
-  border-color: var(--color-blood-900);
-  background: linear-gradient(180deg, var(--color-blood-300) 0%, var(--color-blood-500) 50%, var(--color-blood-700) 100%);
-  color: #FFF;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
-    0 4px 0 var(--color-blood-900),
-    0 6px 12px rgba(0, 0, 0, 0.4);
+@keyframes gemPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(240, 70, 50, 0.9))
+            drop-shadow(0 0 14px rgba(240, 70, 50, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(255, 100, 70, 1))
+            drop-shadow(0 0 24px rgba(240, 70, 50, 0.8));
+  }
 }
+.gem-glow { animation: gemPulse 1.8s ease-in-out infinite; }
 
-.btn-game-blood:active {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-    0 1px 0 var(--color-blood-900),
-    0 2px 4px rgba(0, 0, 0, 0.35);
+@keyframes gemPulseGold {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px rgba(240, 184, 64, 0.7))
+            drop-shadow(0 0 12px rgba(240, 184, 64, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(253, 208, 105, 1))
+            drop-shadow(0 0 20px rgba(240, 184, 64, 0.7));
+  }
 }
-
-.btn-game-forest {
-  border-color: var(--color-forest-900);
-  background: linear-gradient(180deg, var(--color-forest-300) 0%, var(--color-forest-400) 50%, var(--color-forest-500) 100%);
-  color: #FFF;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-    0 4px 0 var(--color-forest-900),
-    0 6px 12px rgba(0, 0, 0, 0.4);
-}
-
-.btn-game-forest:active {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
-    0 1px 0 var(--color-forest-900),
-    0 2px 4px rgba(0, 0, 0, 0.35);
-}
-
-.btn-game-night {
-  border-color: var(--color-night-900);
-  background: linear-gradient(180deg, var(--color-night-500) 0%, var(--color-night-700) 50%, var(--color-night-800) 100%);
-  color: var(--color-gold-100);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
-    0 4px 0 var(--color-night-900),
-    0 6px 12px rgba(0, 0, 0, 0.5);
-}
-
-/* === CHIPS — the small status indicators === */
-
-.chip-game {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 9999px;
-  font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  border: 2px solid var(--color-gold-500);
-  background: linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 100%);
-  color: var(--color-ink-900);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 1px 0 rgba(0, 0, 0, 0.15),
-    0 3px 6px rgba(0, 0, 0, 0.3);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.chip-trophy {
-  border-color: var(--color-magic-700);
-  background: linear-gradient(180deg, var(--color-magic-300) 0%, var(--color-magic-500) 100%);
-  color: #FFF;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
-}
-
-.chip-streak {
-  border-color: var(--color-blood-900);
-  background: linear-gradient(180deg, var(--color-blood-300) 0%, var(--color-blood-500) 100%);
-  color: #FFF;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
-}
+.gem-glow-gold { animation: gemPulseGold 2.2s ease-in-out infinite; }
 
 /* === ANIMATIONS === */
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-up {
-  animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.animate-fade-up { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 60ms; }
-.stagger > *:nth-child(3) { animation-delay: 120ms; }
-.stagger > *:nth-child(4) { animation-delay: 180ms; }
-.stagger > *:nth-child(5) { animation-delay: 240ms; }
-.stagger > *:nth-child(6) { animation-delay: 300ms; }
+.stagger > *:nth-child(2) { animation-delay: 80ms; }
+.stagger > *:nth-child(3) { animation-delay: 160ms; }
+.stagger > *:nth-child(4) { animation-delay: 240ms; }
+.stagger > *:nth-child(5) { animation-delay: 320ms; }
 
 @keyframes softPulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
-.animate-soft-pulse {
-  animation: softPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.animate-soft-pulse { animation: softPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* === CLOUD DRIFT — used over hero scene === */
+
+@keyframes cloudDrift {
+  from { transform: translateX(-20%); }
+  to   { transform: translateX(120%); }
+}
+.cloud-drift {
+  animation: cloudDrift linear infinite;
 }
 
-@keyframes goldShimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+/* === BIRD FLY === */
+@keyframes birdFly {
+  0%   { transform: translate(-10%, 0) scale(1); opacity: 0; }
+  10%  { opacity: 1; }
+  50%  { transform: translate(60%, -15%) scale(0.9); opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(120%, -30%) scale(0.7); opacity: 0; }
 }
-.animate-gold-shimmer {
-  background-size: 200% 200%;
-  animation: goldShimmer 3s ease-in-out infinite;
-}
-
-@keyframes spin360 {
-  to { transform: rotate(360deg); }
-}
-.animate-spin-slow {
-  animation: spin360 4s linear infinite;
+.bird-fly {
+  animation: birdFly 18s linear infinite;
 }
 
-/* === LAYOUT — full bleed with safe areas === */
+/* === LEGACY compat: keep some names so we don't break on migration === */
 
-.app-shell {
-  min-height: 100dvh;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 80px); /* leave room for bottom nav */
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-}
+.card { background: var(--color-parch-100); border-radius: 16px; padding: 14px; }
+.card-elevated { background: var(--color-parch-50); border-radius: 20px; padding: 16px; }
+.surface { background: var(--color-parch-100); border-radius: 16px; padding: 14px; }
+.surface-raised { background: var(--color-parch-50); border-radius: 18px; padding: 16px; }
+.surface-floating { background: var(--color-parch-50); border-radius: 20px; padding: 18px; }
 
-.bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 50;
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(13, 20, 38, 0.92) 0%, var(--color-night-900) 100%);
-  border-top: 2px solid var(--color-gold-400);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
-}
+/* Chips used in legacy top bar — hidden now since we switched to banners */
+.chip-game, .chip-trophy, .chip-streak { display: none; }
 
-.top-bar {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
-  background: linear-gradient(180deg, var(--color-night-900) 0%, rgba(13, 20, 38, 0.85) 70%, transparent 100%);
-}
-
-/* === SWIPE CONTAINERS (legacy, used by older cards) === */
-
-.swipe-container {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding: 4px;
-}
-
-.swipe-container::-webkit-scrollbar {
-  display: none;
-}
-
-.swipe-card {
-  scroll-snap-align: center;
-  flex-shrink: 0;
+/* Legacy ribbon still used by HeroPanel on other pages temporarily */
+.ribbon {
+  display: inline-block;
+  padding: 6px 20px;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--color-gold-100);
+  background: linear-gradient(180deg, var(--color-blood-500), var(--color-blood-900));
+  border: 2px solid var(--color-gold-300);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar { width: 0; height: 0; }
-
-/* === LEGACY CLASS BACKWARDS COMPAT ===
-   Old code references things like bg-surface, text-ink, glow-accent.
-   These can stay during migration but they map to the new tokens. */
-
-.glow-accent {
-  box-shadow:
-    0 0 0 1px var(--color-gold-500),
-    0 4px 16px -4px rgba(232, 184, 74, 0.6);
-}
-
-/* === KENNEY 9-SLICE PANELS + BUTTONS ===
-   Real game sprites from Kenney (CC0). border-image stretches them
-   cleanly so the corner ornaments stay crisp while the middle fills. */
-
-.kenney-panel {
-  border: 14px solid transparent;
-  border-image: url('/assets/kenney/ui-panels/panel_beige.png') 14 14 14 14 fill stretch;
-  padding: 8px 12px;
-  image-rendering: auto;
-}
-.kenney-panel-brown {
-  border: 14px solid transparent;
-  border-image: url('/assets/kenney/ui-panels/panel_brown.png') 14 14 14 14 fill stretch;
-  padding: 8px 12px;
-}
-.kenney-panel-inset {
-  border: 14px solid transparent;
-  border-image: url('/assets/kenney/ui-panels/panelInset_beige.png') 14 14 14 14 fill stretch;
-  padding: 8px 12px;
-}
-.kenney-panel-inset-brown {
-  border: 14px solid transparent;
-  border-image: url('/assets/kenney/ui-panels/panelInset_brown.png') 14 14 14 14 fill stretch;
-  padding: 8px 12px;
-}
-.kenney-panel-blue {
-  border: 14px solid transparent;
-  border-image: url('/assets/kenney/ui-panels/panel_blue.png') 14 14 14 14 fill stretch;
-  padding: 8px 12px;
-}
-
-.kenney-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px 24px;
-  border: 10px solid transparent;
-  border-image: url('/assets/kenney/ui-buttons/buttonLong_beige.png') 10 10 10 10 fill stretch;
-  font-family: var(--font-display), 'Cinzel', serif;
-  font-weight: 800;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #3d2a15;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
-  cursor: pointer;
-  transition: transform 80ms ease-out, filter 80ms ease-out;
-  min-height: 50px;
-}
-.kenney-btn:active {
-  transform: translateY(2px);
-  filter: brightness(0.92);
-}
-.kenney-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  filter: grayscale(0.5);
-}
-
-.kenney-btn-brown {
-  border-image: url('/assets/kenney/ui-buttons/buttonLong_brown.png') 10 10 10 10 fill stretch;
-  color: #f4e8d0;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
-}
-.kenney-btn-blue {
-  border-image: url('/assets/kenney/ui-buttons/buttonLong_blue.png') 10 10 10 10 fill stretch;
-  color: #f4e8d0;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
-}
-.kenney-btn-grey {
-  border-image: url('/assets/kenney/ui-buttons/buttonLong_grey.png') 10 10 10 10 fill stretch;
-  color: #f4e8d0;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
-}
-
-/* XL variant: the dominant BATTLE button — bigger padding, bigger font */
-.kenney-btn-xl {
-  padding: 20px 36px;
-  font-size: 22px;
-  min-height: 72px;
-  letter-spacing: 0.12em;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.55));
-}
-
-/* Square variant for bottom-nav tabs */
-.kenney-btn-square {
-  border: 10px solid transparent;
-  border-image: url('/assets/kenney/ui-buttons/buttonSquare_beige.png') 10 10 10 10 fill stretch;
-  padding: 10px 8px;
-  min-height: 60px;
-  min-width: 60px;
-  font-family: var(--font-display), 'Cinzel', serif;
-  font-weight: 700;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #3d2a15;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  cursor: pointer;
-  transition: transform 80ms ease-out;
-}
-.kenney-btn-square:active { transform: translateY(2px); }
-.kenney-btn-square-brown {
-  border-image: url('/assets/kenney/ui-buttons/buttonSquare_brown.png') 10 10 10 10 fill stretch;
-  color: #f4e8d0;
-}
-.kenney-btn-square-blue {
-  border-image: url('/assets/kenney/ui-buttons/buttonSquare_blue.png') 10 10 10 10 fill stretch;
-  color: #f4e8d0;
-}
-
-/* Pixelated rendering for structure/unit sprites — they're tiny so
-   scaling must be crisp, not blurry. */
-.sprite-pixel {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
-
-/* === GOLD FRAME SYSTEM ===
-   The signature visual: thick gold border with bevel, around any panel.
-   Three sizes for hierarchy. */
-
-.gold-frame-xl {
-  position: relative;
-  border-radius: 24px;
-  padding: 6px;
-  background:
-    linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 30%, var(--color-gold-500) 70%, var(--color-gold-600) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-    0 4px 0 rgba(0, 0, 0, 0.4),
-    0 12px 28px rgba(0, 0, 0, 0.55),
-    0 0 32px rgba(232, 184, 74, 0.15);
-}
-
-.gold-frame {
-  position: relative;
-  border-radius: 18px;
-  padding: 4px;
-  background:
-    linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 50%, var(--color-gold-500) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
-    0 3px 0 rgba(0, 0, 0, 0.35),
-    0 8px 20px rgba(0, 0, 0, 0.45);
-}
-
-.gold-frame-sm {
-  position: relative;
-  border-radius: 14px;
-  padding: 3px;
-  background: linear-gradient(180deg, var(--color-gold-200) 0%, var(--color-gold-400) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 2px 0 rgba(0, 0, 0, 0.3),
-    0 4px 10px rgba(0, 0, 0, 0.35);
-}
-
-/* === PARCHMENT TEXTURE ===
-   Inner panel for inside a gold frame. Layered gradients fake a worn
-   parchment / stone surface without needing image assets. */
-
-.parchment-panel {
-  background:
-    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.4) 0%, transparent 30%),
-    radial-gradient(circle at 80% 90%, rgba(91, 60, 20, 0.18) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(91, 60, 20, 0.06) 0%, transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.32 0 0 0 0 0.18 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n2)'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, var(--color-parchment-50) 0%, var(--color-parchment-100) 50%, var(--color-parchment-200) 100%);
-  background-size: auto, auto, auto, 160px 160px, auto;
-  border-radius: 14px;
-  box-shadow:
-    inset 0 2px 6px rgba(91, 60, 20, 0.25),
-    inset 0 -2px 4px rgba(91, 60, 20, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
-}
-
-.gold-frame > .parchment-panel,
-.gold-frame-sm > .parchment-panel {
-  border-radius: 12px;
-}
-
-.gold-frame-xl > .parchment-panel {
-  border-radius: 18px;
-}
-
-/* === STONE PANEL (alt: darker, for night-themed slots) === */
-
-.stone-panel {
-  background:
-    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.08) 0%, transparent 35%),
-    radial-gradient(circle at 80% 90%, rgba(0, 0, 0, 0.4) 0%, transparent 50%),
-    linear-gradient(180deg, var(--color-night-600) 0%, var(--color-night-700) 50%, var(--color-night-800) 100%);
-  border-radius: 14px;
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.4),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.gold-frame > .stone-panel,
-.gold-frame-sm > .stone-panel {
-  border-radius: 12px;
-}
-
-/* === XL PRIMARY BUTTON (the BATTLE-style dominant action) === */
-
-.btn-game-xl {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 18px 32px;
-  border-radius: 20px;
-  font-family: var(--font-display), 'Cinzel', serif;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  font-size: 22px;
-  text-transform: uppercase;
-  color: #FFF;
-  border: 4px solid var(--color-gold-600);
-  background:
-    linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-200) 30%, var(--color-gold-300) 50%, var(--color-gold-400) 80%, var(--color-gold-500) 100%);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
-    0 6px 0 var(--color-gold-600),
-    0 10px 20px rgba(0, 0, 0, 0.5),
-    0 0 40px rgba(232, 184, 74, 0.4);
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.5),
-    0 2px 4px rgba(0, 0, 0, 0.4);
-  color: var(--color-ink-900);
-  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
-  cursor: pointer;
-  letter-spacing: 0.02em;
-}
-
-.btn-game-xl:active {
-  transform: translateY(4px);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-    0 2px 0 var(--color-gold-600),
-    0 4px 8px rgba(0, 0, 0, 0.4),
-    0 0 24px rgba(232, 184, 74, 0.3);
-}
-
-.btn-game-xl:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  filter: grayscale(0.4);
-}
-
-/* === RIBBON / BANNER ===
-   Heraldic banner with swallow-tail ends + gold gem center.
-   Wrap text in <span class="ribbon-inner"></span> for proper layering. */
-
-.ribbon {
-  position: relative;
-  display: inline-block;
-  padding: 0 28px;
-  height: 36px;
-  line-height: 36px;
-  font-family: var(--font-display), 'Cinzel', serif;
-  font-weight: 800;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--color-gold-100);
-  background: linear-gradient(180deg, var(--color-blood-500) 0%, var(--color-blood-700) 50%, var(--color-blood-900) 100%);
-  border-top: 2px solid var(--color-gold-300);
-  border-bottom: 2px solid var(--color-gold-600);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-    0 4px 0 rgba(0, 0, 0, 0.4),
-    0 8px 18px rgba(0, 0, 0, 0.55),
-    0 0 24px rgba(232, 184, 74, 0.2);
-  text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.6),
-    0 0 8px rgba(232, 184, 74, 0.5);
-}
-
-/* Swallow-tail cuts on either end via clip-path */
-.ribbon::before,
-.ribbon::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 18px;
-  background: linear-gradient(180deg, var(--color-blood-500) 0%, var(--color-blood-700) 50%, var(--color-blood-900) 100%);
-  border-top: 2px solid var(--color-gold-300);
-  border-bottom: 2px solid var(--color-gold-600);
-}
-.ribbon::before {
-  left: -16px;
-  clip-path: polygon(100% 0, 100% 100%, 0 100%, 50% 50%, 0 0);
-}
-.ribbon::after {
-  right: -16px;
-  clip-path: polygon(0 0, 100% 0, 50% 50%, 100% 100%, 0 100%);
-}
-
-/* === GLOW PULSE (for chest slots ready to claim) === */
-
-@keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 184, 74, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
-  50% { box-shadow: 0 0 0 8px rgba(232, 184, 74, 0), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
-}
-.animate-glow-pulse {
-  animation: glowPulse 1.6s ease-out infinite;
-}
