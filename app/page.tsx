@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import TaskPicker from './components/TaskPicker';
+import TaskTimer from './components/TaskTimer';
+import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
+import { useCoins } from '@/lib/useCoins';
 
 interface TodayData {
-  task: string;
   compliment: string | null;
 }
 
@@ -117,9 +120,9 @@ function Heatmap({ history }: { history: string[] }) {
 function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const steps = [
-    { emoji: '👋', title: 'Welkom bij Bliep', text: 'Elke dag een nieuwe uitdaging om het beste uit jezelf te halen.' },
-    { emoji: '✅', title: 'Eén opdracht per dag', text: 'Rond je dagelijkse challenge af en bouw een streak op.' },
-    { emoji: '🔔', title: 'Blijf op de hoogte', text: 'Zet notificaties aan zodat je nooit een dag mist.' },
+    { emoji: '👋', title: 'Welkom bij Bliep', text: 'Een dagelijkse challenge waar focus echt iets oplevert.' },
+    { emoji: '⏱', title: '1 opdracht per dag', text: 'Kies uit 3 opdrachten en houd Bliep open tot de timer afloopt — de timer pauzeert als je de app verlaat.' },
+    { emoji: '🏰', title: 'Bouw je stad', text: 'Met de coins die je verdient bouw en upgrade je je eigen stad.' },
   ];
   const current = steps[step];
   const isLast = step === steps.length - 1;
@@ -151,29 +154,24 @@ function Onboarding({ onComplete }: { onComplete: () => void }) {
 
 export default function Home() {
   const [data, setData] = useState<TodayData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [notifStatus, setNotifStatus] = useState('');
   const [installPrompt, setInstallPrompt] = useState(false);
   const [streak, setStreak] = useState<StreakData>({ current: 0, longest: 0, lastCompletedDate: '', history: [] });
-  const [taskDone, setTaskDone] = useState(false);
-  const [taskAnimating, setTaskAnimating] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [tasks] = useState<DailyTask[]>(() => getDailyTasks());
+  const [pick, setPick] = useState(() => loadDailyPick());
+  const [attackToast, setAttackToast] = useState(false);
   const confettiRef = useRef<HTMLDivElement>(null);
+  const { coins, award } = useCoins();
 
   const greeting = getGreeting();
+  const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
 
   useEffect(() => {
-    fetch('/api/today').then(r => r.json()).then(setData).catch(console.error).finally(() => setLoading(false));
-    const s = loadStreak();
-    setStreak(s);
-    if (s.lastCompletedDate === getToday()) setTaskDone(true);
-    const taskState = localStorage.getItem('bliep:taskdone');
-    if (taskState) {
-      const td = JSON.parse(taskState);
-      if (td.date === getToday()) setTaskDone(true);
-    }
+    fetch('/api/today').then(r => r.json()).then(setData).catch(console.error);
+    setStreak(loadStreak());
     if (!localStorage.getItem('bliep:onboarded')) setShowOnboarding(true);
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(reg => {
@@ -205,15 +203,32 @@ export default function Home() {
     if (confettiRef.current) launchConfetti(confettiRef.current);
   }, []);
 
-  const handleCompleteTask = useCallback(() => {
-    if (taskDone) return;
-    const today = getToday();
-    localStorage.setItem('bliep:taskdone', JSON.stringify({ date: today }));
-    setTaskDone(true);
-    setTaskAnimating(true);
-    setTimeout(() => setTaskAnimating(false), 600);
+  function handlePick(task: DailyTask) {
+    const next = { date: pick.date, chosenId: task.id, completed: false };
+    saveDailyPick(next);
+    setPick(next);
+  }
+
+  function handleClaim(coinAmount: number) {
+    award(coinAmount);
+    const next = { ...pick, completed: true };
+    saveDailyPick(next);
+    setPick(next);
     completeStreak();
-  }, [taskDone, completeStreak]);
+  }
+
+  function handleAbort() {
+    // Allow re-pick for the day (relaxed for prototype). Keep date so streak
+    // logic can still gate to "1 per day" later.
+    const next = { date: pick.date, chosenId: null, completed: false };
+    saveDailyPick(next);
+    setPick(next);
+  }
+
+  function showAttackToast() {
+    setAttackToast(true);
+    window.setTimeout(() => setAttackToast(false), 2200);
+  }
 
   async function subscribe() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -264,12 +279,6 @@ export default function Home() {
     setShowOnboarding(false);
   }
 
-  if (loading) return (
-    <div className="min-h-dvh flex items-center justify-center bg-surface">
-      <div className="w-10 h-10 rounded-2xl bg-accent/20 animate-soft-pulse" />
-    </div>
-  );
-
   const dateStr = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
 
   return (
@@ -285,6 +294,10 @@ export default function Home() {
               <p className="text-muted text-[13px] mt-0.5">{dateStr}</p>
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-[#E8B84A]/15 rounded-full px-3 py-1.5">
+                <span className="text-xs">🪙</span>
+                <span className="text-[#8a6320] text-xs font-bold tabular-nums">{coins}</span>
+              </div>
               {streak.current > 0 && (
                 <div className="flex items-center gap-1 bg-accent/8 rounded-full px-3 py-1.5">
                   <span className="text-xs">🔥</span>
@@ -301,68 +314,34 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="px-5 space-y-4 stagger">
-          {data?.task && (
-            <section
-              className={`animate-fade-up card-elevated p-6 transition-all duration-500 ${
-                taskDone ? 'ring-2 ring-green/30' : ''
-              } ${taskAnimating ? 'scale-[1.02]' : ''}`}
-              style={{ animationDelay: '120ms' }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${taskDone ? 'bg-green' : 'bg-accent animate-pulse'}`} />
-                  <p className={`text-[11px] font-semibold uppercase tracking-wider ${taskDone ? 'text-green' : 'text-accent'}`}>
-                    Opdracht van vandaag
-                  </p>
-                </div>
-                {taskDone && streak.current > 0 && (
-                  <span className="text-[11px] text-accent font-bold">🔥 {streak.current} {streak.current === 1 ? 'dag' : 'dagen'}</span>
-                )}
-              </div>
+        {/* Phase A: pick task */}
+        {!chosenTask && !pick.completed && (
+          <TaskPicker tasks={tasks} onPick={handlePick} />
+        )}
 
-              <p className={`text-ink text-[17px] leading-relaxed mb-6 ${taskDone ? 'line-through text-faint' : ''}`}>
-                {data.task}
-              </p>
+        {/* Phase B: timer + dashboard */}
+        {chosenTask && !pick.completed && (
+          <div className="px-5 space-y-4">
+            <TaskTimer task={chosenTask} onClaim={handleClaim} onAbort={handleAbort} />
+            <DashboardActions onAttack={showAttackToast} />
+          </div>
+        )}
 
-              <button
-                onClick={handleCompleteTask}
-                disabled={taskDone}
-                className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all active:scale-[0.98] ${
-                  taskDone
-                    ? 'bg-greensoft text-green border border-green/15'
-                    : 'bg-accent text-white glow-accent hover:brightness-110'
-                }`}
-              >
-                {taskDone ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Afgerond!
-                  </span>
-                ) : 'Opdracht afronden'}
-              </button>
+        {/* Phase C: completed for today */}
+        {pick.completed && (
+          <div className="px-5 space-y-4">
+            <section className="card-elevated p-6 text-center animate-fade-up">
+              <div className="text-3xl mb-2">🎉</div>
+              <h2 className="font-serif text-xl text-ink italic">Klaar voor vandaag</h2>
+              <p className="text-muted text-sm mt-1">Je opdracht is afgerond. Kom morgen terug voor een nieuwe.</p>
             </section>
-          )}
+            <DashboardActions onAttack={showAttackToast} />
+          </div>
+        )}
 
-          <Link
-            href="/stad"
-            className="block animate-fade-up rounded-3xl overflow-hidden relative group active:scale-[0.99] transition-transform"
-            style={{ animationDelay: '135ms' }}
-          >
-            <div className="relative h-32 bg-gradient-to-br from-[#6BA368] via-[#8BC17E] to-[#E8B84A] p-5 flex flex-col justify-between">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, #fff 0, transparent 40%), radial-gradient(circle at 80% 60%, #fff 0, transparent 35%)' }} />
-              <p className="relative text-white/90 text-[10px] font-semibold uppercase tracking-wider">Je stad</p>
-              <div className="relative flex items-center justify-between">
-                <p className="font-serif text-2xl text-white italic drop-shadow">Bouw verder →</p>
-                <div className="text-3xl drop-shadow">🏰</div>
-              </div>
-            </div>
-          </Link>
-
+        <div className="px-5 mt-6 space-y-4">
           {data?.compliment && (
-            <section className="animate-fade-up card p-6" style={{ animationDelay: '150ms' }}>
+            <section className="animate-fade-up card p-6" style={{ animationDelay: '160ms' }}>
               <p className="text-accent text-[10px] font-semibold uppercase tracking-wider mb-3">Dagelijkse quote</p>
               <p className="font-serif text-ink text-lg leading-snug italic">&ldquo;{data.compliment}&rdquo;</p>
             </section>
@@ -375,16 +354,6 @@ export default function Home() {
                 <p className="text-faint text-[11px]">{streak.current} {streak.current === 1 ? 'dag' : 'dagen'} streak</p>
               </div>
               <Heatmap history={streak.history} />
-              <div className="flex items-center gap-4 mt-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-[10px] h-[10px] rounded-[2px] bg-subtle" />
-                  <span className="text-[10px] text-faint">Gemist</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-[10px] h-[10px] rounded-[2px] bg-green" />
-                  <span className="text-[10px] text-faint">Afgerond</span>
-                </div>
-              </div>
             </section>
           )}
 
@@ -416,10 +385,47 @@ export default function Home() {
           )}
         </div>
 
+        {attackToast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 bg-[#3a2a18] text-white px-4 py-2 rounded-full text-sm shadow-lg pointer-events-none">
+            ⚔️ Aanvallen komt later (Fase 5)
+          </div>
+        )}
+
         <footer className="mt-12 pb-4 text-center">
           <p className="text-[10px] text-faint tracking-[0.2em] uppercase font-medium">Bliep</p>
         </footer>
       </main>
+    </div>
+  );
+}
+
+function DashboardActions({ onAttack }: { onAttack: () => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 animate-fade-up" style={{ animationDelay: '140ms' }}>
+      <Link
+        href="/stad"
+        className="rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform"
+      >
+        <div className="relative h-28 bg-gradient-to-br from-[#6BA368] via-[#8BC17E] to-[#E8B84A] p-4 flex flex-col justify-between">
+          <p className="relative text-white/90 text-[10px] font-semibold uppercase tracking-wider">Naar je stad</p>
+          <div className="relative flex items-center justify-between">
+            <p className="font-serif text-xl text-white italic drop-shadow">Bouwen →</p>
+            <span className="text-2xl drop-shadow">🏰</span>
+          </div>
+        </div>
+      </Link>
+      <button
+        onClick={onAttack}
+        className="rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform text-left"
+      >
+        <div className="relative h-28 bg-gradient-to-br from-[#7A2E1A] via-[#C75B3D] to-[#E8B84A] p-4 flex flex-col justify-between">
+          <p className="relative text-white/90 text-[10px] font-semibold uppercase tracking-wider">Aanvallen</p>
+          <div className="relative flex items-center justify-between">
+            <p className="font-serif text-xl text-white italic drop-shadow">Strijden →</p>
+            <span className="text-2xl drop-shadow">⚔️</span>
+          </div>
+        </div>
+      </button>
     </div>
   );
 }

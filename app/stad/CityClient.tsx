@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { loadCity, saveCity, addBuilding, upgradeBuilding, spendCoins, addCoins, type CityState, type PlacedBuilding } from '@/lib/cityStore';
+import { loadCity, saveCity, addBuilding, upgradeBuilding, spendCoins, addCoins, claimProduction, type CityState, type PlacedBuilding } from '@/lib/cityStore';
 import { BUILDINGS, BUILDING_ORDER, buildCost, upgradeCost, type BuildingType } from '@/lib/game/buildings';
 
 const CityCanvas = dynamic(() => import('./CityCanvas'), { ssr: false });
@@ -15,16 +15,31 @@ type BuildingTarget = PlacedBuilding | null;
 export default function CityClient() {
   const searchParams = useSearchParams();
   const devMode = searchParams.get('dev') === '1';
-  const [state, setState] = useState<CityState>({ coins: 0, buildings: [] });
+  const [state, setState] = useState<CityState>({ coins: 0, buildings: [], lastProductionTickAt: Date.now() });
   const [loaded, setLoaded] = useState(false);
   const [tileTarget, setTileTarget] = useState<TileTarget>(null);
   const [buildingTarget, setBuildingTarget] = useState<BuildingTarget>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
   useEffect(() => {
-    setState(loadCity());
+    const loaded = loadCity();
+    const { state: claimed, gained } = claimProduction(loaded);
+    setState(claimed);
     setLoaded(true);
+    if (gained > 0) showFlash(`+${gained} 🪙 productie`);
   }, []);
+
+  // Periodic production tick while page is open
+  useEffect(() => {
+    if (!loaded) return;
+    const id = window.setInterval(() => {
+      setState(s => {
+        const { state: next } = claimProduction(s);
+        return next;
+      });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [loaded]);
 
   useEffect(() => {
     if (loaded) saveCity(state);
