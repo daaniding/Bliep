@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import GameShell from './components/GameShell';
-import KingdomSceneClient from './components/KingdomSceneClient';
+import CastleScene from './components/CastleScene';
 import { getDailyTasks, loadDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { sfxTap } from '@/lib/sound';
 
@@ -42,7 +42,7 @@ export default function Home() {
       >
         {/* === 3D scene fills all remaining space === */}
         <div className="relative flex-1 overflow-hidden">
-          <KingdomSceneClient />
+          <CastleScene />
 
           {/* === Floating CTA over the scene === */}
           <div
