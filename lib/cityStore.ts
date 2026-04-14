@@ -156,6 +156,28 @@ export function addSpeedTokens(state: CityState, amount: number): CityState {
   return { ...state, speedTokens: state.speedTokens + amount };
 }
 
+/** Demolish a building. Refunds 50% of base cost. Removes any pending build queue items. */
+export function removeBuilding(state: CityState, buildingId: string): { state: CityState; refund: number } {
+  const b = state.buildings.find(x => x.id === buildingId);
+  if (!b) return { state, refund: 0 };
+  // Refund: 50% of base cost summed across all upgrade levels achieved
+  const def = BUILDINGS[b.type];
+  let totalSpent = def.baseCost;
+  for (let l = 1; l < b.level; l++) {
+    totalSpent += Math.round(def.baseCost * Math.pow(def.costGrowth, l));
+  }
+  const refund = Math.floor(totalSpent * 0.5);
+  return {
+    state: {
+      ...state,
+      coins: state.coins + refund,
+      buildings: state.buildings.filter(x => x.id !== buildingId),
+      buildQueue: state.buildQueue.filter(q => q.buildingId !== buildingId),
+    },
+    refund,
+  };
+}
+
 export function placeBuilding(state: CityState, type: BuildingType, gx: number, gy: number): CityState {
   const id = `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const placed: PlacedBuilding = { id, type, gx, gy, level: 1 };

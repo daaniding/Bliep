@@ -144,6 +144,17 @@ export default function CityCanvas({
       if (cancelled) return;
       atlasRef.current = atlas;
 
+      // Forever-green stage background so the dark page bg never bleeds
+      // through when the map doesn't fill the viewport edge to edge.
+      const stageBg = new Graphics();
+      const drawBg = () => {
+        stageBg.clear();
+        stageBg.rect(0, 0, app.renderer.width, app.renderer.height);
+        stageBg.fill({ color: 0x6b9c52 });
+      };
+      drawBg();
+      app.stage.addChild(stageBg);
+
       const world = new Container();
       app.stage.addChild(world);
       worldRef.current = world;
@@ -285,21 +296,29 @@ export default function CityCanvas({
         world.position.set(originX, originY);
       };
       centerWorld();
-      // Auto-fit ~16 tiles wide for interactive (closer view; users can pan/zoom)
-      const fitScale = Math.min(
-        app.renderer.width / (16 * TILE_W),
-        app.renderer.height / (16 * TILE_H),
+      // Minimum zoom = "fit whole map in view" (no off-map background visible)
+      const minZoomFit = Math.max(
+        app.renderer.width / (GRID_SIZE * TILE_W),
+        app.renderer.height / (GRID_SIZE * TILE_H),
       );
-      world.scale.set(mode === 'preview'
-        ? Math.min(app.renderer.width / (GRID_SIZE * TILE_W), app.renderer.height / (GRID_SIZE * TILE_H))
-        : Math.max(0.6, fitScale));
-      // Re-center after scale so scaled grid fits in view
-      const scaledW = GRID_SIZE * TILE_W * world.scale.x;
-      const scaledH = GRID_SIZE * TILE_H * world.scale.y;
+      // Default interactive view: ~22 tiles so the build zone borders + some
+      // forest rim are visible on left/right at first glance.
+      const defaultZoom = Math.min(
+        app.renderer.width / (22 * TILE_W),
+        app.renderer.height / (22 * TILE_H),
+      );
+      const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
+      const startZoom = mode === 'preview' ? minZoomFit : Math.max(defaultZoom, minZoom);
+      world.scale.set(startZoom);
+      // Center on city center (where build zone is)
+      const ccx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
+      const ccy = CITY_CENTER.gy * TILE_H + TILE_H / 2;
       world.position.set(
-        (app.renderer.width - scaledW) / 2,
-        (app.renderer.height - scaledH) / 2,
+        app.renderer.width / 2 - ccx * startZoom,
+        app.renderer.height / 2 - ccy * startZoom,
       );
+      // Stash min zoom for later input handlers
+      (app as Application & { __minZoom?: number }).__minZoom = minZoom;
 
       app.stage.eventMode = 'static';
       app.stage.hitArea = app.screen;
@@ -358,12 +377,26 @@ export default function CityCanvas({
           return screenToGrid(local.x, local.y, 0, 0);
         };
 
+        const clampWorld = () => {
+          const mapW = GRID_SIZE * TILE_W * world.scale.x;
+          const mapH = GRID_SIZE * TILE_H * world.scale.y;
+          const viewW = app.renderer.width;
+          const viewH = app.renderer.height;
+          // If the map is smaller than the viewport on an axis, center it.
+          // Otherwise clamp so the map edge stays at or beyond the view edge.
+          if (mapW <= viewW) world.position.x = (viewW - mapW) / 2;
+          else world.position.x = Math.min(0, Math.max(viewW - mapW, world.position.x));
+          if (mapH <= viewH) world.position.y = (viewH - mapH) / 2;
+          else world.position.y = Math.min(0, Math.max(viewH - mapH, world.position.y));
+        };
+
         const zoomAround = (px: number, py: number, target: number) => {
           const beforeLocal = world.toLocal(new Point(px, py));
           world.scale.set(target);
           const afterGlobal = world.toGlobal(beforeLocal);
           world.position.x += px - afterGlobal.x;
           world.position.y += py - afterGlobal.y;
+          clampWorld();
         };
 
         const onDown = (e: FederatedPointerEvent) => {
@@ -389,12 +422,14 @@ export default function CityCanvas({
             if (pointers.size === 1) {
               world.position.x += dx;
               world.position.y += dy;
+              clampWorld();
             } else if (pointers.size === 2) {
               const arr = Array.from(pointers.values());
               const ddx = arr[0].lastX - arr[1].lastX;
               const ddy = arr[0].lastY - arr[1].lastY;
               const dist = Math.hypot(ddx, ddy) || 1;
-              const target = Math.max(MIN_ZOOM_INTERACTIVE, Math.min(MAX_ZOOM_INTERACTIVE, pinchStartScale * (dist / pinchStartDist)));
+              const minZP = (app as Application & { __minZoom?: number }).__minZoom ?? MIN_ZOOM_INTERACTIVE;
+              const target = Math.max(minZP, Math.min(MAX_ZOOM_INTERACTIVE, pinchStartScale * (dist / pinchStartDist)));
               zoomAround(pinchMid.x, pinchMid.y, target);
             }
           }
@@ -432,7 +467,8 @@ export default function CityCanvas({
           const localX = ev.clientX - rect.left;
           const localY = ev.clientY - rect.top;
           const factor = Math.exp(-ev.deltaY * 0.0015);
-          const target = Math.max(MIN_ZOOM_INTERACTIVE, Math.min(MAX_ZOOM_INTERACTIVE, world.scale.x * factor));
+          const minZ = (app as Application & { __minZoom?: number }).__minZoom ?? MIN_ZOOM_INTERACTIVE;
+          const target = Math.max(minZ, Math.min(MAX_ZOOM_INTERACTIVE, world.scale.x * factor));
           zoomAround(localX, localY, target);
         };
 
@@ -460,6 +496,7 @@ export default function CityCanvas({
 
       const ro = new ResizeObserver(() => {
         if (cancelled || !appRef.current) return;
+        drawBg();
         if (mode === 'preview') centerWorld();
       });
       ro.observe(host);

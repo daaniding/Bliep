@@ -11,6 +11,7 @@ import {
   addCoins,
   addSpeedTokens,
   placeBuilding,
+  removeBuilding,
   startUpgrade,
   applySpeedToken,
   processBuildQueue,
@@ -203,6 +204,20 @@ export default function CityClient() {
     burstAt(target.gx, target.gy, 'sparkle');
   }
 
+  function handleRemoveBuilding() {
+    if (!buildingTarget) return;
+    const target = buildingTarget;
+    setState(s => {
+      const r = removeBuilding(s, target.id);
+      if (r.refund > 0) showFlash(`Verwijderd · +${r.refund} 🪙`);
+      else showFlash('Verwijderd');
+      return r.state;
+    });
+    setBuildingTarget(null);
+    playSfx('fail');
+    vibrate(20);
+  }
+
   function handleSpeedToken(queueId: string) {
     if (state.speedTokens <= 0) {
       showFlash('Geen speed tokens — voltooi een taak');
@@ -332,6 +347,7 @@ export default function CityClient() {
           onClose={() => setBuildingTarget(null)}
           onUpgrade={handleUpgrade}
           onCollect={() => { handleCollectFarm(buildingTarget); setBuildingTarget(null); }}
+          onRemove={handleRemoveBuilding}
         />
       )}
     </div>
@@ -400,13 +416,16 @@ function BuildingInfoSheet({
   onClose,
   onUpgrade,
   onCollect,
+  onRemove,
 }: {
   building: PlacedBuilding;
   state: CityState;
   onClose: () => void;
   onUpgrade: () => void;
   onCollect: () => void;
+  onRemove: () => void;
 }) {
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const def = BUILDINGS[building.type];
   const cost = upgradeCost(building.type, building.level);
   const maxed = cost === null;
@@ -483,7 +502,25 @@ function BuildingInfoSheet({
           </button>
         )}
 
-        <button onClick={onClose} className="mt-3 w-full text-center font-display text-[#fdd069]/70 text-xs uppercase tracking-wider">Sluiten</button>
+        {/* Remove button */}
+        <div className="mt-3 flex items-center gap-2">
+          <button onClick={onClose} className="flex-1 text-center font-display text-[#fdd069]/70 text-xs uppercase tracking-wider py-2">Sluiten</button>
+          {confirmRemove ? (
+            <button
+              onClick={onRemove}
+              className="bg-[#7a1a1a] text-white font-display text-[10px] uppercase tracking-wider px-3 py-2 rounded-lg border-2 border-[#1a0f05] active:scale-95"
+            >
+              Bevestig
+            </button>
+          ) : (
+            <button
+              onClick={() => setConfirmRemove(true)}
+              className="text-[#ff8888]/70 font-display text-[10px] uppercase tracking-wider px-3 py-2 hover:text-[#ff8888]"
+            >
+              Verwijder
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

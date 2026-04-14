@@ -33,24 +33,26 @@ function decorKindFor(distance: number, rand: () => number): DecorKind | null {
   const fromBuildEdge = distance - BUILD_ZONE_RADIUS;
   if (fromBuildEdge <= 0) return null;
   if (fromBuildEdge <= 1) {
+    // Edge ring — light scatter of bushes + flowers + a few trees
     const r = rand();
-    if (r < 0.45) return 'tree';
-    if (r < 0.65) return 'bush';
-    if (r < 0.78) return 'flower';
+    if (r < 0.55) return 'tree';
+    if (r < 0.78) return 'bush';
+    if (r < 0.92) return 'flower';
     return null;
   }
   if (fromBuildEdge <= 3) {
+    // Forest band — dense
     const r = rand();
-    if (r < 0.55) return 'tree';
-    if (r < 0.72) return 'bush';
-    if (r < 0.85) return 'rock';
+    if (r < 0.7) return 'tree';
+    if (r < 0.85) return 'bush';
+    if (r < 0.94) return 'rock';
     return null;
   }
-  // Outer rim — denser forest with mountains
+  // Outer rim — solid forest + rocks (almost no gaps)
   const r = rand();
-  if (r < 0.5) return 'tree';
-  if (r < 0.7) return 'mountain';
-  if (r < 0.85) return 'rock';
+  if (r < 0.65) return 'tree';
+  if (r < 0.82) return 'bush';
+  if (r < 0.93) return 'rock';
   return null;
 }
 
