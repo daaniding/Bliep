@@ -307,8 +307,13 @@ export default function CityCanvas({
         app.renderer.width / (12 * TILE_W),
         app.renderer.height / (12 * TILE_H),
       );
+      // Preview view: ~14 tiles wide centered on city center so buildings + nearby decor read at a glance
+      const previewZoom = Math.min(
+        app.renderer.width / (14 * TILE_W),
+        app.renderer.height / (14 * TILE_H),
+      );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
-      const startZoom = mode === 'preview' ? minZoomFit : Math.max(defaultZoom, minZoom);
+      const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);
       world.scale.set(startZoom);
       // Center on city center (where build zone is)
       const ccx = CITY_CENTER.gx * TILE_W + TILE_W / 2;

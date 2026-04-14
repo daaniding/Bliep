@@ -175,37 +175,44 @@ export default function Home() {
 
       {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
 
-      {/* Hero — animated castle scene fills all available space.
-          SideRail sits right, widgets + sword stack at bottom. */}
-      <div className="hero-fill animate-fade-up relative">
-        <CityPreview />
-
-        {/* Side rail: 4 icon buttons on the right edge, vertically centred */}
-        <div
-          className="absolute z-10 pointer-events-none"
-          style={{ top: '50%', right: 8, transform: 'translateY(-50%)' }}
-        >
-          <SideRail />
-        </div>
-
-        {/* Completed state — short overlay near the top */}
-        {pick.completed && (
-          <div
-            className="absolute left-0 right-0 top-4 flex justify-center z-10 pointer-events-none animate-fade-up"
-            style={{ animationDelay: '160ms' }}
-          >
-            <p className="font-display text-[15px] text-[var(--color-gold-100)] text-stroke-dark">
+      {/* Hero column: small header, square city window in the middle, widgets below */}
+      <div className="hero-fill animate-fade-up relative flex flex-col items-stretch px-3 pt-3">
+        {/* Top header above the city window */}
+        <div className="flex flex-col items-center gap-1 mb-2 animate-fade-up">
+          <p className="font-display text-[10px] uppercase tracking-[0.25em] text-[var(--color-parch-200)]">
+            Welkom in
+          </p>
+          <h2 className="font-display text-[20px] text-[var(--color-gold-100)] text-stroke-dark leading-none flex items-center gap-2">
+            <span>🏰</span>
+            <span>Je Koninkrijk</span>
+            <span>⚔️</span>
+          </h2>
+          {pick.completed && (
+            <p className="font-display text-[11px] text-[var(--color-gold-100)] text-stroke-dark mt-0.5">
               {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
               {pick.outcome === 'gave-up' && '💤 Dag is voorbij'}
               {pick.outcome === 'failed-locked' && '⚔️ Dag is voorbij'}
             </p>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Bottom widget stack: free chest strip, daily quest strip, sword */}
+        {/* The city window — square card showing the live stad */}
+        <div className="relative mx-auto w-full max-w-[360px] aspect-square animate-fade-up">
+          <CityPreview />
+          {/* Side rail floats over the right edge of the city window */}
+          <div
+            className="absolute z-20 pointer-events-none"
+            style={{ top: '50%', right: -6, transform: 'translateY(-50%)' }}
+          >
+            <SideRail />
+          </div>
+        </div>
+
+        {/* Bottom widget stack — pushed to the bottom of hero with flex spacer */}
+        <div className="flex-1" />
         <div
-          className="absolute left-0 right-0 px-3 z-10 flex flex-col gap-2 animate-fade-up"
-          style={{ bottom: 10, animationDelay: '160ms' }}
+          className="px-0 z-10 flex flex-col gap-2 animate-fade-up pb-2"
+          style={{ animationDelay: '160ms' }}
         >
           <FreeChestStrip />
           <DailyQuestStrip />
