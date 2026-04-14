@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import CityPreview from './CityPreview';
 import {
   CoinIcon,
   TrophyIcon,
   FlameIcon,
-  ChestIcon,
   LockIcon,
 } from './icons/GameIcons';
 import { useCoins } from '@/lib/useCoins';
@@ -16,7 +15,6 @@ import { useStreak } from '@/lib/useStreak';
 import {
   getDailyTasks,
   loadDailyPick,
-  TIER_CONFIG,
   type DailyTask,
   type DailyPick,
 } from '@/lib/dailyTasks';
@@ -25,24 +23,18 @@ import {
   msUntilReady,
   isReady as chestReady,
 } from '@/lib/freeChest';
+import { loadCity } from '@/lib/cityStore';
 import { sfxTap } from '@/lib/sound';
 
 /**
- * GameDashboard — Supercell-grade home screen.
+ * GameDashboard — Supercell-grade home:
  *
- *  ┌──────────────────────────────┐
- *  │  player banner                │
- *  │  ♦ Uw Rijk ♦ (city frame)     │
- *  │  streak · coins · trophies    │
- *  │  ╔═══════════════════════╗   │
- *  │  ║  DAGELIJKSE OPDRACHT   ║  │  ← hero
- *  │  ║  [tier pill]           ║  │
- *  │  ║  task text             ║  │
- *  │  ║  ⏱ 30 min · 🪙 130     ║  │
- *  │  ║  [ START OPDRACHT ]    ║  │
- *  │  ╚═══════════════════════╝   │
- *  │  chest · chest · chest · chest│
- *  └──────────────────────────────┘
+ *   banner (rank · name · level)
+ *   fullscreen draggable city (no frame)
+ *   streak · coins · trophies
+ *   daily quest hero
+ *   vervalt-over countdown
+ *   chest slots
  */
 
 function formatMs(ms: number): string {
@@ -51,8 +43,38 @@ function formatMs(ms: number): string {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   if (h > 0) return `${h}u ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s.toString().padStart(2, '0')}s`;
   return `${s}s`;
+}
+
+function msUntilAmsterdamMidnight(): number {
+  // Compute "now in Amsterdam" without pulling in a tz library.
+  const now = new Date();
+  const nowAms = new Date(
+    now.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' }),
+  );
+  const end = new Date(nowAms);
+  end.setHours(24, 0, 0, 0);
+  return end.getTime() - nowAms.getTime();
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return '0m';
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  if (h > 0) return `${h}u ${m}m`;
+  return `${m}m`;
+}
+
+type Rank = { label: string; color: string; ringColor: string; minTrophies: number };
+const RANKS: Rank[] = [
+  { label: 'BRONS',  color: '#9b6838', ringColor: '#d19225', minTrophies: 0 },
+  { label: 'ZILVER', color: '#b8c0c8', ringColor: '#e8edf2', minTrophies: 100 },
+  { label: 'GOUD',   color: '#f0b840', ringColor: '#fff6dc', minTrophies: 500 },
+];
+function getRank(trophies: number): Rank {
+  return [...RANKS].reverse().find((r) => trophies >= r.minTrophies) ?? RANKS[0];
 }
 
 const TIER_STYLE: Record<
@@ -73,7 +95,18 @@ export default function GameDashboard() {
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [pick, setPick] = useState<DailyPick | null>(null);
   const [chestMs, setChestMs] = useState<number>(0);
+  const [dayMs, setDayMs] = useState<number>(0);
+  const [buildingCount, setBuildingCount] = useState(1);
   const tickRef = useRef<number | null>(null);
+
+  // ===== City rotation state =====
+  const [cityRotation, setCityRotation] = useState(0); // degrees
+  const dragRef = useRef<{ startX: number; startRot: number; dragging: boolean }>({
+    startX: 0,
+    startRot: 0,
+    dragging: false,
+  });
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     try {
@@ -87,11 +120,14 @@ export default function GameDashboard() {
     const refresh = () => {
       setChestMs(msUntilReady(loadFreeChest()));
       setPick(loadDailyPick());
+      setDayMs(msUntilAmsterdamMidnight());
+      const city = loadCity();
+      setBuildingCount(Math.max(1, city.buildings.length));
     };
     refresh();
     tickRef.current = window.setInterval(refresh, 1000);
 
-    const onFocus = () => setPick(loadDailyPick());
+    const onFocus = () => refresh();
     window.addEventListener('focus', onFocus);
 
     return () => {
@@ -112,11 +148,12 @@ export default function GameDashboard() {
     Math.min(1, (coins - prevMilestone) / (nextMilestone - prevMilestone)),
   );
 
-  const chestAvailable = chestReady(loadFreeChest());
+  const freeChestAvailable = chestReady(loadFreeChest());
 
   // Quest card state
   const questState: 'done' | 'chosen' | 'open' =
     pick?.completed ? 'done' : chosenTask ? 'chosen' : 'open';
+  const questPending = questState !== 'done';
 
   const heroTier = (chosenTask?.tier ?? 'medium') as 'easy' | 'medium' | 'hard';
   const heroTierStyle = TIER_STYLE[heroTier];
@@ -129,18 +166,68 @@ export default function GameDashboard() {
         ? 'Hervat opdracht'
         : 'Kies je opdracht';
 
+  // Rank + level
+  const rank = useMemo(() => getRank(trophies), [trophies]);
+  const level = buildingCount;
+
+  // Countdown urgency
+  const urgent = dayMs > 0 && dayMs < 2 * 60 * 60 * 1000;
+
+  const coinsOverflow = coins > 100;
+
+  // ===== Drag handlers =====
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (!e.touches[0]) return;
+    dragRef.current.startX = e.touches[0].clientX;
+    dragRef.current.startRot = cityRotation;
+    dragRef.current.dragging = true;
+    setDragging(true);
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!dragRef.current.dragging || !e.touches[0]) return;
+    const dx = e.touches[0].clientX - dragRef.current.startX;
+    const next = dragRef.current.startRot + dx * 0.35;
+    setCityRotation(Math.max(-35, Math.min(35, next)));
+  };
+  const onTouchEnd = () => {
+    dragRef.current.dragging = false;
+    setDragging(false);
+  };
+  // Also allow mouse drag for desktop preview
+  const onMouseDown = (e: React.MouseEvent) => {
+    dragRef.current.startX = e.clientX;
+    dragRef.current.startRot = cityRotation;
+    dragRef.current.dragging = true;
+    setDragging(true);
+    const move = (ev: MouseEvent) => {
+      if (!dragRef.current.dragging) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const next = dragRef.current.startRot + dx * 0.35;
+      setCityRotation(Math.max(-35, Math.min(35, next)));
+    };
+    const up = () => {
+      dragRef.current.dragging = false;
+      setDragging(false);
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
   return (
     <div className="gd-root">
       {/* ambient sparkles */}
       <div className="gd-sparkles" aria-hidden>
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 18 }).map((_, i) => (
           <span
             key={i}
-            className={`gd-sparkle gd-sparkle-${i}`}
+            className="gd-sparkle"
             style={{
-              left: `${(i * 83) % 100}%`,
-              top: `${(i * 47) % 100}%`,
-              animationDelay: `${(i * 317) % 4000}ms`,
+              left: `${(i * 83 + 11) % 100}%`,
+              top: `${(i * 47 + 7) % 100}%`,
+              animationDelay: `${(i * 317) % 5000}ms`,
+              animationDuration: `${5 + ((i * 131) % 3000) / 1000}s`,
             }}
           />
         ))}
@@ -153,52 +240,87 @@ export default function GameDashboard() {
         className="gd-banner animate-fade-up"
         style={{ animationDelay: '40ms' }}
       >
-        <div className="gd-banner-avatar">
-          <svg viewBox="0 0 36 36" width="36" height="36">
-            <circle cx="18" cy="15" r="7" fill="#f0b840" stroke="#1a0f05" strokeWidth="2" />
-            <path d="M6 32 Q6 22 18 22 Q30 22 30 32 Z" fill="#c0392b" stroke="#1a0f05" strokeWidth="2" />
-            <circle cx="15" cy="15" r="1.1" fill="#1a0f05" />
-            <circle cx="21" cy="15" r="1.1" fill="#1a0f05" />
-            <path d="M14 18 Q18 20 22 18" stroke="#1a0f05" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+        <div className="gd-banner-rank" style={{ '--rank-col': rank.color, '--rank-ring': rank.ringColor } as React.CSSProperties}>
+          <svg viewBox="0 0 40 40" width="40" height="40">
+            <defs>
+              <radialGradient id="rank-grad" cx="40%" cy="35%" r="70%">
+                <stop offset="0%" stopColor="#fff6dc" />
+                <stop offset="55%" stopColor={rank.ringColor} />
+                <stop offset="100%" stopColor={rank.color} />
+              </radialGradient>
+            </defs>
+            {/* crest shield */}
+            <path
+              d="M20 3 L34 7 L34 20 Q34 30 20 37 Q6 30 6 20 L6 7 Z"
+              fill="url(#rank-grad)"
+              stroke="#0d0a06"
+              strokeWidth="2.2"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M20 7 L30 10 L30 20 Q30 27 20 33 Q10 27 10 20 L10 10 Z"
+              fill={rank.color}
+              stroke="#0d0a06"
+              strokeWidth="1.4"
+            />
+            {/* star */}
+            <path
+              d="M20 13 L22 18 L27 18 L23 21 L24.5 26 L20 23 L15.5 26 L17 21 L13 18 L18 18 Z"
+              fill="#fff6dc"
+              stroke="#0d0a06"
+              strokeWidth="1"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
         <div className="gd-banner-body">
-          <span className="gd-banner-label">VORST VAN</span>
+          <span className="gd-banner-rank-label font-display" style={{ color: rank.ringColor }}>
+            {rank.label}
+          </span>
           <span className="gd-banner-name font-display">{displayName}</span>
         </div>
-        <div className="gd-banner-meta">
-          <span className="gd-banner-level font-display">LVL 1</span>
-          <span className="gd-banner-chevron">›</span>
+        <div className="gd-banner-level">
+          <div className="gd-level-badge">
+            <span className="gd-level-label font-display">LVL</span>
+            <span className="gd-level-num font-display">{level}</span>
+          </div>
         </div>
       </Link>
 
-      {/* ===== City frame — picture-frame style ===== */}
-      <div
-        className="gd-city animate-fade-up"
-        style={{ animationDelay: '120ms' }}
-      >
-        <div className="gd-city-frame">
-          <div className="gd-city-header font-display">
-            <span className="gd-city-diamond" />
-            <span>UW RIJK</span>
-            <span className="gd-city-diamond" />
-          </div>
-          <div className="gd-city-inner">
-            <CityPreview />
-          </div>
-          <div className="gd-city-corner gd-city-corner-tl" />
-          <div className="gd-city-corner gd-city-corner-tr" />
-          <div className="gd-city-corner gd-city-corner-bl" />
-          <div className="gd-city-corner gd-city-corner-br" />
+      {/* ===== FULLSCREEN CITY (edge-to-edge) ===== */}
+      <div className="gd-city animate-fade-up" style={{ animationDelay: '120ms' }}>
+        <div
+          className={`gd-city-stage ${dragging ? 'gd-dragging' : ''}`}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+          onMouseDown={onMouseDown}
+          style={{
+            transform: `rotateY(${cityRotation}deg)`,
+          }}
+        >
+          <CityPreview />
         </div>
+
+        {/* coins overflow badge — subtle arrow to /stad */}
+        {coinsOverflow && (
+          <Link
+            href="/stad"
+            onClick={() => sfxTap()}
+            className="gd-build-hint"
+            aria-label="Bouw iets in je stad"
+          >
+            <span className="gd-build-hint-dot" />
+            <span className="gd-build-hint-label font-display">BOUW IETS</span>
+            <span className="gd-build-hint-arrow">›</span>
+          </Link>
+        )}
       </div>
 
       {/* ===== Stats row ===== */}
       <div className="gd-stats">
-        <div
-          className="gd-chip animate-fade-up"
-          style={{ animationDelay: '180ms' }}
-        >
+        <div className="gd-chip animate-fade-up" style={{ animationDelay: '180ms' }}>
           <div className="gd-chip-icon gd-chip-icon-flame">
             <FlameIcon size={22} />
           </div>
@@ -208,10 +330,7 @@ export default function GameDashboard() {
           </div>
         </div>
 
-        <div
-          className="gd-chip gd-chip-coin animate-fade-up"
-          style={{ animationDelay: '240ms' }}
-        >
+        <div className="gd-chip gd-chip-coin animate-fade-up" style={{ animationDelay: '240ms' }}>
           <div className="gd-chip-icon gd-chip-icon-coin">
             <CoinIcon size={22} />
           </div>
@@ -220,19 +339,13 @@ export default function GameDashboard() {
               {coins.toLocaleString('nl-NL')}
             </span>
             <div className="gd-chip-bar">
-              <div
-                className="gd-chip-bar-fill"
-                style={{ width: `${Math.round(coinPct * 100)}%` }}
-              />
+              <div className="gd-chip-bar-fill" style={{ width: `${Math.round(coinPct * 100)}%` }} />
               <div className="gd-chip-bar-shine" />
             </div>
           </div>
         </div>
 
-        <div
-          className="gd-chip animate-fade-up"
-          style={{ animationDelay: '300ms' }}
-        >
+        <div className="gd-chip animate-fade-up" style={{ animationDelay: '300ms' }}>
           <div className="gd-chip-icon gd-chip-icon-trophy">
             <TrophyIcon size={22} />
           </div>
@@ -247,15 +360,14 @@ export default function GameDashboard() {
       <Link
         href="/opdracht"
         onClick={() => sfxTap()}
-        className={`gd-quest animate-fade-up ${questState === 'done' ? 'gd-quest-done' : ''} ${questState !== 'done' ? 'gd-quest-pulse' : ''}`}
+        className={`gd-quest animate-fade-up ${questState === 'done' ? 'gd-quest-done' : ''} ${questPending ? 'gd-quest-pulse' : ''}`}
         style={{ animationDelay: '360ms' }}
       >
+        {questPending && <span className="gd-quest-badge" aria-hidden />}
         <div className="gd-quest-inner">
           <div className="gd-quest-head">
-            <span className="gd-quest-eyebrow font-display">
-              DAGELIJKSE OPDRACHT
-            </span>
-            {questState !== 'done' && displayTask && (
+            <span className="gd-quest-eyebrow font-display">DAGELIJKSE OPDRACHT</span>
+            {questPending && displayTask && (
               <span
                 className="gd-quest-tier font-display"
                 style={{
@@ -267,26 +379,20 @@ export default function GameDashboard() {
                 {heroTierStyle.label}
               </span>
             )}
-            {questState === 'done' && (
-              <span className="gd-quest-check">✓</span>
-            )}
+            {!questPending && <span className="gd-quest-check">✓</span>}
           </div>
 
           <div className="gd-quest-body">
             {questState === 'done' ? (
               <>
-                <p className="gd-quest-text font-display">
-                  Vandaag voltooid
-                </p>
+                <p className="gd-quest-text font-display">Vandaag voltooid</p>
                 <p className="gd-quest-sub font-body">
                   Kom morgen terug voor een nieuwe opdracht
                 </p>
               </>
             ) : displayTask ? (
               <>
-                <p className="gd-quest-text font-display">
-                  {displayTask.text}
-                </p>
+                <p className="gd-quest-text font-display">{displayTask.text}</p>
                 <div className="gd-quest-meta">
                   <span className="gd-quest-meta-pill">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
@@ -307,25 +413,36 @@ export default function GameDashboard() {
             )}
           </div>
 
-          <div
-            className={`gd-quest-cta font-display ${questState === 'done' ? 'gd-quest-cta-done' : ''}`}
-          >
+          <div className={`gd-quest-cta font-display ${questState === 'done' ? 'gd-quest-cta-done' : ''}`}>
             <span className="gd-quest-cta-label">{ctaLabel}</span>
-            {questState !== 'done' && (
-              <span className="gd-quest-cta-arrow">›</span>
-            )}
+            {questPending && <span className="gd-quest-cta-arrow">›</span>}
           </div>
         </div>
       </Link>
 
-      {/* ===== Chest slots ===== */}
+      {/* ===== Countdown bar ===== */}
       <div
-        className="gd-chests animate-fade-up"
-        style={{ animationDelay: '480ms' }}
+        className={`gd-countdown animate-fade-up ${urgent ? 'gd-countdown-urgent' : ''}`}
+        style={{ animationDelay: '440ms' }}
       >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+          <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" strokeWidth="2.2" />
+          <path d="M12 9 V13 L15 15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+          <rect x="9" y="3" width="6" height="2" fill="currentColor" />
+        </svg>
+        <span className="font-display">
+          {questState === 'done'
+            ? 'Nieuwe opdracht over'
+            : 'Vervalt over'}{' '}
+          {formatCountdown(dayMs)}
+        </span>
+      </div>
+
+      {/* ===== Chest slots ===== */}
+      <div className="gd-chests animate-fade-up" style={{ animationDelay: '520ms' }}>
         {[0, 1, 2, 3].map((i) => {
           const isFirst = i === 0;
-          const active = isFirst && chestAvailable;
+          const active = isFirst && freeChestAvailable;
           return (
             <Link
               key={i}
@@ -335,13 +452,14 @@ export default function GameDashboard() {
                 sfxTap();
               }}
               className={`gd-chest ${active ? 'gd-chest-ready' : ''} ${!isFirst ? 'gd-chest-locked' : ''}`}
-              aria-label={isFirst ? 'Gratis kist' : 'Kist-slot vergrendeld'}
+              aria-label={isFirst ? 'Gratis kist' : 'Kist-slot vergrendeld — win via battle'}
             >
+              {active && <span className="gd-chest-badge" aria-hidden />}
               <div className="gd-chest-art">
-                <ChestIcon size={38} />
+                <BigChest variant={isFirst ? 'wood' : 'stone'} />
                 {!isFirst && (
                   <span className="gd-chest-lock">
-                    <LockIcon size={20} />
+                    <LockIcon size={22} />
                   </span>
                 )}
               </div>
@@ -350,7 +468,7 @@ export default function GameDashboard() {
                   ? active
                     ? 'GRATIS'
                     : formatMs(chestMs)
-                  : `#${i + 1}`}
+                  : 'BATTLE'}
               </span>
             </Link>
           );
@@ -367,7 +485,7 @@ export default function GameDashboard() {
             calc(env(safe-area-inset-bottom, 0px) + 140px);
           display: flex;
           flex-direction: column;
-          gap: 11px;
+          gap: 10px;
         }
 
         /* ===== Sparkles ===== */
@@ -376,6 +494,7 @@ export default function GameDashboard() {
           inset: 0;
           pointer-events: none;
           overflow: hidden;
+          z-index: 0;
         }
         .gd-sparkle {
           position: absolute;
@@ -389,12 +508,12 @@ export default function GameDashboard() {
             rgba(255, 220, 140, 0) 100%
           );
           box-shadow: 0 0 6px rgba(255, 220, 140, 0.9);
-          animation: sparkleTwinkle 4s ease-in-out infinite;
+          animation: sparkleDrift 6s ease-in-out infinite;
           opacity: 0;
         }
-        @keyframes sparkleTwinkle {
-          0%, 100% { opacity: 0; transform: scale(0.5); }
-          40%, 60% { opacity: 0.9; transform: scale(1.2); }
+        @keyframes sparkleDrift {
+          0%, 100% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+          35%, 65% { opacity: 0.9; transform: translate(4px, -6px) scale(1.2); }
         }
 
         /* ===== Banner ===== */
@@ -403,7 +522,7 @@ export default function GameDashboard() {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 9px 12px 9px 9px;
+          padding: 7px 11px 7px 8px;
           border-radius: 18px;
           background: linear-gradient(180deg, #3d2410 0%, #2a1a0e 45%, #1a0f05 100%);
           border: 3px solid #0d0a06;
@@ -416,23 +535,10 @@ export default function GameDashboard() {
           text-decoration: none;
           overflow: hidden;
           transition: transform 120ms ease-out;
+          z-index: 1;
         }
-        .gd-banner:active {
-          transform: scale(0.98);
-        }
+        .gd-banner:active { transform: scale(0.98); }
         .gd-banner::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            120deg,
-            rgba(240, 184, 64, 0) 30%,
-            rgba(255, 220, 140, 0.14) 50%,
-            rgba(240, 184, 64, 0) 70%
-          );
-          pointer-events: none;
-        }
-        .gd-banner::after {
           content: '';
           position: absolute;
           inset: 3px;
@@ -440,22 +546,16 @@ export default function GameDashboard() {
           border: 1px solid rgba(240, 184, 64, 0.35);
           pointer-events: none;
         }
-        .gd-banner-avatar {
+        .gd-banner-rank {
           position: relative;
           flex: 0 0 auto;
-          width: 50px;
-          height: 50px;
-          border-radius: 50%;
-          background: radial-gradient(circle at 32% 28%, #3d2410 0%, #1a0f05 70%);
-          border: 3px solid #fdd069;
+          width: 48px;
+          height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow:
-            inset 0 0 12px rgba(0, 0, 0, 0.8),
-            inset 0 2px 0 rgba(255, 246, 220, 0.4),
-            0 2px 0 #0d0a06,
-            0 0 14px rgba(240, 184, 64, 0.45);
+          filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.8))
+                  drop-shadow(0 0 12px var(--rank-col, #f0b840));
         }
         .gd-banner-body {
           flex: 1;
@@ -464,177 +564,186 @@ export default function GameDashboard() {
           gap: 2px;
           min-width: 0;
         }
-        .gd-banner-label {
-          font-size: 9px;
-          letter-spacing: 0.18em;
-          color: #fdd069;
-          opacity: 0.8;
+        .gd-banner-rank-label {
+          font-size: 10px;
+          letter-spacing: 0.22em;
           text-transform: uppercase;
-          font-weight: 700;
-          text-shadow: 0 1px 0 #0d0a06;
+          text-shadow: 0 1.5px 0 #0d0a06;
         }
         .gd-banner-name {
           font-size: 20px;
           color: #fff6dc;
           text-shadow:
-            0 1.5px 0 #0d0a06,
-            0 0 12px rgba(240, 184, 64, 0.35);
-          letter-spacing: 0.03em;
+            0 2px 0 #0d0a06,
+            0 0 14px rgba(240, 184, 64, 0.4);
+          letter-spacing: 0.02em;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
           line-height: 1.05;
         }
-        .gd-banner-meta {
+        .gd-banner-level {
+          flex: 0 0 auto;
+        }
+        .gd-level-badge {
           display: flex;
           flex-direction: column;
-          align-items: flex-end;
-          gap: 2px;
-          padding-right: 2px;
-        }
-        .gd-banner-level {
-          font-size: 10px;
-          letter-spacing: 0.12em;
-          color: #0d0a06;
-          background: linear-gradient(180deg, #fdd069, #c8891e);
-          padding: 3px 8px;
-          border-radius: 999px;
-          border: 1.5px solid #0d0a06;
+          align-items: center;
+          justify-content: center;
+          width: 46px;
+          height: 46px;
+          border-radius: 14px;
+          background: linear-gradient(180deg, #fff6dc 0%, #fdd069 20%, #f0b840 60%, #8a5a10 100%);
+          border: 2.5px solid #0d0a06;
           box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.7),
-            0 1.5px 0 #0d0a06;
+            inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
+            inset 0 -2px 0 rgba(60, 20, 0, 0.55),
+            0 2.5px 0 #0d0a06,
+            0 5px 10px rgba(0, 0, 0, 0.55),
+            0 0 14px rgba(240, 184, 64, 0.55);
+          padding: 2px 4px;
         }
-        .gd-banner-chevron {
-          color: #fdd069;
-          font-size: 24px;
-          font-family: var(--font-display), system-ui, sans-serif;
-          text-shadow: 0 1.5px 0 #0d0a06;
+        .gd-level-label {
+          font-size: 8px;
+          letter-spacing: 0.16em;
+          color: #2a1505;
+          text-shadow: 0 1px 0 rgba(255, 246, 220, 0.75);
           line-height: 1;
-          opacity: 0.8;
+        }
+        .gd-level-num {
+          font-size: 20px;
+          color: #2a1505;
+          text-shadow: 0 1.5px 0 rgba(255, 246, 220, 0.8);
+          line-height: 1;
+          margin-top: 1px;
         }
 
-        /* ===== City frame ===== */
+        /* ===== Fullscreen city ===== */
         .gd-city {
           position: relative;
-          width: 100%;
-          display: flex;
-          justify-content: center;
-        }
-        .gd-city-frame {
-          position: relative;
-          width: 100%;
-          max-width: 400px;
-          padding: 5px;
-          border-radius: 22px;
-          background: linear-gradient(
-            180deg,
-            #fff6dc 0%,
-            #fdd069 12%,
-            #c8891e 40%,
-            #6e4c10 75%,
-            #2a1505 100%
-          );
-          box-shadow:
-            inset 0 2px 0 rgba(255, 255, 255, 0.6),
-            inset 0 -2px 0 rgba(0, 0, 0, 0.5),
-            0 5px 0 #0d0a06,
-            0 12px 26px rgba(0, 0, 0, 0.7);
-        }
-        .gd-city-header {
-          position: absolute;
-          top: -11px;
-          left: 50%;
-          transform: translateX(-50%);
+          width: calc(100% + 28px);
+          margin: 0 -14px;
+          height: 26vh;
+          min-height: 170px;
+          max-height: 230px;
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 4px 16px;
-          background: linear-gradient(180deg, #fdd069 0%, #c8891e 100%);
-          border: 2.5px solid #0d0a06;
-          border-radius: 999px;
-          font-size: 11px;
-          letter-spacing: 0.2em;
-          color: #2a1505;
-          text-transform: uppercase;
-          text-shadow: 0 1px 0 rgba(255, 246, 220, 0.7);
-          z-index: 4;
-          box-shadow:
-            inset 0 1.5px 0 rgba(255, 255, 255, 0.75),
-            inset 0 -1.5px 0 rgba(60, 20, 0, 0.5),
-            0 3px 0 #0d0a06,
-            0 6px 10px rgba(0, 0, 0, 0.5);
-        }
-        .gd-city-diamond {
-          width: 7px;
-          height: 7px;
-          background: #0d0a06;
-          transform: rotate(45deg);
-          box-shadow: 0 0 4px rgba(253, 208, 105, 0.8);
-        }
-        .gd-city-inner {
-          position: relative;
-          border-radius: 17px;
-          overflow: hidden;
-          border: 2.5px solid #0d0a06;
-          background: linear-gradient(180deg, #12213f 0%, #0b1630 55%, #060c1f 100%);
-          box-shadow:
-            inset 0 0 0 1px rgba(240, 184, 64, 0.45),
-            inset 0 3px 10px rgba(0, 0, 0, 0.75);
-          padding: 12px 6px 2px;
-          max-height: 190px;
-        }
-        .gd-city-inner > :global(*) { max-height: 100%; }
-        .gd-city-inner::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(
-            ellipse 90% 60% at 50% 0%,
-            rgba(255, 220, 140, 0.15) 0%,
-            rgba(255, 220, 140, 0) 70%
-          );
-          pointer-events: none;
+          justify-content: center;
+          overflow: visible;
+          perspective: 900px;
           z-index: 1;
         }
-        .gd-city-corner {
+        .gd-city::before {
+          content: '';
           position: absolute;
-          width: 18px;
-          height: 18px;
-          background: radial-gradient(circle at 50% 50%, #fdd069 0%, #8a5a10 100%);
-          border: 2px solid #0d0a06;
-          border-radius: 50%;
-          box-shadow:
-            inset 0 1.5px 0 rgba(255, 255, 255, 0.7),
-            0 1.5px 0 #0d0a06;
-          z-index: 5;
+          inset: -20px 0 -10px;
+          background:
+            radial-gradient(
+              ellipse 70% 50% at 50% 55%,
+              rgba(255, 220, 140, 0.2) 0%,
+              rgba(255, 180, 60, 0) 65%
+            ),
+            radial-gradient(
+              ellipse 80% 35% at 50% 100%,
+              rgba(0, 0, 0, 0.45) 0%,
+              rgba(0, 0, 0, 0) 70%
+            );
+          pointer-events: none;
         }
-        .gd-city-corner-tl { top: -5px; left: -5px; }
-        .gd-city-corner-tr { top: -5px; right: -5px; }
-        .gd-city-corner-bl { bottom: -5px; left: -5px; }
-        .gd-city-corner-br { bottom: -5px; right: -5px; }
-        .gd-city-inner > :global(.city-preview) {
+        .gd-city-stage {
           position: relative;
-          z-index: 2;
-          filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform-style: preserve-3d;
+          will-change: transform;
+          touch-action: pan-y;
+          user-select: none;
+          -webkit-user-select: none;
+          cursor: grab;
+          animation: cityWiggle 6s ease-in-out infinite;
         }
-        /* kill the inner CityPreview's own card frame since we wrap it */
-        .gd-city-inner :global(.city-preview .card) {
+        .gd-city-stage.gd-dragging {
+          animation: none;
+          cursor: grabbing;
+        }
+        @keyframes cityWiggle {
+          0%, 100% { transform: rotateY(-2deg); }
+          50%      { transform: rotateY(2deg); }
+        }
+        /* neutralise CityPreview's own frame */
+        .gd-city-stage :global(.city-preview) {
+          max-width: 100% !important;
+          width: 100%;
+          filter: none;
+        }
+        .gd-city-stage :global(.city-preview .card) {
           background: transparent !important;
           box-shadow: none !important;
           padding: 0 !important;
         }
-        .gd-city-inner :global(.city-preview .card-inner) {
+        .gd-city-stage :global(.city-preview .card-inner) {
           background: transparent !important;
           border: none !important;
           box-shadow: none !important;
           padding: 0 !important;
+          aspect-ratio: auto !important;
+          height: 100% !important;
         }
-        .gd-city-inner :global(.city-preview .card-header),
-        .gd-city-inner :global(.city-preview .card-footer) {
+        .gd-city-stage :global(.city-preview .card-header),
+        .gd-city-stage :global(.city-preview .card-footer) {
           display: none !important;
         }
-        .gd-city-inner :global(.city-preview) {
-          max-width: 240px !important;
+        .gd-city-stage :global(svg) {
+          filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7));
+        }
+
+        /* ===== Coins overflow build-hint ===== */
+        .gd-build-hint {
+          position: absolute;
+          right: 18px;
+          top: 14px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 11px 6px 9px;
+          border-radius: 999px;
+          background: linear-gradient(180deg, #fff6dc 0%, #fdd069 25%, #c8891e 100%);
+          border: 2.5px solid #0d0a06;
+          box-shadow:
+            inset 0 1.5px 0 rgba(255, 255, 255, 0.9),
+            inset 0 -1.5px 0 rgba(60, 20, 0, 0.55),
+            0 2px 0 #0d0a06,
+            0 4px 10px rgba(0, 0, 0, 0.6),
+            0 0 16px rgba(240, 184, 64, 0.7);
+          text-decoration: none;
+          color: #2a1505;
+          font-size: 11px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          text-shadow: 0 1px 0 rgba(255, 246, 220, 0.85);
+          animation: buildHintBob 2.4s ease-in-out infinite;
+          z-index: 3;
+        }
+        .gd-build-hint-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #c0392b;
+          box-shadow: 0 0 8px rgba(192, 57, 43, 0.9);
+        }
+        .gd-build-hint-label {
+          color: #2a1505;
+        }
+        .gd-build-hint-arrow {
+          font-size: 16px;
+          line-height: 1;
+        }
+        @keyframes buildHintBob {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-2px); }
         }
 
         /* ===== Stats ===== */
@@ -642,6 +751,8 @@ export default function GameDashboard() {
           display: grid;
           grid-template-columns: 1fr 1.2fr 1fr;
           gap: 8px;
+          z-index: 1;
+          position: relative;
         }
         .gd-chip {
           position: relative;
@@ -658,7 +769,7 @@ export default function GameDashboard() {
             inset 0 0 0 1px rgba(240, 184, 64, 0.2),
             0 4px 0 #0d0a06,
             0 6px 12px rgba(0, 0, 0, 0.5);
-          min-height: 56px;
+          min-height: 54px;
           overflow: hidden;
         }
         .gd-chip::before {
@@ -668,18 +779,14 @@ export default function GameDashboard() {
           left: 0;
           right: 0;
           height: 50%;
-          background: linear-gradient(
-            180deg,
-            rgba(255, 246, 220, 0.14) 0%,
-            rgba(255, 246, 220, 0) 100%
-          );
+          background: linear-gradient(180deg, rgba(255, 246, 220, 0.14), rgba(255, 246, 220, 0));
           pointer-events: none;
           border-radius: 13px 13px 0 0;
         }
         .gd-chip-icon {
           flex: 0 0 auto;
-          width: 36px;
-          height: 36px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -692,8 +799,6 @@ export default function GameDashboard() {
             0 1.5px 0 #0d0a06;
         }
         .gd-chip-icon-flame { border-color: #ff8a3a; box-shadow: inset 0 0 10px rgba(0,0,0,0.9), inset 0 1.5px 0 rgba(255,200,140,0.4), 0 1.5px 0 #0d0a06, 0 0 12px rgba(255,138,58,0.55); }
-        .gd-chip-icon-coin  { border-color: #fdd069; }
-        .gd-chip-icon-trophy{ border-color: #fdd069; }
         .gd-chip-body {
           display: flex;
           flex-direction: column;
@@ -725,34 +830,21 @@ export default function GameDashboard() {
           border-radius: 4px;
           background: #0d0a06;
           border: 1.5px solid #0d0a06;
-          box-shadow:
-            inset 0 2px 3px rgba(0, 0, 0, 0.9),
-            0 1px 0 rgba(255, 255, 255, 0.08);
+          box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.9);
           margin-top: 5px;
           overflow: hidden;
         }
         .gd-chip-bar-fill {
           position: absolute;
           inset: 0 auto 0 0;
-          background: linear-gradient(
-            180deg,
-            #fff6dc 0%,
-            #fdd069 30%,
-            #f0b840 70%,
-            #c8891e 100%
-          );
+          background: linear-gradient(180deg, #fff6dc 0%, #fdd069 30%, #f0b840 70%, #c8891e 100%);
           box-shadow: 0 0 10px rgba(240, 184, 64, 0.9);
           transition: width 400ms ease-out;
         }
         .gd-chip-bar-shine {
           position: absolute;
           inset: 0;
-          background: linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 0.5) 50%,
-            rgba(255, 255, 255, 0) 100%
-          );
+          background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%);
           transform: translateX(-100%);
           animation: barShine 4s ease-in-out infinite;
           pointer-events: none;
@@ -768,15 +860,8 @@ export default function GameDashboard() {
           display: block;
           text-decoration: none;
           padding: 4px;
-          border-radius: 24px;
-          background: linear-gradient(
-            180deg,
-            #fff6dc 0%,
-            #fdd069 10%,
-            #f0b840 30%,
-            #8a5a10 70%,
-            #2a1505 100%
-          );
+          border-radius: 22px;
+          background: linear-gradient(180deg, #fff6dc 0%, #fdd069 10%, #f0b840 30%, #8a5a10 70%, #2a1505 100%);
           border: 4px solid #0d0a06;
           box-shadow:
             inset 0 2px 0 rgba(255, 255, 255, 0.8),
@@ -785,41 +870,65 @@ export default function GameDashboard() {
             0 14px 26px rgba(0, 0, 0, 0.7),
             0 0 30px rgba(240, 184, 64, 0.45);
           transition: transform 120ms ease-out;
+          z-index: 2;
         }
-        .gd-quest:active {
-          transform: scale(0.97) translateY(2px);
-        }
-        .gd-quest-pulse {
-          animation: questPulse 2.2s ease-in-out infinite;
-        }
+        .gd-quest:active { transform: scale(0.97) translateY(2px); }
+        .gd-quest-pulse { animation: questPulse 2.2s ease-in-out infinite; }
         @keyframes questPulse {
           0%, 100% {
             box-shadow:
-              inset 0 2px 0 rgba(255, 255, 255, 0.8),
-              inset 0 -3px 0 rgba(60, 20, 0, 0.6),
+              inset 0 2px 0 rgba(255,255,255,0.8),
+              inset 0 -3px 0 rgba(60,20,0,0.6),
               0 6px 0 #0d0a06,
-              0 14px 26px rgba(0, 0, 0, 0.7),
-              0 0 28px rgba(240, 184, 64, 0.45);
+              0 14px 26px rgba(0,0,0,0.7),
+              0 0 28px rgba(240,184,64,0.45);
           }
           50% {
             box-shadow:
-              inset 0 2px 0 rgba(255, 255, 255, 0.8),
-              inset 0 -3px 0 rgba(60, 20, 0, 0.6),
+              inset 0 2px 0 rgba(255,255,255,0.8),
+              inset 0 -3px 0 rgba(60,20,0,0.6),
               0 6px 0 #0d0a06,
-              0 14px 28px rgba(0, 0, 0, 0.7),
-              0 0 48px rgba(255, 210, 100, 0.85);
+              0 14px 28px rgba(0,0,0,0.7),
+              0 0 48px rgba(255,210,100,0.9);
           }
+        }
+        .gd-quest-badge {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 35% 30%, #ff6a4a 0%, #c0392b 55%, #7a1e0a 100%);
+          border: 2.5px solid #fff6dc;
+          box-shadow:
+            0 2px 0 #0d0a06,
+            0 0 14px rgba(230, 40, 20, 0.9),
+            inset 0 1.5px 0 rgba(255, 255, 255, 0.7);
+          z-index: 5;
+          animation: badgePulse 1.6s ease-in-out infinite;
+        }
+        .gd-quest-badge::after {
+          content: '!';
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff6dc;
+          font-family: var(--font-display), system-ui, sans-serif;
+          font-size: 13px;
+          text-shadow: 0 1px 0 #3d0a00;
+        }
+        @keyframes badgePulse {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.12); }
         }
         .gd-quest-inner {
           position: relative;
-          padding: 12px 14px 12px;
-          border-radius: 19px;
-          background: linear-gradient(
-            180deg,
-            #213f6f 0%,
-            #13284d 40%,
-            #091530 100%
-          );
+          padding: 11px 14px 11px;
+          border-radius: 17px;
+          background: linear-gradient(180deg, #213f6f 0%, #13284d 40%, #091530 100%);
           border: 2px solid #0d0a06;
           box-shadow:
             inset 0 2px 0 rgba(240, 184, 64, 0.45),
@@ -831,11 +940,7 @@ export default function GameDashboard() {
           content: '';
           position: absolute;
           inset: 0;
-          background: radial-gradient(
-            ellipse 90% 60% at 50% 0%,
-            rgba(255, 220, 140, 0.22) 0%,
-            rgba(255, 220, 140, 0) 70%
-          );
+          background: radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 220, 140, 0.22), rgba(255, 220, 140, 0) 70%);
           pointer-events: none;
         }
         .gd-quest-done .gd-quest-inner {
@@ -847,7 +952,7 @@ export default function GameDashboard() {
           align-items: center;
           justify-content: space-between;
           gap: 10px;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
         }
         .gd-quest-eyebrow {
           font-size: 11px;
@@ -874,15 +979,12 @@ export default function GameDashboard() {
           font-family: var(--font-display), system-ui, sans-serif;
           line-height: 1;
         }
-        .gd-quest-body {
-          position: relative;
-        }
         .gd-quest-text {
-          font-size: 17px;
+          font-size: 16px;
           line-height: 1.25;
           color: #fff6dc;
           text-shadow: 0 1.5px 0 #0d0a06;
-          min-height: 42px;
+          min-height: 40px;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
@@ -897,7 +999,7 @@ export default function GameDashboard() {
         .gd-quest-meta {
           display: flex;
           gap: 8px;
-          margin-top: 10px;
+          margin-top: 8px;
         }
         .gd-quest-meta-pill {
           display: inline-flex;
@@ -917,7 +1019,7 @@ export default function GameDashboard() {
         }
         .gd-quest-cta {
           position: relative;
-          margin-top: 10px;
+          margin-top: 9px;
           padding: 11px 16px;
           border-radius: 14px;
           background: linear-gradient(180deg, #fff6dc 0%, #fdd069 15%, #f0b840 45%, #8a5a10 100%);
@@ -941,7 +1043,7 @@ export default function GameDashboard() {
             0 8px 16px rgba(0, 0, 0, 0.55);
         }
         .gd-quest-cta-label {
-          font-size: 17px;
+          font-size: 16px;
           letter-spacing: 0.08em;
           color: #2a1505;
           text-transform: uppercase;
@@ -954,10 +1056,45 @@ export default function GameDashboard() {
         }
         .gd-quest-cta-arrow {
           font-family: var(--font-display), system-ui, sans-serif;
-          font-size: 24px;
+          font-size: 22px;
           color: #2a1505;
           text-shadow: 0 1.5px 0 rgba(255, 246, 220, 0.65);
           line-height: 1;
+        }
+
+        /* ===== Countdown ===== */
+        .gd-countdown {
+          display: inline-flex;
+          align-self: center;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 12px;
+          border-radius: 999px;
+          background: rgba(10, 18, 38, 0.8);
+          border: 1.5px solid rgba(240, 184, 64, 0.45);
+          box-shadow:
+            inset 0 1px 0 rgba(240, 184, 64, 0.25),
+            0 2px 8px rgba(0, 0, 0, 0.5);
+          color: #fdd069;
+          font-size: 11px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          text-shadow: 0 1px 0 #0d0a06;
+          z-index: 1;
+        }
+        .gd-countdown-urgent {
+          color: #ff8a5a;
+          border-color: rgba(230, 80, 40, 0.75);
+          background: rgba(58, 12, 5, 0.85);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 138, 90, 0.4),
+            0 2px 10px rgba(0, 0, 0, 0.6),
+            0 0 14px rgba(230, 80, 40, 0.55);
+          animation: urgentBlink 1.6s ease-in-out infinite;
+        }
+        @keyframes urgentBlink {
+          0%, 100% { opacity: 1; }
+          50%      { opacity: 0.75; }
         }
 
         /* ===== Chests ===== */
@@ -965,6 +1102,8 @@ export default function GameDashboard() {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 8px;
+          z-index: 1;
+          position: relative;
         }
         .gd-chest {
           position: relative;
@@ -972,8 +1111,8 @@ export default function GameDashboard() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 10px 4px 7px;
+          gap: 4px;
+          padding: 8px 4px 6px;
           border-radius: 14px;
           background: linear-gradient(180deg, #3d2410 0%, #2a1a0e 40%, #1a0f05 100%);
           border: 3px solid #0d0a06;
@@ -985,7 +1124,7 @@ export default function GameDashboard() {
             0 6px 10px rgba(0, 0, 0, 0.55);
           text-decoration: none;
           min-height: 78px;
-          overflow: hidden;
+          overflow: visible;
           transition: transform 120ms ease-out;
         }
         .gd-chest::before {
@@ -997,19 +1136,20 @@ export default function GameDashboard() {
           height: 45%;
           background: linear-gradient(180deg, rgba(255, 246, 220, 0.12), rgba(255, 246, 220, 0));
           pointer-events: none;
+          border-radius: 11px 11px 0 0;
         }
-        .gd-chest:active {
-          transform: scale(0.95);
-        }
+        .gd-chest:active { transform: scale(0.95); }
         .gd-chest-art {
           position: relative;
           display: flex;
           align-items: center;
           justify-content: center;
-          filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.9));
+          width: 44px;
+          height: 36px;
+          filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.9));
         }
-        .gd-chest-locked .gd-chest-art :global(svg) {
-          opacity: 0.45;
+        .gd-chest-locked .gd-chest-art {
+          opacity: 0.55;
         }
         .gd-chest-lock {
           position: absolute;
@@ -1018,17 +1158,46 @@ export default function GameDashboard() {
           align-items: center;
           justify-content: center;
           filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.9));
+          opacity: 1 !important;
         }
         .gd-chest-ready {
           background: linear-gradient(180deg, #5c3a1e 0%, #3d2410 50%, #1a0f05 100%);
+          animation: chestGlow 2s ease-in-out infinite, chestShake 4s ease-in-out infinite;
+        }
+        @keyframes chestGlow {
+          0%, 100% {
+            box-shadow:
+              inset 0 2px 0 rgba(255, 220, 140, 0.7),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.75),
+              inset 0 0 0 1px rgba(253, 208, 105, 0.5),
+              0 4px 0 #0d0a06,
+              0 6px 10px rgba(0, 0, 0, 0.55),
+              0 0 18px rgba(240, 184, 64, 0.7);
+          }
+          50% {
+            box-shadow:
+              inset 0 2px 0 rgba(255, 220, 140, 0.85),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.75),
+              inset 0 0 0 1px rgba(253, 208, 105, 0.7),
+              0 4px 0 #0d0a06,
+              0 6px 10px rgba(0, 0, 0, 0.55),
+              0 0 32px rgba(255, 210, 100, 1);
+          }
+        }
+        .gd-chest-badge {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 30% 25%, #fff6dc 0%, #fdd069 40%, #c8891e 100%);
+          border: 2px solid #0d0a06;
           box-shadow:
-            inset 0 2px 0 rgba(255, 220, 140, 0.7),
-            inset 0 -2px 0 rgba(0, 0, 0, 0.75),
-            inset 0 0 0 1px rgba(253, 208, 105, 0.5),
-            0 4px 0 #0d0a06,
-            0 6px 10px rgba(0, 0, 0, 0.55),
-            0 0 22px rgba(240, 184, 64, 0.75);
-          animation: chestShake 4s ease-in-out infinite;
+            0 0 10px rgba(255, 220, 140, 1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+          z-index: 4;
+          animation: badgePulse 1.4s ease-in-out infinite;
         }
         .gd-chest-caption {
           font-size: 10px;
@@ -1040,7 +1209,10 @@ export default function GameDashboard() {
         }
         .gd-chest-ready .gd-chest-caption {
           color: #fff6dc;
-          text-shadow: 0 1px 0 #0d0a06, 0 0 8px rgba(240, 184, 64, 0.8);
+          text-shadow: 0 1px 0 #0d0a06, 0 0 8px rgba(240, 184, 64, 0.9);
+        }
+        .gd-chest-locked .gd-chest-caption {
+          opacity: 0.75;
         }
 
         /* ===== Animations ===== */
@@ -1057,12 +1229,116 @@ export default function GameDashboard() {
           animation: fadeUp 520ms ease-out forwards;
         }
         @keyframes fadeUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
+  );
+}
+
+/* ============================================================
+ * BigChest — volumetric SVG chest with lid, bands and padlock
+ * face. Two variants: wood (free chest) and stone (locked).
+ * ============================================================ */
+function BigChest({ variant }: { variant: 'wood' | 'stone' }) {
+  const pal =
+    variant === 'wood'
+      ? {
+          bodyTop: '#c08038',
+          bodyMid: '#8a5224',
+          bodyBot: '#4a2a10',
+          lidTop: '#d89248',
+          lidBot: '#7a4418',
+          band: '#f0b840',
+          bandShade: '#8a5a10',
+          plate: '#fdd069',
+          plateShade: '#8a5a10',
+          outline: '#1a0f05',
+        }
+      : {
+          bodyTop: '#8e8472',
+          bodyMid: '#5a5245',
+          bodyBot: '#2e2a22',
+          lidTop: '#a89c86',
+          lidBot: '#5a4e3a',
+          band: '#c8bfb0',
+          bandShade: '#605848',
+          plate: '#d8cfb8',
+          plateShade: '#605848',
+          outline: '#0d0a06',
+        };
+  return (
+    <svg viewBox="0 0 48 40" width="44" height="36" fill="none">
+      <defs>
+        <linearGradient id={`chest-body-${variant}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={pal.bodyTop} />
+          <stop offset="0.55" stopColor={pal.bodyMid} />
+          <stop offset="1" stopColor={pal.bodyBot} />
+        </linearGradient>
+        <linearGradient id={`chest-lid-${variant}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={pal.lidTop} />
+          <stop offset="1" stopColor={pal.lidBot} />
+        </linearGradient>
+        <linearGradient id={`chest-band-${variant}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff6dc" />
+          <stop offset="0.45" stopColor={pal.band} />
+          <stop offset="1" stopColor={pal.bandShade} />
+        </linearGradient>
+      </defs>
+      {/* shadow */}
+      <ellipse cx="24" cy="37" rx="20" ry="2.2" fill="rgba(0,0,0,0.5)" />
+      {/* body */}
+      <path
+        d="M4 18 L44 18 L44 35 Q44 37 42 37 L6 37 Q4 37 4 35 Z"
+        fill={`url(#chest-body-${variant})`}
+        stroke={pal.outline}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      {/* body vertical planks */}
+      <line x1="14" y1="18" x2="14" y2="37" stroke={pal.outline} strokeWidth="1" opacity="0.55" />
+      <line x1="24" y1="18" x2="24" y2="37" stroke={pal.outline} strokeWidth="1" opacity="0.55" />
+      <line x1="34" y1="18" x2="34" y2="37" stroke={pal.outline} strokeWidth="1" opacity="0.55" />
+      {/* lid dome */}
+      <path
+        d="M4 18 Q4 6 24 6 Q44 6 44 18 Z"
+        fill={`url(#chest-lid-${variant})`}
+        stroke={pal.outline}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      {/* lid highlight */}
+      <path
+        d="M8 14 Q12 8 22 7"
+        stroke="#fff6dc"
+        strokeWidth="1.4"
+        fill="none"
+        opacity="0.55"
+        strokeLinecap="round"
+      />
+      {/* horizontal band across body/lid join */}
+      <rect x="4" y="17" width="40" height="3.2" fill={`url(#chest-band-${variant})`} stroke={pal.outline} strokeWidth="1.2" />
+      {/* rivets on band */}
+      <circle cx="9" cy="18.6" r="1" fill={pal.plate} stroke={pal.outline} strokeWidth="0.5" />
+      <circle cx="39" cy="18.6" r="1" fill={pal.plate} stroke={pal.outline} strokeWidth="0.5" />
+      {/* vertical gold straps left/right */}
+      <rect x="7" y="18" width="3" height="19" fill={`url(#chest-band-${variant})`} stroke={pal.outline} strokeWidth="1" />
+      <rect x="38" y="18" width="3" height="19" fill={`url(#chest-band-${variant})`} stroke={pal.outline} strokeWidth="1" />
+      {/* plate in centre */}
+      <rect
+        x="20"
+        y="19"
+        width="8"
+        height="10"
+        rx="1"
+        fill={pal.plate}
+        stroke={pal.outline}
+        strokeWidth="1.2"
+      />
+      <rect x="20" y="19" width="8" height="2.5" fill="#fff6dc" opacity="0.6" />
+      {/* keyhole */}
+      <circle cx="24" cy="23.5" r="1.1" fill={pal.outline} />
+      <rect x="23.4" y="23.5" width="1.2" height="3" fill={pal.outline} />
+    </svg>
   );
 }

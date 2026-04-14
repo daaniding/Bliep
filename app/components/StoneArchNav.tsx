@@ -1,8 +1,10 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { loadDailyPick } from '@/lib/dailyTasks';
+import { loadFreeChest, isReady as chestReady } from '@/lib/freeChest';
 
 interface NavItem {
   href: string;
@@ -122,6 +124,24 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function StoneArchNav() {
   const pathname = usePathname();
+  const [homeBadge, setHomeBadge] = useState(false);
+  const [chestBadge, setChestBadge] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => {
+      const pick = loadDailyPick();
+      setHomeBadge(!pick.completed);
+      setChestBadge(chestReady(loadFreeChest()));
+    };
+    refresh();
+    const id = window.setInterval(refresh, 1500);
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   return (
     <nav className="stone-arch-nav">
@@ -200,18 +220,45 @@ export default function StoneArchNav() {
       <div className="arch-row">
         {NAV_ITEMS.map(item => {
           const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+          const showBadge =
+            (item.href === '/' && (homeBadge || chestBadge));
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`arch-tab ${active ? 'active' : ''} ${item.center ? 'center' : ''}`}
             >
-              <div className="arch-tab-icon">{item.icon}</div>
+              <div className="arch-tab-icon">
+                {item.icon}
+                {showBadge && <span className="arch-badge" aria-hidden />}
+              </div>
               <span>{item.label}</span>
             </Link>
           );
         })}
       </div>
+
+      <style jsx>{`
+        .arch-badge {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          min-width: 12px;
+          height: 12px;
+          border-radius: 999px;
+          background: radial-gradient(circle at 30% 25%, #ff6a4a 0%, #c0392b 55%, #7a1e0a 100%);
+          border: 2px solid #fff6dc;
+          box-shadow:
+            0 0 10px rgba(230, 40, 20, 0.95),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
+          animation: archBadgePulse 1.6s ease-in-out infinite;
+          z-index: 3;
+        }
+        @keyframes archBadgePulse {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.15); }
+        }
+      `}</style>
     </nav>
   );
 }
