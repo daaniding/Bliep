@@ -166,13 +166,8 @@ export default function TopHud() {
           padding: 4px 10px 4px 4px;
           min-height: 32px;
           border-radius: 999px;
-          background: linear-gradient(180deg, #04132a 0%, #02091a 100%);
-          border: 2px solid #1a5a9a;
-          box-shadow:
-            inset 0 1.5px 0 rgba(74, 157, 232, 0.55),
-            inset 0 -1.5px 0 rgba(0, 0, 0, 0.85),
-            0 2px 0 #02091a,
-            0 4px 8px rgba(0, 0, 0, 0.55);
+          background: url('/assets/kenney/ui-panels/panel_blue.png') center/100% 100% no-repeat;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
           color: #e8f0ff;
           text-decoration: none;
         }
@@ -256,13 +251,8 @@ export default function TopHud() {
           gap: 8px;
           padding: 4px 10px 4px 4px;
           border-radius: 999px;
-          background: linear-gradient(180deg, #04132a 0%, #02091a 100%);
-          border: 2px solid #1a5a9a;
-          box-shadow:
-            inset 0 1.5px 0 rgba(74, 157, 232, 0.55),
-            inset 0 -1.5px 0 rgba(0, 0, 0, 0.85),
-            0 2px 0 #02091a,
-            0 4px 8px rgba(0, 0, 0, 0.55);
+          background: url('/assets/kenney/ui-panels/panel_blue.png') center/100% 100% no-repeat;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
           text-decoration: none;
           color: #fff6dc;
           min-height: 36px;
@@ -329,13 +319,8 @@ export default function TopHud() {
           width: 32px;
           height: 32px;
           border-radius: 10px;
-          background: linear-gradient(180deg, #04132a 0%, #02091a 100%);
-          border: 2px solid #1a5a9a;
-          box-shadow:
-            inset 0 1.5px 0 rgba(74, 157, 232, 0.55),
-            inset 0 -1.5px 0 rgba(0, 0, 0, 0.85),
-            0 2px 0 #02091a,
-            0 4px 8px rgba(0, 0, 0, 0.55);
+          background: url('/assets/kenney/ui-panels/panel_blue.png') center/100% 100% no-repeat;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
           display: inline-flex;
           align-items: center;
           justify-content: center;
