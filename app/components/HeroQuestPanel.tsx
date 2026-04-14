@@ -71,76 +71,101 @@ export default function HeroQuestPanel({
         zIndex: 20,
       }}
     >
-      {/* === Parchment task scroll === */}
+      {/* === Painted scroll banner with task text ===
+          The scroll PNG is 600×600. Square container + objectFit:contain
+          renders it 1:1 so positions stay predictable. Parchment area
+          measured from the asset: roughly center 56% horizontally,
+          center 38% vertically. */}
       <div
         className="animate-fade-up"
         style={{
           position: 'relative',
-          maxWidth: 320,
-          width: 'calc(100% - 32px)',
-          padding: '12px 22px 14px 22px',
-          background:
-            'radial-gradient(circle at 22% 18%, rgba(255,255,255,0.7), transparent 50%), ' +
-            'linear-gradient(180deg, #fff6dc 0%, #f4e4b0 55%, #d6b67a 100%)',
-          border: '3px solid #5c3a1e',
-          borderRadius: 18,
-          boxShadow:
-            'inset 0 0 0 1.5px rgba(240,184,64,0.7), ' +
-            'inset 0 2px 0 rgba(255,255,255,0.6), ' +
-            'inset 0 -3px 4px rgba(91,60,20,0.25), ' +
-            '0 4px 0 #2a1505, ' +
-            '0 8px 18px rgba(0,0,0,0.7)',
-          textAlign: 'center',
+          width: 260,
+          height: 260,
+          marginBottom: -65,
+          marginTop: -30,
+          filter: 'drop-shadow(0 10px 16px rgba(0,0,0,0.75))',
         }}
       >
-        {/* Tier ribbon */}
+        <img
+          src="/assets/ui/scroll-banner.png"
+          alt=""
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+          }}
+        />
+        {/* Tier ribbon — sits across the top of the scroll */}
         {tierCfg && (
           <div
             style={{
               position: 'absolute',
-              top: -10,
+              top: 50,
               left: '50%',
               transform: 'translateX(-50%)',
-              padding: '2px 14px',
+              padding: '3px 18px',
               background:
-                'linear-gradient(180deg, #c0392b 0%, #7a1f12 100%)',
-              border: '2px solid #0d0a06',
+                'linear-gradient(180deg, #ff5a3a 0%, #c0392b 50%, #7a1f12 100%)',
+              border: '2.5px solid #0d0a06',
               borderRadius: 6,
               boxShadow:
-                'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.6)',
+                'inset 0 1px 0 rgba(255,255,255,0.5), ' +
+                '0 2px 0 #0d0a06, ' +
+                '0 4px 8px rgba(0,0,0,0.6)',
+              zIndex: 2,
+              whiteSpace: 'nowrap',
             }}
           >
             <span
               className="font-display"
               style={{
-                fontSize: 10,
+                fontSize: 11,
                 color: '#fff6dc',
                 letterSpacing: '0.16em',
                 textTransform: 'uppercase',
-                textShadow: '0 1px 0 rgba(0,0,0,0.6)',
+                textShadow: '0 1px 0 rgba(0,0,0,0.7)',
+                lineHeight: 1,
               }}
             >
               {tierCfg.emoji} {tierCfg.label}
             </span>
           </div>
         )}
-        <p
-          className="font-body"
+        {/* Task text — over the parchment area of the painted scroll */}
+        <div
           style={{
-            margin: 0,
-            marginTop: tierCfg ? 6 : 0,
-            fontSize: 13,
-            lineHeight: 1.28,
-            color: '#2a1505',
-            fontWeight: 700,
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            position: 'absolute',
+            top: 90,
+            left: 60,
+            right: 60,
+            bottom: 95,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {speech}
-        </p>
+          <p
+            className="font-body"
+            style={{
+              margin: 0,
+              fontSize: 12,
+              lineHeight: 1.22,
+              color: '#3a1f08',
+              fontWeight: 800,
+              textAlign: 'center',
+              textShadow: '0 1px 0 rgba(255, 240, 200, 0.55)',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {speech}
+          </p>
+        </div>
       </div>
 
       {/* === Knight + START button row === */}
