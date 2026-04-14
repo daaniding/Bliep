@@ -6,15 +6,19 @@ const LINES = [
   'Sire, een nieuwe dag wacht!',
   'De koning vraagt om uw aandacht.',
   'Een opdracht ligt klaar...',
-  'Het rijk heeft u nodig, sire.',
+  'Het rijk heeft u nodig.',
   'Vandaag verdienen we trofeeën!',
-  'Zal ik de kist voor u openen?',
 ];
 
 interface Props {
   chosenTaskTitle?: string | null;
   taskDone?: boolean;
 }
+
+// Knight character standing on the bottom-left cliff. The sprite JPG
+// has a white background, so we use an SVG <feColorMatrix> filter to
+// chroma-key the white pixels to transparent. That makes the knight
+// look like a real PNG cutout standing in the scene.
 
 export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
   const [lineIdx, setLineIdx] = useState(0);
@@ -29,34 +33,42 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
   const speech = taskDone
     ? 'Een glorieuze dag, sire!'
     : chosenTaskTitle
-      ? `Vandaag: ${chosenTaskTitle}`
+      ? chosenTaskTitle
       : LINES[lineIdx];
 
   return (
-    <div
-      className="absolute pointer-events-none flex items-end gap-2"
-      style={{
-        bottom: 230,
-        left: 6,
-        zIndex: 15,
-        animation: 'fadeUp 0.8s ease-out 0.4s both',
-      }}
-    >
-      {/* Knight portrait — gold-rimmed circle */}
+    <>
+      {/* SVG defs holding the chroma-key filter — luminance threshold
+          turns near-white pixels fully transparent. */}
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
+        <defs>
+          <filter id="knightChromaKey" colorInterpolationFilters="sRGB">
+            {/* Step 1: convert near-white to alpha 0 by subtracting
+                a high-luminance threshold from the alpha channel. */}
+            <feColorMatrix
+              type="matrix"
+              values="
+                1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+               -1 -1 -1 0 2.6"
+            />
+            {/* Step 2: clean up edge fringe with a slight composite */}
+            <feComposite in2="SourceGraphic" operator="in" />
+          </filter>
+        </defs>
+      </svg>
+
+      {/* Knight sprite — chroma-keyed, drop-shadow for depth */}
       <div
-        className="knight-bob"
+        className="absolute pointer-events-none"
         style={{
-          width: 72,
-          height: 72,
-          borderRadius: '50%',
-          overflow: 'hidden',
-          border: '3.5px solid #f0b840',
-          boxShadow:
-            'inset 0 0 0 1.5px #0d0a06, ' +
-            '0 5px 12px rgba(0, 0, 0, 0.7), ' +
-            '0 0 22px rgba(240, 184, 64, 0.45)',
-          background: '#0d0a06',
-          flexShrink: 0,
+          bottom: 220,
+          left: 14,
+          width: 110,
+          height: 110,
+          zIndex: 15,
+          animation: 'fadeUp 0.8s ease-out 0.4s both, knightBob 3.2s ease-in-out infinite 1s',
         }}
       >
         <img
@@ -65,18 +77,19 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
           style={{
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center 22%',
+            objectFit: 'contain',
+            filter: 'url(#knightChromaKey) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 18px rgba(240, 184, 64, 0.35))',
           }}
         />
       </div>
 
-      {/* Speech parchment — clean parchment card with curl tail */}
+      {/* Speech parchment — sits above the knight */}
       <div
+        className="absolute pointer-events-none"
         style={{
-          position: 'relative',
-          width: 180,
-          marginBottom: 14,
+          bottom: 320,
+          left: 8,
+          maxWidth: 200,
           padding: '10px 14px 11px 14px',
           background:
             'radial-gradient(circle at 25% 20%, rgba(255,255,255,0.7), transparent 50%), ' +
@@ -87,7 +100,8 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
             'inset 0 0 0 1.5px rgba(240,184,64,0.6), ' +
             'inset 0 2px 0 rgba(255,255,255,0.55), ' +
             '0 4px 10px rgba(0,0,0,0.6)',
-          flexShrink: 0,
+          zIndex: 16,
+          animation: 'fadeUp 0.8s ease-out 0.6s both',
         }}
       >
         <p
@@ -103,13 +117,13 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
         >
           {speech}
         </p>
-        {/* Tail pointing toward the knight */}
+        {/* Tail pointing toward the knight below */}
         <div
           aria-hidden
           style={{
             position: 'absolute',
             bottom: -10,
-            left: 16,
+            left: 28,
             width: 0,
             height: 0,
             borderLeft: '8px solid transparent',
@@ -122,7 +136,7 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
           style={{
             position: 'absolute',
             bottom: -7,
-            left: 18,
+            left: 30,
             width: 0,
             height: 0,
             borderLeft: '6px solid transparent',
@@ -131,6 +145,6 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
           }}
         />
       </div>
-    </div>
+    </>
   );
 }
