@@ -142,28 +142,36 @@ export default function StoneArchNav() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 1px;
-          padding: 8px 4px 12px;
-          background: url('/assets/kenney/ui-buttons/buttonSquare_brown.png') center/100% 100% no-repeat;
-          color: #fff6dc;
+          gap: 3px;
+          padding: 6px 4px 6px;
+          border-radius: 12px;
+          background: linear-gradient(180deg, #0a2d54 0%, #04132a 100%);
+          border: 2px solid #1a5a9a;
+          box-shadow:
+            0 4px 0 #061828,
+            0 8px 14px rgba(0, 0, 0, 0.55),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1.5px 0 rgba(0, 0, 0, 0.6);
+          color: #b8d8ff;
           text-decoration: none;
           font-family: var(--font-display), system-ui, sans-serif;
           font-size: 9px;
           letter-spacing: 0.08em;
           text-transform: uppercase;
           transition: transform 100ms ease-out;
-          min-height: 60px;
-          filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.55));
+          min-height: 56px;
         }
-        .cr-tab:active {
-          background-image: url('/assets/kenney/ui-buttons/buttonSquare_brown_pressed.png');
-          transform: translateY(2px);
-        }
+        .cr-tab:active { transform: translateY(2px); }
         .cr-tab.active {
-          background-image: url('/assets/kenney/ui-buttons/buttonSquare_beige.png');
-          color: #3d2800;
-          filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.55))
-                  drop-shadow(0 0 14px rgba(255, 220, 120, 0.85));
+          border-color: #f0b840;
+          background: linear-gradient(180deg, #143b6a 0%, #0a2349 100%);
+          color: #fff6dc;
+          box-shadow:
+            0 4px 0 #6e4c10,
+            0 8px 14px rgba(0, 0, 0, 0.55),
+            inset 0 1px 0 rgba(255, 246, 220, 0.25),
+            inset 0 -1.5px 0 rgba(0, 0, 0, 0.6),
+            0 0 22px rgba(240, 184, 64, 0.75);
         }
         .cr-tab-icon {
           position: relative;
@@ -184,31 +192,40 @@ export default function StoneArchNav() {
           line-height: 1;
         }
         .cr-tab.active .cr-tab-label {
-          color: #3d2800;
-          text-shadow: 0 1px 0 rgba(255, 246, 220, 0.7);
+          text-shadow: 0 1px 0 #02091a, 0 0 8px rgba(240, 184, 64, 0.85);
         }
 
         /* ===== Center OPDRACHT tab ===== */
         .cr-tab.center {
-          margin-top: -28px;
-          padding: 12px 4px 18px;
-          background: url('/assets/kenney/ui-buttons/buttonSquare_beige.png') center/100% 100% no-repeat;
-          color: #3d2800;
-          min-height: 84px;
+          margin-top: -22px;
+          padding: 8px 4px 8px;
+          background: linear-gradient(180deg, #ffe566 0%, #f0c030 30%, #c8891e 70%, #6e4c10 100%);
+          border: 3px solid #6e4c10;
+          color: #2a1505;
+          box-shadow:
+            0 6px 0 #3d2800,
+            0 10px 22px rgba(0, 0, 0, 0.65),
+            inset 0 2px 0 rgba(255, 255, 255, 0.7),
+            inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+            0 0 24px rgba(240, 184, 64, 0.6);
+          min-height: 72px;
           z-index: 2;
-          filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.65))
-                  drop-shadow(0 0 16px rgba(255, 220, 120, 0.6));
         }
-        .cr-tab.center:active {
-          background-image: url('/assets/kenney/ui-buttons/buttonSquare_beige_pressed.png');
+        .cr-tab.center.active {
+          box-shadow:
+            0 6px 0 #3d2800,
+            0 10px 22px rgba(0, 0, 0, 0.65),
+            inset 0 2px 0 rgba(255, 255, 255, 0.7),
+            inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+            0 0 36px rgba(255, 220, 100, 0.95);
         }
         .cr-tab.center .cr-tab-icon {
-          width: 46px;
-          height: 46px;
+          width: 42px;
+          height: 42px;
         }
         .cr-tab.center .cr-tab-label {
-          color: #3d2800;
-          text-shadow: 0 1px 0 rgba(255, 246, 220, 0.7);
+          color: #2a1505;
+          text-shadow: 0 1px 0 rgba(255, 246, 220, 0.65);
         }
 
         /* ===== Notification badge ===== */

@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import CityPreview from './CityPreview';
 import {
   TrophyIcon,
   ScrollIcon,
   SwordIcon,
   CastleIcon,
+  LockIcon,
 } from './icons/GameIcons';
 import {
   getDailyTasks,
@@ -174,7 +176,7 @@ export default function GameDashboard() {
             onTouchCancel={onTouchEnd}
             onMouseDown={onMouseDown}
           >
-            <KingdomStage buildingCount={buildingCount} />
+            <CityPreview />
           </div>
         </div>
 
@@ -193,12 +195,7 @@ export default function GameDashboard() {
         href="/opdracht"
         onClick={() => sfxTap()}
         className={`gd-doe animate-fade-up ${questPending ? 'gd-doe-pulse' : 'gd-doe-done'}`}
-        style={{
-          animationDelay: '220ms',
-          backgroundImage: `url('/assets/kenney/ui-buttons/${questPending ? 'buttonLong_beige' : 'buttonLong_blue'}.png')`,
-          backgroundSize: '100% 100%',
-          backgroundRepeat: 'no-repeat',
-        }}
+        style={{ animationDelay: '220ms' }}
       >
         {questPending && <span className="gd-doe-badge" aria-hidden />}
         <span className="gd-doe-label font-display">{ctaLabel}</span>
@@ -219,33 +216,13 @@ export default function GameDashboard() {
               }}
               className={`gd-chest ${active ? 'gd-chest-ready' : ''} ${!isFirst ? 'gd-chest-locked' : ''}`}
               aria-label={isFirst ? 'Gratis kist' : 'Vergrendelde kist'}
-              style={{
-                backgroundImage: `url('/assets/kenney/ui-panels/${active ? 'panel_brown' : 'panel_blue'}.png')`,
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
-              }}
             >
               {active && <span className="gd-chest-badge" aria-hidden />}
               <div className="gd-chest-art">
-                <img
-                  src={
-                    isFirst
-                      ? '/assets/kenney/buildings/medievalStructure_18.png'
-                      : '/assets/kenney/buildings/medievalStructure_03.png'
-                  }
-                  alt=""
-                  className="sprite-pixel"
-                  style={{ width: 44, height: 44, imageRendering: 'pixelated' }}
-                />
+                <BigChest variant={isFirst ? 'wood' : 'stone'} />
                 {!isFirst && (
                   <span className="gd-chest-lock">
-                    <img
-                      src="/assets/kenney/ui-icons/iconCross_brown.png"
-                      alt=""
-                      width={18}
-                      height={18}
-                      style={{ imageRendering: 'pixelated' }}
-                    />
+                    <LockIcon size={20} />
                   </span>
                 )}
               </div>
@@ -443,47 +420,69 @@ export default function GameDashboard() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 18px 24px 22px;
-          background: url('/assets/kenney/ui-buttons/buttonLong_beige.png') center/100% 100% no-repeat;
+          padding: 14px 24px;
+          border-radius: 14px;
+          background: linear-gradient(180deg, #ffe566 0%, #f0b840 30%, #c8891e 70%, #8a5a10 100%);
+          border: 3px solid #3d2800;
+          box-shadow:
+            0 6px 0 #3d2800,
+            0 10px 24px rgba(0, 0, 0, 0.6),
+            inset 0 2px 0 rgba(255, 255, 255, 0.6),
+            inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+            0 0 28px rgba(240, 184, 64, 0.45);
           text-decoration: none;
           z-index: 2;
-          transition: transform 80ms ease-out;
-          filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
-          min-height: 70px;
+          transition: transform 100ms ease-out;
         }
         .gd-doe:active {
-          background-image: url('/assets/kenney/ui-buttons/buttonLong_beige_pressed.png');
-          transform: translateY(2px);
+          transform: translateY(3px);
+          box-shadow:
+            0 3px 0 #3d2800,
+            0 5px 12px rgba(0, 0, 0, 0.6),
+            inset 0 2px 0 rgba(255, 255, 255, 0.6),
+            inset 0 -3px 0 rgba(0, 0, 0, 0.3);
         }
         .gd-doe-pulse {
           animation: doePulse 2s ease-in-out infinite;
         }
         @keyframes doePulse {
           0%, 100% {
-            filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55))
-                    drop-shadow(0 0 14px rgba(240, 184, 64, 0.55));
+            box-shadow:
+              0 6px 0 #3d2800,
+              0 10px 24px rgba(0, 0, 0, 0.6),
+              inset 0 2px 0 rgba(255, 255, 255, 0.6),
+              inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+              0 0 28px rgba(240, 184, 64, 0.45);
           }
           50% {
-            filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55))
-                    drop-shadow(0 0 28px rgba(255, 220, 100, 0.95));
+            box-shadow:
+              0 6px 0 #3d2800,
+              0 10px 26px rgba(0, 0, 0, 0.6),
+              inset 0 2px 0 rgba(255, 255, 255, 0.6),
+              inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+              0 0 50px rgba(255, 220, 100, 0.95);
           }
         }
         .gd-doe-done {
-          background-image: url('/assets/kenney/ui-buttons/buttonLong_blue.png');
+          background: linear-gradient(180deg, #c0e0a0 0%, #6ec060 30%, #3d8a35 70%, #1e4a18 100%);
+          border-color: #0d2a08;
+          box-shadow:
+            0 6px 0 #0d2a08,
+            0 10px 24px rgba(0, 0, 0, 0.6),
+            inset 0 2px 0 rgba(255, 255, 255, 0.6),
+            inset 0 -3px 0 rgba(0, 0, 0, 0.3);
         }
         .gd-doe-label {
-          font-size: 24px;
-          letter-spacing: 0.06em;
+          font-size: 22px;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: #3d2800;
-          text-shadow: 0 2px 0 rgba(255, 246, 220, 0.7);
+          color: #2a1505;
+          text-shadow: 0 2px 0 rgba(255, 246, 220, 0.55);
           line-height: 1;
-          position: relative;
-          top: -2px;
         }
         .gd-doe-done .gd-doe-label {
-          color: #fff6dc;
-          text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
+          color: #0d2a08;
+          text-shadow: 0 2px 0 rgba(255, 255, 255, 0.4);
         }
         .gd-doe-badge {
           position: absolute;
@@ -533,13 +532,19 @@ export default function GameDashboard() {
           align-items: center;
           justify-content: center;
           gap: 4px;
-          padding: 10px 6px 8px;
-          background: url('/assets/kenney/ui-panels/panel-009.png') center/100% 100% no-repeat;
+          padding: 8px 4px 6px;
+          border-radius: 12px;
+          background: linear-gradient(180deg, #0a2d54 0%, #04132a 100%);
+          border: 2px solid #1a5a9a;
+          box-shadow:
+            0 4px 0 #061828,
+            0 8px 14px rgba(0, 0, 0, 0.55),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1.5px 0 rgba(0, 0, 0, 0.6);
           text-decoration: none;
-          min-height: 84px;
+          min-height: 78px;
           overflow: visible;
           transition: transform 120ms ease-out;
-          filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
         }
         .gd-chest:active { transform: translateY(2px); }
         .gd-chest-art {
@@ -564,17 +569,26 @@ export default function GameDashboard() {
           filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.9));
         }
         .gd-chest-ready {
-          background-image: url('/assets/kenney/ui-panels/panel-008.png');
+          border-color: #f0b840;
+          background: linear-gradient(180deg, #143b6a 0%, #0a2349 100%);
           animation: chestGlow 2s ease-in-out infinite, chestShake 4s ease-in-out infinite;
         }
         @keyframes chestGlow {
           0%, 100% {
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55))
-                    drop-shadow(0 0 12px rgba(240, 184, 64, 0.7));
+            box-shadow:
+              0 4px 0 #6e4c10,
+              0 8px 14px rgba(0, 0, 0, 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              inset 0 -1.5px 0 rgba(0, 0, 0, 0.6),
+              0 0 18px rgba(240, 184, 64, 0.7);
           }
           50% {
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55))
-                    drop-shadow(0 0 22px rgba(255, 210, 100, 1));
+            box-shadow:
+              0 4px 0 #6e4c10,
+              0 8px 14px rgba(0, 0, 0, 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              inset 0 -1.5px 0 rgba(0, 0, 0, 0.6),
+              0 0 32px rgba(255, 210, 100, 1);
           }
         }
         @keyframes chestShake {
@@ -631,7 +645,7 @@ export default function GameDashboard() {
 
 /* ============================================================
  * RailButton — squared icon button used in the side rails
- * around the city stage. Uses Kenney buttonSquare PNGs.
+ * around the city stage.
  * ============================================================ */
 function RailButton({
   href,
@@ -644,136 +658,140 @@ function RailButton({
   children: React.ReactNode;
   tone?: 'blue' | 'red';
 }) {
-  const bg =
-    tone === 'red'
-      ? '/assets/kenney/ui-buttons/buttonSquare_blue.png'
-      : '/assets/kenney/ui-buttons/buttonSquare_brown.png';
+  const isRed = tone === 'red';
   return (
     <Link
       href={href}
       onClick={() => sfxTap()}
+      className={`rail-btn ${isRed ? 'rail-btn-red' : ''}`}
       aria-label={label}
-      style={{
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 0,
-        width: 60,
-        height: 66,
-        padding: '6px 4px 12px',
-        backgroundImage: `url('${bg}')`,
-        backgroundSize: '100% 100%',
-        backgroundRepeat: 'no-repeat',
-        textDecoration: 'none',
-        color: '#fff6dc',
-        filter: 'drop-shadow(0 4px 5px rgba(0,0,0,0.55))',
-        textShadow: '0 1.5px 0 rgba(0,0,0,0.85)',
-      }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36 }}>
-        {children}
-      </span>
-      <span
-        className="font-display"
-        style={{
-          fontSize: 9,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          marginTop: -2,
-          color: '#fff6dc',
-        }}
-      >
-        {label}
-      </span>
+      <span className="rail-btn-icon">{children}</span>
+      <span className="rail-btn-label font-display">{label}</span>
+      <style jsx>{`
+        .rail-btn {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          width: 50px;
+          padding: 6px 4px 4px;
+          border-radius: 12px;
+          background: linear-gradient(180deg, #0a2d54 0%, #04132a 100%);
+          border: 2px solid #1a5a9a;
+          box-shadow:
+            0 4px 0 #061828,
+            0 8px 14px rgba(0, 0, 0, 0.55),
+            inset 0 1px 0 rgba(255, 255, 255, 0.18),
+            inset 0 -1.5px 0 rgba(0, 0, 0, 0.6);
+          text-decoration: none;
+          color: #b8d8ff;
+          transition: transform 100ms ease-out;
+        }
+        .rail-btn:active { transform: translateY(2px); }
+        .rail-btn-red {
+          background: linear-gradient(180deg, #5a0e08 0%, #2a0500 100%);
+          border-color: #c0392b;
+          box-shadow:
+            0 4px 0 #2a0500,
+            0 8px 14px rgba(0, 0, 0, 0.6),
+            inset 0 1px 0 rgba(255, 200, 180, 0.25),
+            inset 0 -1.5px 0 rgba(0, 0, 0, 0.7),
+            0 0 18px rgba(192, 57, 43, 0.55);
+          color: #ffe0d6;
+        }
+        .rail-btn-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 32% 28%, #1a3a6a 0%, #02091a 80%);
+          border: 2px solid #4a9de8;
+          box-shadow:
+            inset 0 0 8px rgba(0, 0, 0, 0.85),
+            0 1px 0 #02091a;
+        }
+        .rail-btn-red .rail-btn-icon {
+          background: radial-gradient(circle at 32% 28%, #7a1e0a 0%, #2a0500 80%);
+          border-color: #ff8a5a;
+        }
+        .rail-btn-label {
+          font-size: 8px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          text-shadow: 0 1px 0 #02091a;
+        }
+      `}</style>
     </Link>
   );
 }
 
 /* ============================================================
- * KingdomStage — composes Kenney sprites into a kingdom scene.
+ * BigChest — volumetric SVG chest used in the slot row.
  * ============================================================ */
-function KingdomStage({ buildingCount }: { buildingCount: number }) {
-  // Show a few sprites; layout is fixed but level scales sprite count.
-  const showFarm = buildingCount >= 2;
-  const showBarracks = buildingCount >= 3;
+function BigChest({ variant }: { variant: 'wood' | 'stone' }) {
+  const pal =
+    variant === 'wood'
+      ? {
+          bodyTop: '#c08038',
+          bodyMid: '#8a5224',
+          bodyBot: '#3a1c08',
+          lidTop: '#d89248',
+          lidBot: '#7a4418',
+          band: '#f0b840',
+          bandShade: '#8a5a10',
+          plate: '#fdd069',
+          outline: '#0d0a06',
+        }
+      : {
+          bodyTop: '#8e9aab',
+          bodyMid: '#4e5a6a',
+          bodyBot: '#1e2632',
+          lidTop: '#a8b4c8',
+          lidBot: '#525e72',
+          band: '#c8d2e0',
+          bandShade: '#525e72',
+          plate: '#d8e0ec',
+          outline: '#02091a',
+        };
   return (
-    <div className="ks-root" aria-hidden>
-      {/* sky halo */}
-      <div className="ks-halo" />
-      {/* ground ellipse shadow */}
-      <div className="ks-ground" />
-
-      {/* trees back */}
-      <img className="ks-sprite ks-tree-l" src="/assets/kenney/environment/medievalEnvironment_03.png" alt="" />
-      <img className="ks-sprite ks-tree-r" src="/assets/kenney/environment/medievalEnvironment_05.png" alt="" />
-
-      {/* center castle */}
-      <img className="ks-sprite ks-castle" src="/assets/kenney/buildings/medievalStructure_21.png" alt="" />
-
-      {showFarm && (
-        <img className="ks-sprite ks-house" src="/assets/kenney/buildings/medievalStructure_17.png" alt="" />
-      )}
-      {showBarracks && (
-        <img className="ks-sprite ks-barracks" src="/assets/kenney/buildings/medievalStructure_12.png" alt="" />
-      )}
-
-      {/* villagers */}
-      <img className="ks-sprite ks-villager-l" src="/assets/kenney/units/medievalUnit_01.png" alt="" />
-      <img className="ks-sprite ks-villager-r" src="/assets/kenney/units/medievalUnit_05.png" alt="" />
-
-      {/* foreground tree */}
-      <img className="ks-sprite ks-tree-front" src="/assets/kenney/environment/medievalEnvironment_07.png" alt="" />
-
-      <style jsx>{`
-        .ks-root {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: block;
-        }
-        .ks-halo {
-          position: absolute;
-          inset: 0;
-          background:
-            radial-gradient(
-              ellipse 60% 45% at 50% 55%,
-              rgba(255, 220, 140, 0.22) 0%,
-              rgba(255, 180, 60, 0) 65%
-            );
-          pointer-events: none;
-        }
-        .ks-ground {
-          position: absolute;
-          left: 8%;
-          right: 8%;
-          bottom: 6px;
-          height: 22px;
-          border-radius: 50%;
-          background: radial-gradient(
-            ellipse,
-            rgba(0, 0, 0, 0.55) 0%,
-            rgba(0, 0, 0, 0) 70%
-          );
-          pointer-events: none;
-        }
-        .ks-sprite {
-          position: absolute;
-          image-rendering: pixelated;
-          filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.6));
-          transform: translateX(-50%);
-        }
-        .ks-tree-l { left: 8%;  bottom: 22%; width: 38px; }
-        .ks-tree-r { left: 92%; bottom: 26%; width: 32px; }
-        .ks-castle { left: 50%; bottom: 14%; width: 110px; z-index: 3; }
-        .ks-house { left: 22%; bottom: 14%; width: 64px; z-index: 2; }
-        .ks-barracks { left: 78%; bottom: 14%; width: 60px; z-index: 2; }
-        .ks-villager-l { left: 36%; bottom: 6%; width: 28px; z-index: 4; }
-        .ks-villager-r { left: 64%; bottom: 6%; width: 28px; z-index: 4; }
-        .ks-tree-front { left: 14%; bottom: 6%; width: 30px; z-index: 5; }
-      `}</style>
-    </div>
+    <svg viewBox="0 0 48 40" width="44" height="36" fill="none">
+      <defs>
+        <linearGradient id={`chest-body-${variant}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={pal.bodyTop} />
+          <stop offset="0.55" stopColor={pal.bodyMid} />
+          <stop offset="1" stopColor={pal.bodyBot} />
+        </linearGradient>
+        <linearGradient id={`chest-lid-${variant}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={pal.lidTop} />
+          <stop offset="1" stopColor={pal.lidBot} />
+        </linearGradient>
+        <linearGradient id={`chest-band-${variant}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff6dc" />
+          <stop offset="0.45" stopColor={pal.band} />
+          <stop offset="1" stopColor={pal.bandShade} />
+        </linearGradient>
+      </defs>
+      <ellipse cx="24" cy="37" rx="20" ry="2.2" fill="rgba(0,0,0,0.5)" />
+      <path d="M4 18 L44 18 L44 35 Q44 37 42 37 L6 37 Q4 37 4 35 Z" fill={`url(#chest-body-${variant})`} stroke={pal.outline} strokeWidth="2" strokeLinejoin="round" />
+      <line x1="14" y1="18" x2="14" y2="37" stroke={pal.outline} strokeWidth="1" opacity="0.55" />
+      <line x1="24" y1="18" x2="24" y2="37" stroke={pal.outline} strokeWidth="1" opacity="0.55" />
+      <line x1="34" y1="18" x2="34" y2="37" stroke={pal.outline} strokeWidth="1" opacity="0.55" />
+      <path d="M4 18 Q4 6 24 6 Q44 6 44 18 Z" fill={`url(#chest-lid-${variant})`} stroke={pal.outline} strokeWidth="2" strokeLinejoin="round" />
+      <path d="M8 14 Q12 8 22 7" stroke="#fff6dc" strokeWidth="1.4" fill="none" opacity="0.55" strokeLinecap="round" />
+      <rect x="4" y="17" width="40" height="3.2" fill={`url(#chest-band-${variant})`} stroke={pal.outline} strokeWidth="1.2" />
+      <circle cx="9" cy="18.6" r="1" fill={pal.plate} stroke={pal.outline} strokeWidth="0.5" />
+      <circle cx="39" cy="18.6" r="1" fill={pal.plate} stroke={pal.outline} strokeWidth="0.5" />
+      <rect x="7" y="18" width="3" height="19" fill={`url(#chest-band-${variant})`} stroke={pal.outline} strokeWidth="1" />
+      <rect x="38" y="18" width="3" height="19" fill={`url(#chest-band-${variant})`} stroke={pal.outline} strokeWidth="1" />
+      <rect x="20" y="19" width="8" height="10" rx="1" fill={pal.plate} stroke={pal.outline} strokeWidth="1.2" />
+      <rect x="20" y="19" width="8" height="2.5" fill="#fff6dc" opacity="0.6" />
+      <circle cx="24" cy="23.5" r="1.1" fill={pal.outline} />
+      <rect x="23.4" y="23.5" width="1.2" height="3" fill={pal.outline} />
+    </svg>
   );
 }
-
