@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useGLTF, Stars, ContactShadows } from '@react-three/drei';
+import { useGLTF, Stars, ContactShadows, Environment } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode, BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
 
@@ -800,13 +802,14 @@ export default function KingdomScene3D() {
         <Suspense fallback={null}>
           <SkyDome tod={tod} />
           <DayNightLighting tod={tod} />
+          {/* HDR environment for realistic lighting + reflections —
+              swap presets based on time of day */}
+          <Environment preset={tod.darkness > 0.5 ? 'night' : 'sunset'} background={false} environmentIntensity={0.4 + (1 - tod.darkness) * 0.6} />
           {tod.darkness > 0.4 && <Stars radius={50} depth={50} count={800} factor={3} fade />}
 
           <Ground tod={tod} />
 
-          {/* Real GLB castle from poly.pizza — high-detail.
-              Different model authors use vastly different unit scales,
-              so each GLB needs its own scale calibration. */}
+          {/* Real GLB castle from poly.pizza — high-detail */}
           <GLBProp
             url={CASTLE_URL}
             position={[0, 0, -2]}
@@ -825,8 +828,10 @@ export default function KingdomScene3D() {
           <GLBProp url={TREE2_URL} position={[-6.2, 0, 1.5]}  scale={0.5} darkness={tod.darkness} />
           <GLBProp url={TREE1_URL} position={[6.0, 0, 1.5]}   scale={0.5} darkness={tod.darkness} />
 
-          {/* The procedural animated knight in front */}
-          <KnightHero position={[1.5, 0, 3.0]} rotation={-0.6} scale={1.3} />
+          {/* Real GLB knight statue placed at mid-distance */}
+          <GLBProp url={KNIGHT_URL} position={[-1.8, 0, 3.0]} rotation={[0, 0.4, 0]} scale={2.5} darkness={tod.darkness} />
+          {/* Procedural animated knight as the foreground hero anchor */}
+          <KnightHero position={[1.6, 0, 3.4]} rotation={-0.6} scale={1.3} />
 
           {/* Villagers patrolling on different rings around the courtyard */}
           <PatrollingVillager radius={3.4} speed={0.42} startAngle={0}    bodyColor="#9b6838" hatColor="#5a3214" />
@@ -841,6 +846,25 @@ export default function KingdomScene3D() {
           <ContactShadows position={[0, 0, 0]} opacity={0.55} scale={18} blur={2.4} far={4} />
           <CameraRig />
         </Suspense>
+
+        {/* === Post-processing pipeline ===
+            Bloom: glow on bright pixels (gold trim, windows, sun)
+            Vignette: cinematic darkening at the edges
+            ToneMapping: ACES-style filmic mapping for richer colors */}
+        <EffectComposer>
+          <Bloom
+            intensity={0.7}
+            luminanceThreshold={0.55}
+            luminanceSmoothing={0.4}
+            mipmapBlur
+          />
+          <Vignette
+            offset={0.3}
+            darkness={0.65}
+            blendFunction={BlendFunction.NORMAL}
+          />
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        </EffectComposer>
       </Canvas>
     </div>
   );
