@@ -5,7 +5,7 @@ import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import CityPreview from './components/CityPreview';
 import SwordCTA from './components/SwordCTA';
-import DailyPickerModal from './components/DailyPickerModal';
+import KnightIntro from './components/KnightIntro';
 import SideRail from './components/SideRail';
 import FreeChestStrip from './components/FreeChestStrip';
 import DailyQuestStrip from './components/DailyQuestStrip';
@@ -173,7 +173,7 @@ export default function Home() {
     <GameShell>
       <div ref={confettiRef} className="fixed inset-0 pointer-events-none z-[9999]" />
 
-      {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
+      {showPickerModal && <KnightIntro tasks={tasks} onPick={handlePick} />}
 
       {/* Hero column: small header, square city window in the middle, widgets below */}
       <div className="hero-fill animate-fade-up relative flex flex-col items-stretch px-3 pt-3">
