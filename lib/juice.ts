@@ -56,6 +56,19 @@ export function vibrate(pattern: number | number[]) {
   } catch { /* ignore */ }
 }
 
+// ---- Pixi burst event (consumed by CityCanvas) ----
+
+export function burstAt(gx: number, gy: number, kind: 'coin' | 'sparkle' | 'smoke' = 'coin') {
+  if (typeof window === 'undefined') return;
+  if (!getJuiceSettings().particles) return;
+  window.dispatchEvent(new CustomEvent('bliep:city-burst', { detail: { gx, gy, kind } }));
+}
+
+export function shakeCity(intensity = 8) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('bliep:city-shake', { detail: { intensity } }));
+}
+
 // ---- DOM coin floater (for use outside Pixi) ----
 
 export function spawnCoinFloater(host: HTMLElement, text: string, color = '#fdd069') {

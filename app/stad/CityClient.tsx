@@ -34,7 +34,7 @@ import {
   type BuildingType,
 } from '@/lib/game/buildings';
 import { inBuildZone } from '@/lib/game/iso';
-import { playSfx, vibrate } from '@/lib/juice';
+import { playSfx, vibrate, burstAt, shakeCity } from '@/lib/juice';
 import { useCitySync } from '@/lib/useCitySync';
 
 const CityCanvas = dynamic(() => import('./CityCanvas'), { ssr: false });
@@ -51,6 +51,7 @@ export default function CityClient() {
   const [buildingTarget, setBuildingTarget] = useState<PlacedBuilding | null>(null);
   const [placingType, setPlacingType] = useState<BuildingType | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [, forceTick] = useState(0);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -114,6 +115,7 @@ export default function CityClient() {
         showFlash(`+${r.gained} 🪙`);
         playSfx('collect');
         vibrate(15);
+        burstAt(b.gx, b.gy, 'coin');
       }
       return r.state;
     });
@@ -130,6 +132,9 @@ export default function CityClient() {
         showFlash(`+${r.gained} 🪙 daily chest!`);
         playSfx('chest');
         vibrate([30, 30, 60]);
+        burstAt(16, 16, 'sparkle');
+        burstAt(16, 16, 'coin');
+        shakeCity(10);
       }
       return r.state;
     });
@@ -175,6 +180,8 @@ export default function CityClient() {
     showFlash(`${BUILDINGS[type].name} gebouwd!`);
     playSfx('build');
     vibrate(20);
+    burstAt(gx, gy, 'smoke');
+    shakeCity(6);
   }
 
   function handleUpgrade() {
@@ -188,10 +195,12 @@ export default function CityClient() {
       playSfx('fail');
       return;
     }
-    setState(s => startUpgrade(spendCoins(s, cost), buildingTarget.id));
+    const target = buildingTarget;
+    setState(s => startUpgrade(spendCoins(s, cost), target.id));
     setBuildingTarget(null);
     playSfx('build');
     vibrate(20);
+    burstAt(target.gx, target.gy, 'sparkle');
   }
 
   function handleSpeedToken(queueId: string) {
@@ -222,7 +231,15 @@ export default function CityClient() {
           onTapBuilding={handleTapBuilding}
           onTapChest={handleTapChest}
           onCollectFarm={handleCollectFarm}
+          onReady={() => setCanvasReady(true)}
         />
+      )}
+
+      {!canvasReady && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0d0a06] gap-3 pointer-events-none">
+          <div className="w-12 h-12 rounded-full border-4 border-[#fdd069]/30 border-t-[#fdd069] animate-spin" />
+          <p className="font-display text-[#fdd069] text-sm tracking-widest uppercase">Stad laden\u2026</p>
+        </div>
       )}
 
       {/* Top bar: coins + tokens + back */}

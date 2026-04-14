@@ -47,6 +47,7 @@ interface Props {
   onTapBuilding?: (b: PlacedBuilding) => void;
   onTapChest?: () => void;
   onCollectFarm?: (b: PlacedBuilding) => void;
+  onReady?: () => void;
 }
 
 const MIN_ZOOM_INTERACTIVE = 0.35;
@@ -87,6 +88,7 @@ export default function CityCanvas({
   onTapBuilding,
   onTapChest,
   onCollectFarm,
+  onReady,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
@@ -166,6 +168,62 @@ export default function CityCanvas({
       world.addChild(overlayLayer);
       overlayLayerRef.current = overlayLayer;
 
+      const particleLayer = new Container();
+      world.addChild(particleLayer);
+
+      // Particle system: simple Graphics-based bursts driven by ticker
+      type Particle = {
+        g: Graphics;
+        vx: number;
+        vy: number;
+        life: number;
+        maxLife: number;
+        gravity: number;
+      };
+      const particles: Particle[] = [];
+
+      const spawnBurst = (gx: number, gy: number, kind: 'coin' | 'sparkle' | 'smoke') => {
+        const { sx, sy } = gridToScreen(gx, gy, originX, originY);
+        const count = kind === 'coin' ? 14 : kind === 'sparkle' ? 18 : 10;
+        for (let i = 0; i < count; i++) {
+          const g = new Graphics();
+          if (kind === 'coin') {
+            g.circle(0, 0, 4).fill({ color: 0xfdd069 }).stroke({ color: 0x3a2a18, width: 1 });
+          } else if (kind === 'sparkle') {
+            g.star(0, 0, 5, 4, 2).fill({ color: 0xfff8c0 });
+          } else {
+            g.circle(0, 0, 5).fill({ color: 0xcccccc, alpha: 0.7 });
+          }
+          g.position.set(sx, sy - 10);
+          const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+          const speed = 1.5 + Math.random() * 2.5;
+          particleLayer.addChild(g);
+          particles.push({
+            g,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - (kind === 'coin' ? 3 : 1),
+            life: 0,
+            maxLife: kind === 'smoke' ? 50 : 35,
+            gravity: kind === 'smoke' ? 0 : 0.18,
+          });
+        }
+      };
+
+      const onBurstEvent = (e: Event) => {
+        const detail = (e as CustomEvent).detail as { gx: number; gy: number; kind: 'coin' | 'sparkle' | 'smoke' } | undefined;
+        if (!detail) return;
+        spawnBurst(detail.gx, detail.gy, detail.kind ?? 'coin');
+      };
+      window.addEventListener('bliep:city-burst', onBurstEvent);
+
+      // Camera shake
+      let shakeMagnitude = 0;
+      const onShakeEvent = (e: Event) => {
+        const detail = (e as CustomEvent).detail as { intensity?: number } | undefined;
+        shakeMagnitude = Math.max(shakeMagnitude, detail?.intensity ?? 6);
+      };
+      window.addEventListener('bliep:city-shake', onShakeEvent);
+
       // ---- Origin ----
       const originX = 0;
       const originY = -((GRID_SIZE - 1) * TILE_H) / 2;
@@ -219,7 +277,8 @@ export default function CityCanvas({
         s.anchor.set(0.5, 0.85);
         const { sx, sy } = gridToScreen(d.gx, d.gy, originX, originY);
         s.position.set(sx, sy + 4);
-        s.scale.set(d.scale * 0.9);
+        s.scale.set(d.scale * 0.55);
+        s.alpha = 0.95;
         s.zIndex = d.gx + d.gy;
         decorLayer.addChild(s);
       }
@@ -231,7 +290,7 @@ export default function CityCanvas({
         chest.anchor.set(0.5, 0.9);
         const { sx, sy } = gridToScreen(CITY_CENTER.gx, CITY_CENTER.gy, originX, originY);
         chest.position.set(sx, sy + 6);
-        chest.scale.set(0.85);
+        chest.scale.set(1.25);
         chest.zIndex = CITY_CENTER.gx + CITY_CENTER.gy;
         chest.eventMode = mode === 'interactive' ? 'static' : 'none';
         chest.cursor = 'pointer';
@@ -256,10 +315,10 @@ export default function CityCanvas({
         app.renderer.height / (GRID_SIZE * TILE_H * 1.1),
       );
       const fitScaleZone = Math.min(
-        app.renderer.width / (24 * TILE_W * 0.55),
-        app.renderer.height / (24 * TILE_H * 1.1),
+        app.renderer.width / (22 * TILE_W * 0.55),
+        app.renderer.height / (22 * TILE_H * 1.1),
       );
-      world.scale.set(mode === 'preview' ? fitScaleAll : Math.max(0.55, fitScaleZone));
+      world.scale.set(mode === 'preview' ? fitScaleAll : Math.max(0.7, fitScaleZone));
 
       app.stage.eventMode = 'static';
       app.stage.hitArea = app.screen;
@@ -393,6 +452,7 @@ export default function CityCanvas({
       ro.observe(host);
 
       syncBuildings();
+      onReady?.();
 
       const tickerFn = (ticker: { deltaTime: number }) => {
         // NPC walking
@@ -418,17 +478,43 @@ export default function CityCanvas({
           }
         }
 
+        // Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.life += ticker.deltaTime;
+          p.vy += p.gravity * ticker.deltaTime;
+          p.g.position.x += p.vx * ticker.deltaTime;
+          p.g.position.y += p.vy * ticker.deltaTime;
+          p.g.alpha = Math.max(0, 1 - p.life / p.maxLife);
+          if (p.life >= p.maxLife) {
+            particleLayer.removeChild(p.g);
+            p.g.destroy();
+            particles.splice(i, 1);
+          }
+        }
+
+        // Camera shake (offset the pixi stage, not world, so pan isn't lost)
+        if (shakeMagnitude > 0.1) {
+          app.stage.position.set(
+            (Math.random() - 0.5) * shakeMagnitude,
+            (Math.random() - 0.5) * shakeMagnitude,
+          );
+          shakeMagnitude *= 0.85;
+        } else if (app.stage.position.x !== 0 || app.stage.position.y !== 0) {
+          app.stage.position.set(0, 0);
+        }
+
         // Coin badges + chest pulse
         const now = Date.now();
         if (chestSpriteRef.current) {
           const ready = isChestReady(stateRef.current);
           const s = chestSpriteRef.current;
           if (ready) {
-            const pulse = 0.85 + Math.sin(now / 250) * 0.05;
+            const pulse = 1.25 + Math.sin(now / 250) * 0.07;
             s.scale.set(pulse);
             s.tint = 0xfff8c0;
           } else {
-            s.scale.set(0.85);
+            s.scale.set(1.25);
             s.tint = 0x888888;
           }
         }
@@ -439,6 +525,8 @@ export default function CityCanvas({
       (app as Application & { __cleanup?: () => void }).__cleanup = () => {
         prevCleanup?.();
         ro.disconnect();
+        window.removeEventListener('bliep:city-burst', onBurstEvent);
+        window.removeEventListener('bliep:city-shake', onShakeEvent);
       };
     })();
 
@@ -536,7 +624,7 @@ export default function CityCanvas({
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.85);
       const def = BUILDINGS[b.type];
-      sprite.scale.set((def.spriteScale ?? 1) * 0.95);
+      sprite.scale.set((def.spriteScale ?? 1) * 1.35);
       const { sx, sy } = gridToScreen(b.gx, b.gy, originX, originY);
       sprite.position.set(sx, sy + 4);
       sprite.zIndex = b.gx + b.gy;
@@ -587,7 +675,7 @@ export default function CityCanvas({
     if (!tex || tex === Texture.EMPTY) return null;
     const sprite = new Sprite(tex);
     sprite.anchor.set(0.5, 0.85);
-    sprite.scale.set(0.65);
+    sprite.scale.set(0.95);
     const { gx, gy } = wanderNear(b.gx, b.gy, 2);
     const target = wanderNear(b.gx, b.gy, 3);
     return {
