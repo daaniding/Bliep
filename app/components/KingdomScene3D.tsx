@@ -2,9 +2,24 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Stars, ContactShadows } from '@react-three/drei';
+import { useGLTF, Stars, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
+
+// === Real GLB asset URLs (poly.pizza, CC-BY) ===
+const CASTLE_URL = '/assets/3d/castle.glb';
+const KNIGHT_URL = '/assets/3d/knight.glb';
+const HOUSE1_URL = '/assets/3d/house1.glb';
+const HOUSE2_URL = '/assets/3d/house2.glb';
+const TREE1_URL = '/assets/3d/tree1.glb';
+const TREE2_URL = '/assets/3d/tree2.glb';
+
+useGLTF.preload(CASTLE_URL);
+useGLTF.preload(KNIGHT_URL);
+useGLTF.preload(HOUSE1_URL);
+useGLTF.preload(HOUSE2_URL);
+useGLTF.preload(TREE1_URL);
+useGLTF.preload(TREE2_URL);
 
 // === Color palette — vibrant cartoony Brawl Stars-ish ===
 const COLORS = {
@@ -28,8 +43,67 @@ function lerpColor(a: string, b: string, t: number): THREE.Color {
   return new THREE.Color(a).lerp(new THREE.Color(b), t);
 }
 
-// === Castle (procedural — chunky cartoon style) ===
-function CastleDiorama({ tod }: { tod: TimeOfDay }) {
+// === Reusable static GLB prop. Casts shadows on all meshes,
+// applies a night-time darkening tint via material color multiply. ===
+function GLBProp({
+  url,
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  scale = 1,
+  darkness = 0,
+}: {
+  url: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number | [number, number, number];
+  darkness?: number;
+}) {
+  const { scene } = useGLTF(url) as unknown as { scene: THREE.Group };
+  // Each prop instance gets its own clone — for static (non-skinned)
+  // meshes, plain scene.clone(true) works fine.
+  const cloned = useMemo(() => {
+    const c = scene.clone(true) as THREE.Group;
+    c.traverse(obj => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const mesh = obj as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+    });
+    return c;
+  }, [scene]);
+
+  // Apply night darkening as a material-color multiply
+  useEffect(() => {
+    cloned.traverse(obj => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const mesh = obj as THREE.Mesh;
+        if (mesh.material) {
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          mats.forEach(m => {
+            const std = m as THREE.MeshStandardMaterial;
+            if (std.color) {
+              // Lerp toward dark navy as it gets darker
+              const base = std.userData._origColor ?? std.color.clone();
+              std.userData._origColor = base;
+              std.color.copy(base).lerp(new THREE.Color('#0a0814'), darkness * 0.55);
+            }
+          });
+        }
+      }
+    });
+  }, [cloned, darkness]);
+
+  return (
+    <group position={position} rotation={rotation} scale={scale}>
+      <primitive object={cloned} />
+    </group>
+  );
+}
+
+// === Castle (procedural — kept as fallback, not currently used) ===
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _CastleDiorama({ tod }: { tod: TimeOfDay }) {
   const stoneColor = useMemo(
     () => lerpColor(COLORS.stoneDay, COLORS.stoneNight, tod.darkness),
     [tod.darkness],
@@ -699,10 +773,10 @@ function CameraRig() {
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     const cam = state.camera;
-    cam.position.x = -1.5 + Math.sin(t * 0.08) * 0.3;
-    cam.position.y = 5.5 + Math.sin(t * 0.05) * 0.15;
-    cam.position.z = 11 + Math.cos(t * 0.06) * 0.25;
-    cam.lookAt(0.5, 1.7, 0);
+    cam.position.x = -0.8 + Math.sin(t * 0.08) * 0.3;
+    cam.position.y = 7 + Math.sin(t * 0.05) * 0.15;
+    cam.position.z = 14 + Math.cos(t * 0.06) * 0.25;
+    cam.lookAt(0.3, 2, 0);
   });
   return null;
 }
@@ -729,9 +803,29 @@ export default function KingdomScene3D() {
           {tod.darkness > 0.4 && <Stars radius={50} depth={50} count={800} factor={3} fade />}
 
           <Ground tod={tod} />
-          <CastleDiorama tod={tod} />
 
-          {/* Hero knight — bigger and on the path, facing 3/4 toward camera */}
+          {/* Real GLB castle from poly.pizza — high-detail.
+              Different model authors use vastly different unit scales,
+              so each GLB needs its own scale calibration. */}
+          <GLBProp
+            url={CASTLE_URL}
+            position={[0, 0, -2]}
+            rotation={[0, Math.PI, 0]}
+            scale={0.5}
+            darkness={tod.darkness}
+          />
+
+          {/* Two real GLB houses on the flanks */}
+          <GLBProp url={HOUSE1_URL} position={[-4.5, 0, 1.0]} rotation={[0, 0.3, 0]}  scale={0.5} darkness={tod.darkness} />
+          <GLBProp url={HOUSE2_URL} position={[4.5, 0, 1.0]}  rotation={[0, -0.3, 0]} scale={0.5} darkness={tod.darkness} />
+
+          {/* Trees scattered around */}
+          <GLBProp url={TREE1_URL} position={[-5.8, 0, -1.0]} scale={0.5} darkness={tod.darkness} />
+          <GLBProp url={TREE2_URL} position={[5.6, 0, -1.0]}  scale={0.5} darkness={tod.darkness} />
+          <GLBProp url={TREE2_URL} position={[-6.2, 0, 1.5]}  scale={0.5} darkness={tod.darkness} />
+          <GLBProp url={TREE1_URL} position={[6.0, 0, 1.5]}   scale={0.5} darkness={tod.darkness} />
+
+          {/* The procedural animated knight in front */}
           <KnightHero position={[1.5, 0, 3.0]} rotation={-0.6} scale={1.3} />
 
           {/* Villagers patrolling on different rings around the courtyard */}
