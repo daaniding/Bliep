@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import VideoHeroScene from './VideoHeroScene';
 import HomeAtmosphere from './HomeAtmosphere';
 import CityPreview from './CityPreview';
 import { getDailyTasks, loadDailyPick, type DailyTask } from '@/lib/dailyTasks';
@@ -50,21 +49,38 @@ export default function GameDashboard() {
   return (
     <div className="fixed inset-0 flex flex-col">
       <div className="relative flex-1 overflow-hidden">
-        {/* Back layers */}
-        <VideoHeroScene />
+        {/* Back layer: let the body quilted-navy pattern show through.
+            A soft radial halo gives the arena some depth. */}
+        <div className="shell-halo" />
+
         <HomeAtmosphere />
 
         {/* === Arena: CityPreview floats centre-stage === */}
         <div
-          className="absolute left-0 right-0 px-4 flex justify-center pointer-events-none"
+          className="absolute left-0 right-0 px-3 flex justify-center pointer-events-none"
           style={{
-            top: '38%',
+            top: '42%',
             transform: 'translateY(-50%)',
             zIndex: 8,
           }}
         >
           <CityPreview />
         </div>
+
+        <style jsx>{`
+          .shell-halo {
+            position: absolute;
+            inset: 0;
+            background:
+              radial-gradient(ellipse 85% 55% at 50% 42%,
+                rgba(255, 220, 140, 0.18) 0%,
+                rgba(255, 180, 60, 0.0) 65%),
+              radial-gradient(ellipse 120% 60% at 50% 100%,
+                rgba(10, 5, 18, 0.65) 0%,
+                rgba(10, 5, 18, 0) 70%);
+            pointer-events: none;
+          }
+        `}</style>
 
         {/* === Quest card / primary CTA === */}
         <div
