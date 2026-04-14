@@ -301,11 +301,11 @@ export default function CityCanvas({
         app.renderer.width / (GRID_SIZE * TILE_W),
         app.renderer.height / (GRID_SIZE * TILE_H),
       );
-      // Default interactive view: ~22 tiles so the build zone borders + some
-      // forest rim are visible on left/right at first glance.
+      // Default interactive view: ~12 tiles wide so buildings are big and
+      // recognizable. User can pinch-out to see more.
       const defaultZoom = Math.min(
-        app.renderer.width / (22 * TILE_W),
-        app.renderer.height / (22 * TILE_H),
+        app.renderer.width / (12 * TILE_W),
+        app.renderer.height / (12 * TILE_H),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? minZoomFit : Math.max(defaultZoom, minZoom);

@@ -21,19 +21,15 @@ const TIER_META: Record<DailyTask['tier'], { label: string; bladeFill: string; g
 export default function DailyPickerModal({ tasks, onPick }: Props) {
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-6"
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center px-4 pb-24 pt-6"
       style={{
         background:
-          'radial-gradient(ellipse 70% 60% at 50% 30%, rgba(61, 10, 0, 0.5), transparent 70%), ' +
-          'radial-gradient(ellipse 60% 50% at 50% 100%, rgba(240, 184, 64, 0.15), transparent 70%), ' +
-          'linear-gradient(180deg, #0a0604 0%, #15100a 50%, #0a0604 100%)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
+          'radial-gradient(ellipse 80% 50% at 50% 100%, rgba(10, 6, 4, 0.85), transparent 70%), ' +
+          'linear-gradient(180deg, transparent 0%, transparent 30%, rgba(10, 6, 4, 0.4) 100%)',
+        backdropFilter: 'blur(2px)',
+        WebkitBackdropFilter: 'blur(2px)',
       }}
     >
-      {/* Torch glow corners */}
-      <div aria-hidden style={{ position: 'absolute', top: '10%', left: '8%', width: 60, height: 60, borderRadius: '50%', background: 'radial-gradient(circle, rgba(240,184,64,0.7), transparent 70%)' }} />
-      <div aria-hidden style={{ position: 'absolute', top: '10%', right: '8%', width: 60, height: 60, borderRadius: '50%', background: 'radial-gradient(circle, rgba(240,184,64,0.7), transparent 70%)' }} />
 
       <div className="relative max-w-sm w-full">
         <div className="text-center mb-6 animate-fade-up">
