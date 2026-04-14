@@ -49,20 +49,17 @@ export default function DashboardHero(_props: Props = {}) {
         className="absolute inset-0 z-0 active:brightness-110 transition-all"
         style={{ WebkitTapHighlightColor: 'transparent' }}
       >
-        {/* Painted HD castle still — Ken Burns CSS animation gives
-            slow zoom/pan so it doesn't feel static. Same painted
-            art style as the knight PNG. */}
-        <div className="hero-castle-kenburns" />
-        {/* Sunset color grade overlay */}
-        <div
-          aria-hidden
+        <video
+          src="/dashboard-hero.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 w-full h-full"
           style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(ellipse 80% 60% at 50% 45%, transparent 50%, rgba(20, 5, 0, 0.45) 100%), ' +
-              'linear-gradient(180deg, rgba(255, 100, 30, 0.05) 0%, transparent 25%, rgba(20, 5, 0, 0.3) 100%)',
-            pointerEvents: 'none',
+            objectFit: 'cover',
+            filter: 'saturate(1.08)',
           }}
         />
       </Link>
