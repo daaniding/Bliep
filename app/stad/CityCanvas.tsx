@@ -51,6 +51,8 @@ interface Props {
   mode?: CanvasMode;
   showBuildZone?: boolean;
   placingType?: BuildingType | null;
+  /** When true, host fills its container instead of the viewport. */
+  contained?: boolean;
   onTapTile?: (gx: number, gy: number) => void;
   onTapBuilding?: (b: PlacedBuilding) => void;
   onTapChest?: () => void;
@@ -88,6 +90,7 @@ export default function CityCanvas({
   mode = 'interactive',
   showBuildZone = true,
   placingType = null,
+  contained = false,
   onTapTile,
   onTapBuilding,
   onTapChest,
@@ -125,8 +128,32 @@ export default function CityCanvas({
     const app = new Application();
     appRef.current = app;
 
+    // Wait until the host has a non-zero size before initializing Pixi,
+    // otherwise resizeTo: host reads 0x0 and the canvas is invisible.
+    const waitForSize = () => new Promise<void>(resolve => {
+      if (host.clientWidth > 0 && host.clientHeight > 0) return resolve();
+      const observer = new ResizeObserver(entries => {
+        for (const e of entries) {
+          if (e.contentRect.width > 0 && e.contentRect.height > 0) {
+            observer.disconnect();
+            resolve();
+            return;
+          }
+        }
+      });
+      observer.observe(host);
+      // Safety timeout — resolve anyway after 500ms
+      window.setTimeout(() => { observer.disconnect(); resolve(); }, 500);
+    });
+
     (async () => {
+      await waitForSize();
+      if (cancelled) return;
+      const initW = host.clientWidth || 360;
+      const initH = host.clientHeight || 360;
       await app.init({
+        width: initW,
+        height: initH,
         resizeTo: host,
         backgroundAlpha: 0,
         antialias: false,
@@ -134,6 +161,8 @@ export default function CityCanvas({
         resolution: mode === 'preview' ? 1 : window.devicePixelRatio || 1,
         autoDensity: true,
       });
+      // Force renderer to current host size in case resizeTo didn't catch it
+      app.renderer.resize(initW, initH);
       if (cancelled) {
         app.destroy(true, { children: true, texture: false });
         return;
@@ -761,7 +790,18 @@ export default function CityCanvas({
     };
   }
 
-  return <div ref={hostRef} className={mode === 'preview' ? 'absolute inset-0 pointer-events-none' : 'fixed inset-0 touch-none'} />;
+  return (
+    <div
+      ref={hostRef}
+      className={
+        contained
+          ? 'absolute inset-0 pointer-events-none'
+          : mode === 'preview'
+          ? 'absolute inset-0 pointer-events-none'
+          : 'fixed inset-0 touch-none'
+      }
+    />
+  );
 }
 
 function stringHash(s: string): number {
