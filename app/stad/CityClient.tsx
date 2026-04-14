@@ -552,7 +552,11 @@ function ChestStatus({ state }: { state: CityState }) {
 
 /** Map a building sprite slug to its preview image URL. */
 function topdownSpriteUrl(slug: string): string {
-  // Big house variants are sliced from a single sheet — preview the whole sheet
+  if (slug.startsWith('ts:')) {
+    // ts:blue:castle → /assets/topdown/buildings/tinyswords/blue/castle.png
+    const [, color, kind] = slug.split(':');
+    return `/assets/topdown/buildings/tinyswords/${color}/${kind}.png`;
+  }
   if (slug.startsWith('big_house')) return '/assets/topdown/buildings/big_houses.png';
   return `/assets/topdown/buildings/${slug}.png`;
 }

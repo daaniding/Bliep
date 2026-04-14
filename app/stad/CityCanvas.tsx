@@ -24,7 +24,17 @@ import {
   inBuildZone,
   centerOrigin,
 } from '@/lib/game/iso';
-import { loadTopdownAtlas, getTopdownTexture, GROUND_GRASS_SLUGS, characterFrame, type TopdownAtlas } from '@/lib/game/topdown';
+import {
+  loadTopdownAtlas,
+  getTopdownTexture,
+  GROUND_GRASS_SLUGS,
+  villagerFrame,
+  VILLAGER_TYPES,
+  VILLAGER_FRAME_SIZE,
+  VILLAGER_WALK_FRAMES,
+  type VillagerType,
+  type TopdownAtlas,
+} from '@/lib/game/topdown';
 import { seedDecor, isRoadTile, type DecorTile } from '@/lib/game/decor';
 import { spriteForLevel, BUILDINGS, type BuildingType } from '@/lib/game/buildings';
 import {
@@ -60,16 +70,17 @@ interface NPC {
   buildingId: string;
   homeGx: number;
   homeGy: number;
-  x: number;       // pixel position in world space
+  x: number;
   y: number;
   targetX: number;
   targetY: number;
   speed: number;
   sprite: Sprite;
-  dir: 0 | 1 | 2 | 3; // 0 right, 1 left, 2 up, 3 down
+  facingRight: boolean;
   frameTime: number;
   frame: number;
-  characterSheet: Texture;
+  villagerSheet: Texture;
+  villagerType: VillagerType;
 }
 
 export default function CityCanvas({
@@ -457,40 +468,38 @@ export default function CityCanvas({
       onReady?.();
 
       const tickerFn = (ticker: { deltaTime: number }) => {
-        // NPC walking
+        // Villager walking + 6-frame walk cycle, horizontal flip for direction
         for (const n of npcsRef.current) {
           const dx = n.targetX - n.x;
           const dy = n.targetY - n.y;
           const dist = Math.hypot(dx, dy);
-          if (dist < 1) {
-            // Pick new target near home
+          if (dist < 2) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 30 + Math.random() * 60;
+            const radius = 40 + Math.random() * 80;
             const homeScreenX = n.homeGx * TILE_W + TILE_W / 2;
-            const homeScreenY = n.homeGy * TILE_H + TILE_H / 2;
+            const homeScreenY = n.homeGy * TILE_H + TILE_H / 2 + TILE_H * 0.6;
             n.targetX = homeScreenX + Math.cos(angle) * radius;
             n.targetY = homeScreenY + Math.sin(angle) * radius;
           } else {
             const step = n.speed * ticker.deltaTime;
             n.x += (dx / dist) * step;
             n.y += (dy / dist) * step;
-            // Determine facing
-            if (Math.abs(dx) > Math.abs(dy)) n.dir = dx > 0 ? 0 : 1;
-            else n.dir = dy < 0 ? 2 : 3;
-            // Animate
+            // Horizontal facing only (sheet is side-view)
+            if (Math.abs(dx) > 0.5) n.facingRight = dx > 0;
+            // Animate frames every ~7 ticks
             n.frameTime += ticker.deltaTime;
-            if (n.frameTime > 8) {
-              n.frame = (n.frame + 1) % 4;
+            if (n.frameTime > 7) {
+              n.frame = (n.frame + 1) % VILLAGER_WALK_FRAMES;
               n.frameTime = 0;
-              const f = characterFrame(n.dir, n.frame as 0 | 1 | 2 | 3);
+              const f = villagerFrame(n.frame);
               n.sprite.texture = new Texture({
-                source: n.characterSheet.source,
+                source: n.villagerSheet.source,
                 frame: new Rectangle(f.x, f.y, f.w, f.h),
               });
             }
           }
           n.sprite.position.set(n.x, n.y);
-          // Y-sort vs buildings — NPC anchor bottom is its y position
+          n.sprite.scale.x = (n.facingRight ? 1 : -1) * Math.abs(n.sprite.scale.x);
           n.sprite.zIndex = Math.floor(n.y);
         }
 
@@ -629,9 +638,11 @@ export default function CityCanvas({
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.95);
       const def = BUILDINGS[b.type];
-      // Scale building so its longest side ~= 2 tiles (128px). This makes
-      // even small Fan-tasy houses feel like proper structures, not props.
-      const baseScale = (TILE_W * 2 * (def.spriteScale ?? 1)) / Math.max(tex.width, tex.height);
+      // Tiny Swords sprites range from 128px (small house) to 320px (castle).
+      // Target ~2.5 tile widths for small structures, scaling up for big ones.
+      const longSide = Math.max(tex.width, tex.height);
+      const targetTiles = longSide >= 256 ? 4 : longSide >= 192 ? 3.2 : 2.5;
+      const baseScale = (TILE_W * targetTiles * (def.spriteScale ?? 1)) / longSide;
       sprite.scale.set(baseScale);
       const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
       sprite.position.set(sx, sy + TILE_H * 0.4);
@@ -661,14 +672,16 @@ export default function CityCanvas({
         overlay.addChild(clock);
       }
 
-      // NPC per active building (added to same layer as buildings, y-sorted)
-      if (mode === 'interactive' && (!q || q.finishesAt <= Date.now()) && atlas.characterSheet) {
-        const npc = makeNPC(b, atlas.characterSheet);
+      // NPC per active building — random villager type, animated walk
+      if (mode === 'interactive' && (!q || q.finishesAt <= Date.now()) && atlas.villagerSheets.size > 0) {
+        const types = Array.from(atlas.villagerSheets.keys());
+        const villagerType = types[stringHash(b.id) % types.length];
+        const sheet = atlas.villagerSheets.get(villagerType)!;
+        const npc = makeNPC(b, sheet, villagerType);
         if (npc) {
-          // Spawn the NPC slightly south of its building so they're not
-          // hidden by it on first frame
-          npc.x += Math.random() * 60 - 30;
-          npc.y += TILE_H * 0.7;
+          // Spawn 1-2 tiles below the building so they're not eclipsed
+          npc.x += Math.random() * 80 - 40;
+          npc.y += TILE_H * 1.4;
           npc.targetX = npc.x;
           npc.targetY = npc.y;
           layer.addChild(npc.sprite);
@@ -678,15 +691,15 @@ export default function CityCanvas({
     }
   }
 
-  function makeNPC(b: PlacedBuilding, charSheet: Texture): NPC | null {
-    const f = characterFrame(3, 0); // start front-facing
+  function makeNPC(b: PlacedBuilding, sheet: Texture, villagerType: VillagerType): NPC | null {
+    const f = villagerFrame(0);
     const tex = new Texture({
-      source: charSheet.source,
+      source: sheet.source,
       frame: new Rectangle(f.x, f.y, f.w, f.h),
     });
     const sprite = new Sprite(tex);
     sprite.anchor.set(0.5, 1);
-    sprite.scale.set(2); // 40x48 → 80x96 px (matches building scale)
+    sprite.scale.set(1.8); // 48x48 → 86x86 px (matches building scale)
     const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
     return {
       buildingId: b.id,
@@ -696,16 +709,23 @@ export default function CityCanvas({
       y: sy,
       targetX: sx,
       targetY: sy,
-      speed: 0.5 + Math.random() * 0.4,
+      speed: 0.4 + Math.random() * 0.4,
       sprite,
-      dir: 3,
+      facingRight: true,
       frameTime: 0,
       frame: 0,
-      characterSheet: charSheet,
+      villagerSheet: sheet,
+      villagerType,
     };
   }
 
   return <div ref={hostRef} className={mode === 'preview' ? 'absolute inset-0 pointer-events-none' : 'fixed inset-0 touch-none'} />;
+}
+
+function stringHash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
+  return Math.abs(h);
 }
 
 function tileVariant(gx: number, gy: number, n: number): number {

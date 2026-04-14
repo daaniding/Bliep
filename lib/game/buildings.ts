@@ -28,20 +28,35 @@ export interface BuildingDef {
 export const MAX_LEVEL = 10;
 
 /**
- * Top-down sprite slugs. Each building has 4 visual breakpoints across its
- * 10 levels using the available Fan-tasy + Houses Pack assets.
+ * Build a 10-element sprite list from explicit per-level slugs. Pass exactly
+ * 10 entries — one per level. Lets the catalogue hand-pick Tiny Swords colors
+ * and sizes per level breakpoint.
  */
-function levelSpritesT(slugs: string[]): string[] {
-  const out: string[] = [];
-  for (let l = 1; l <= MAX_LEVEL; l++) {
-    if (l <= 3) out.push(slugs[0]);
-    else if (l <= 6) out.push(slugs[1] ?? slugs[0]);
-    else if (l <= 9) out.push(slugs[2] ?? slugs[1] ?? slugs[0]);
-    else out.push(slugs[3] ?? slugs[2] ?? slugs[1] ?? slugs[0]);
+function lvls(...slugs: string[]): string[] {
+  if (slugs.length !== MAX_LEVEL) {
+    // Fill out by repeating the last entry
+    const out = [...slugs];
+    while (out.length < MAX_LEVEL) out.push(slugs[slugs.length - 1] ?? slugs[0]);
+    return out;
   }
-  return out;
+  return slugs;
 }
 
+// Tiny Swords slug shorthand
+const ts = (color: string, kind: string) => `ts:${color}:${kind}`;
+
+/**
+ * 10-level sprite progression: each building scales through Tiny Swords
+ * size + color. Intent:
+ *  - Levels 1-3:  small variant in YELLOW (basic wood)
+ *  - Levels 4-6:  medium variant in BLUE  (worked stone)
+ *  - Levels 7-9:  large variant in PURPLE (royal)
+ *  - Level 10:    legendary variant in BLACK (elite)
+ *
+ * For house: house1 → house2 → house3 + color upgrade.
+ * For barracks/tower/etc: same building kind, color upgrade per level.
+ * Castle is reserved for the top tier of `house` (city hall feel).
+ */
 export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   house: {
     type: 'house',
@@ -52,8 +67,12 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 30,
     buildTimeGrowth: 1.7,
     maxLevel: MAX_LEVEL,
-    // Hay houses 1-4 → Big house variants
-    spritesPerLevel: levelSpritesT(['house_hay_1', 'house_hay_2', 'house_hay_3', 'big_house_purple']),
+    spritesPerLevel: lvls(
+      ts('yellow', 'house1'), ts('yellow', 'house2'), ts('yellow', 'house3'),
+      ts('blue', 'house1'),   ts('blue', 'house2'),   ts('blue', 'house3'),
+      ts('purple', 'house1'), ts('purple', 'house2'), ts('purple', 'house3'),
+      ts('black', 'castle'),
+    ),
     spriteScale: 1.0,
   },
   farm: {
@@ -65,7 +84,12 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 45,
     buildTimeGrowth: 1.7,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSpritesT(['house_hay_2', 'house_hay_3', 'house_hay_4', 'house_hay_4']),
+    spritesPerLevel: lvls(
+      ts('yellow', 'house2'), ts('yellow', 'house3'), ts('yellow', 'monastery'),
+      ts('blue', 'house2'),   ts('blue', 'house3'),   ts('blue', 'monastery'),
+      ts('purple', 'monastery'), ts('purple', 'monastery'),
+      ts('red', 'monastery'), ts('red', 'monastery'),
+    ),
     productionPerMin: [1, 2, 4, 7, 11, 16, 23, 32, 44, 60],
     spriteScale: 1.0,
   },
@@ -78,9 +102,14 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 90,
     buildTimeGrowth: 1.8,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSpritesT(['wall_gate', 'wall_gate', 'big_house_grey', 'big_house_grey']),
+    spritesPerLevel: lvls(
+      ts('yellow', 'barracks'), ts('yellow', 'barracks'), ts('yellow', 'barracks'),
+      ts('blue', 'barracks'),   ts('blue', 'barracks'),   ts('blue', 'barracks'),
+      ts('purple', 'barracks'), ts('purple', 'barracks'), ts('red', 'barracks'),
+      ts('black', 'barracks'),
+    ),
     troopsPerLevel: [2, 4, 7, 11, 16, 22, 30, 40, 52, 70],
-    spriteScale: 1.0,
+    spriteScale: 1.1,
   },
   wall: {
     type: 'wall',
@@ -91,7 +120,12 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 20,
     buildTimeGrowth: 1.6,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSpritesT(['wall_gate']),
+    spritesPerLevel: lvls(
+      ts('yellow', 'tower'), ts('yellow', 'tower'), ts('yellow', 'tower'),
+      ts('blue', 'tower'),   ts('blue', 'tower'),   ts('blue', 'tower'),
+      ts('purple', 'tower'), ts('purple', 'tower'), ts('red', 'tower'),
+      ts('black', 'tower'),
+    ),
     spriteScale: 0.85,
   },
   tower: {
@@ -103,20 +137,31 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 80,
     buildTimeGrowth: 1.8,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSpritesT(['wall_gate', 'big_house_grey', 'big_house_grey', 'big_house_grey']),
-    spriteScale: 1.0,
+    spritesPerLevel: lvls(
+      ts('yellow', 'archery'), ts('yellow', 'archery'), ts('yellow', 'archery'),
+      ts('blue', 'archery'),   ts('blue', 'archery'),   ts('blue', 'archery'),
+      ts('purple', 'archery'), ts('purple', 'archery'), ts('red', 'archery'),
+      ts('black', 'archery'),
+    ),
+    spriteScale: 1.1,
   },
   fountain: {
     type: 'fountain',
-    name: 'Fontein',
-    description: 'Decoratie. Geeft je stad allure.',
+    name: 'Monastery',
+    description: 'Decoratie + city allure. Schaalt cosmetics.',
     baseCost: 75,
     costGrowth: 1.4,
     baseBuildSec: 25,
     buildTimeGrowth: 1.5,
-    maxLevel: 5,
-    spritesPerLevel: levelSpritesT(['well']),
-    spriteScale: 1.0,
+    maxLevel: MAX_LEVEL,
+    spritesPerLevel: lvls(
+      ts('yellow', 'monastery'), ts('yellow', 'monastery'),
+      ts('blue', 'monastery'),   ts('blue', 'monastery'),
+      ts('purple', 'monastery'), ts('purple', 'monastery'),
+      ts('red', 'monastery'),    ts('red', 'monastery'),
+      ts('black', 'monastery'),  ts('black', 'monastery'),
+    ),
+    spriteScale: 1.05,
   },
 };
 

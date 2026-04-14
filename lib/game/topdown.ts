@@ -4,15 +4,55 @@ const BASE = '/assets/topdown';
 
 // ---------- Standalone PNG sprites (free-form sized) ----------
 
+// ---------- Tiny Swords buildings ----------
+
+export type TinySwordColor = 'yellow' | 'blue' | 'purple' | 'red' | 'black';
+export type TinySwordKind =
+  | 'house1' | 'house2' | 'house3'
+  | 'castle' | 'tower' | 'monastery'
+  | 'barracks' | 'archery';
+
+export const TS_COLORS: TinySwordColor[] = ['yellow', 'blue', 'purple', 'red', 'black'];
+export const TS_KINDS: TinySwordKind[] = ['house1', 'house2', 'house3', 'castle', 'tower', 'monastery', 'barracks', 'archery'];
+
+/** Build slug like `ts:blue:castle` for a Tiny Swords building. */
+export const tsSlug = (color: TinySwordColor, kind: TinySwordKind) => `ts:${color}:${kind}`;
+
+function tinySwordsFiles(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const color of TS_COLORS) {
+    for (const kind of TS_KINDS) {
+      out[tsSlug(color, kind)] = `${BASE}/buildings/tinyswords/${color}/${kind}.png`;
+    }
+  }
+  return out;
+}
+
 /** Standalone building sprites. Key = slug, value = url. */
 export const BUILDING_FILES: Record<string, string> = {
+  // Legacy Fan-tasy/Houses Pack (kept for fallback / variety)
   house_hay_1: `${BASE}/buildings/house_hay_1.png`,
   house_hay_2: `${BASE}/buildings/house_hay_2.png`,
   house_hay_3: `${BASE}/buildings/house_hay_3.png`,
   house_hay_4: `${BASE}/buildings/house_hay_4.png`,
   well: `${BASE}/buildings/well.png`,
   wall_gate: `${BASE}/buildings/wall_gate.png`,
+  // Tiny Swords (40 entries)
+  ...tinySwordsFiles(),
 };
+
+// ---------- Villagers ----------
+
+export const VILLAGER_TYPES = ['man', 'woman', 'old_man', 'old_woman', 'boy', 'girl'] as const;
+export type VillagerType = typeof VILLAGER_TYPES[number];
+
+/** Villager walk sheets are 288x48 = 6 frames x 48x48 each (side-view). */
+export const VILLAGER_FRAME_SIZE = { w: 48, h: 48 };
+export const VILLAGER_WALK_FRAMES = 6;
+
+export function villagerWalkUrl(type: VillagerType): string {
+  return `${BASE}/villagers/${type}_walk.png`;
+}
 
 export const DECOR_FILES: Record<string, string> = {
   oak_tree: `${BASE}/decor/oak_tree.png`,
@@ -98,17 +138,13 @@ export const BIG_HOUSE_FRAMES: Record<string, TileFrame> = {
   big_house_red:    { x: 670, y: 0,   w: 350, h: 580 },
 };
 
-/**
- * Character_Walk.png is 160x192 — 4 cols x 4 rows of 40x48 frames.
- * Row 0 = right-facing, Row 1 = left-facing, Row 2 = up (back), Row 3 = down (front).
- */
-export const CHARACTER_FRAME_SIZE = { w: 40, h: 48 };
-export function characterFrame(dir: 0 | 1 | 2 | 3, frame: 0 | 1 | 2 | 3): TileFrame {
+/** Returns the frame rect for a 6-frame villager walk cycle. */
+export function villagerFrame(frame: number): TileFrame {
   return {
-    x: frame * CHARACTER_FRAME_SIZE.w,
-    y: dir * CHARACTER_FRAME_SIZE.h,
-    w: CHARACTER_FRAME_SIZE.w,
-    h: CHARACTER_FRAME_SIZE.h,
+    x: (frame % VILLAGER_WALK_FRAMES) * VILLAGER_FRAME_SIZE.w,
+    y: 0,
+    w: VILLAGER_FRAME_SIZE.w,
+    h: VILLAGER_FRAME_SIZE.h,
   };
 }
 
@@ -160,41 +196,46 @@ async function sliceSheet(
 
 export interface TopdownAtlas {
   textures: Map<string, Texture>;
-  characterSheet: Texture | null;
+  villagerSheets: Map<VillagerType, Texture>;
 }
 
 export function loadTopdownAtlas(): Promise<TopdownAtlas> {
-  if (atlasPromise) return atlasPromise.then(textures => ({
-    textures,
-    characterSheet: textures.get('__character_sheet') as Texture | null,
-  }));
+  if (atlasPromise) return atlasPromise.then(textures => buildAtlas(textures));
   atlasPromise = (async () => {
     const map = new Map<string, Texture>();
 
-    // Parallel-ish load of standalone sprite groups
     await Promise.all([
       loadStandalones(map, BUILDING_FILES),
       loadStandalones(map, DECOR_FILES),
       loadStandalones(map, PROP_FILES),
     ]);
 
-    // Sliced sheets
     await sliceSheet(map, 'topdown_ground', `${BASE}/terrain/ground.png`, GROUND_FRAMES);
     await sliceSheet(map, 'topdown_big_houses', `${BASE}/buildings/big_houses.png`, BIG_HOUSE_FRAMES);
 
-    // Character sheet — store the whole texture so renderer can slice frames per-frame for animation
-    Assets.add({ alias: 'topdown_character_walk', src: `${BASE}/characters/character_walk.png` });
-    const charSheet = await Assets.load<Texture>('topdown_character_walk');
-    setNearest(charSheet);
-    map.set('__character_sheet', charSheet);
+    // Villager walk sheets — load each as a single texture, slice on the fly per-frame
+    for (const v of VILLAGER_TYPES) {
+      try {
+        Assets.add({ alias: `villager_${v}`, src: villagerWalkUrl(v) });
+        const tex = await Assets.load<Texture>(`villager_${v}`);
+        setNearest(tex);
+        map.set(`__villager_${v}`, tex);
+      } catch { /* ignore missing */ }
+    }
 
     return map;
   })();
 
-  return atlasPromise.then(textures => ({
-    textures,
-    characterSheet: textures.get('__character_sheet') as Texture | null,
-  }));
+  return atlasPromise.then(textures => buildAtlas(textures));
+}
+
+function buildAtlas(textures: Map<string, Texture>): TopdownAtlas {
+  const villagerSheets = new Map<VillagerType, Texture>();
+  for (const v of VILLAGER_TYPES) {
+    const t = textures.get(`__villager_${v}`);
+    if (t) villagerSheets.set(v, t);
+  }
+  return { textures, villagerSheets };
 }
 
 export function getTopdownTexture(atlas: TopdownAtlas, slug: string): Texture {
