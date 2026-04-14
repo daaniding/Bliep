@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { ReactNode } from 'react';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { useStreak } from '@/lib/useStreak';
+import { CoinIcon, TrophyIcon, FlameIcon } from './icons/GameIcons';
 
 // Sticky top HUD: coins (left) · streak (centre) · trophies (right).
 // Subtle amber glow on chips with value > 0.
@@ -23,9 +25,9 @@ export default function TopHud() {
         pointerEvents: 'none',
       }}
     >
-      <Chip value={coins.toLocaleString('nl-NL')} icon="🪙" tint="gold" glow={coins > 0} />
+      <Chip value={coins.toLocaleString('nl-NL')} icon={<CoinIcon size={22} />} tint="gold" glow={coins > 0} />
       <StreakChip current={streak.current} />
-      <Chip value={trophies.toLocaleString('nl-NL')} icon="🏆" tint="magic" href="/league" glow={trophies > 0} />
+      <Chip value={trophies.toLocaleString('nl-NL')} icon={<TrophyIcon size={22} />} tint="magic" href="/league" glow={trophies > 0} />
     </div>
   );
 }
@@ -38,7 +40,7 @@ function Chip({
   glow,
 }: {
   value: string;
-  icon: string;
+  icon: ReactNode;
   tint: 'gold' | 'magic';
   href?: string;
   glow?: boolean;
@@ -81,7 +83,6 @@ function Chip({
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 18,
           flexShrink: 0,
           boxShadow: 'inset 0 0 10px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.3)',
         }}
@@ -147,7 +148,7 @@ function StreakChip({ current }: { current: number }) {
               gap: 4,
             }}
           >
-            <span style={{ fontSize: 18 }}>🔥</span>
+            <FlameIcon size={18} />
             {current}
           </span>
           <span
@@ -179,7 +180,7 @@ function StreakChip({ current }: { current: number }) {
               gap: 4,
             }}
           >
-            <span style={{ fontSize: 14 }}>🔥</span>
+            <FlameIcon size={14} />
             Start streak
           </span>
           <span
