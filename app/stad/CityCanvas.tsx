@@ -23,8 +23,7 @@ import {
   inBuildZone,
   centerOrigin,
 } from '@/lib/game/iso';
-import { PALETTE } from '@/lib/game/palette';
-import { loadAtlas, getTexture, UNIT_SLUGS } from '@/lib/game/sprites';
+import { loadAtlas, getTexture, UNIT_SLUGS, TRPG_GROUND_GRASS_SLUGS, TRPG_GROUND_DARK_SLUGS } from '@/lib/game/sprites';
 import { seedDecor, isRoadTile, type DecorTile } from '@/lib/game/decor';
 import { spriteForLevel, BUILDINGS, type BuildingType } from '@/lib/game/buildings';
 import {
@@ -55,14 +54,16 @@ const MAX_ZOOM_INTERACTIVE = 2.6;
 const TAP_THRESHOLD_PX = 6;
 const COIN_BADGE_THRESHOLD = 1; // show coin pop after this many pending coins
 
-function drawTile(g: Graphics, fill: number, stroke: number, strokeWidth = 1, alpha = 0.4) {
-  g.moveTo(0, -TILE_H / 2)
-    .lineTo(TILE_W / 2, 0)
-    .lineTo(0, TILE_H / 2)
-    .lineTo(-TILE_W / 2, 0)
-    .closePath();
-  g.fill({ color: fill });
-  g.stroke({ color: stroke, width: strokeWidth, alpha });
+// Each TRPG tile sprite is 16x16 pixels with a 16x8 diamond top.
+// Bliep's TILE_W=96 TILE_H=48 → uniform scale 6×.
+const TILE_SCALE = 6;
+
+// Stable per-tile picker (deterministic so refresh doesn't shuffle ground)
+function tileVariant(gx: number, gy: number, n: number): number {
+  let h = (gx * 73856093) ^ (gy * 19349663);
+  h = (h ^ (h >>> 13)) * 1274126177;
+  h = h ^ (h >>> 16);
+  return Math.abs(h) % n;
 }
 
 interface NPC {
@@ -124,7 +125,8 @@ export default function CityCanvas({
       await app.init({
         resizeTo: host,
         backgroundAlpha: 0,
-        antialias: true,
+        antialias: false,
+        roundPixels: true,
         resolution: mode === 'preview' ? 1 : window.devicePixelRatio || 1,
         autoDensity: true,
       });
@@ -229,20 +231,34 @@ export default function CityCanvas({
       const originY = -((GRID_SIZE - 1) * TILE_H) / 2;
       originRef.current = { originX, originY };
 
-      // ---- Tiles (terrain) ----
+      // ---- Tiles (terrain) — TRPG elevated 16x32 blocks ----
+      // Sort back-to-front so each tile's dirt skirt overlaps the row in front
+      tileLayer.sortableChildren = true;
       for (let gy = 0; gy < GRID_SIZE; gy++) {
         for (let gx = 0; gx < GRID_SIZE; gx++) {
           const { sx, sy } = gridToScreen(gx, gy, originX, originY);
-          const tile = new Graphics();
           const inZone = inBuildZone(gx, gy);
           const road = isRoadTile(gx, gy);
-          const alt = (gx + gy) % 2 === 0;
-          let fill: number = alt ? PALETTE.grass : PALETTE.grassLight;
-          if (road) fill = 0xb59866;
-          if (!inZone && !road) fill = alt ? 0x4a7d4a : 0x568555;
-          drawTile(tile, fill, PALETTE.grassEdge, 1, inZone ? 0.35 : 0.2);
-          tile.position.set(sx, sy);
-          tileLayer.addChild(tile);
+          let slug: string;
+          if (road) {
+            slug = 'trpg:sand_block';
+          } else if (inZone) {
+            slug = TRPG_GROUND_GRASS_SLUGS[tileVariant(gx, gy, TRPG_GROUND_GRASS_SLUGS.length)];
+          } else {
+            slug = TRPG_GROUND_DARK_SLUGS[tileVariant(gx, gy, TRPG_GROUND_DARK_SLUGS.length)];
+          }
+          const tex = getTexture(atlas, slug);
+          if (!tex || tex === Texture.EMPTY) continue;
+          const sprite = new Sprite(tex);
+          // The 16x32 sprite has its diamond top in the upper ~8px (rows 0..8)
+          // and a 24px dirt skirt below. Anchor (0.5, 0.125) puts the diamond
+          // center at the sprite's anchor, so position=(sx,sy) lands the
+          // diamond exactly on the iso tile slot.
+          sprite.anchor.set(0.5, 0.125);
+          sprite.scale.set(TILE_SCALE);
+          sprite.position.set(sx, sy);
+          sprite.zIndex = gx + gy;
+          tileLayer.addChild(sprite);
         }
       }
 
@@ -274,11 +290,11 @@ export default function CityCanvas({
         const tex = getTexture(atlas, d.slug);
         if (!tex || tex === Texture.EMPTY) continue;
         const s = new Sprite(tex);
-        s.anchor.set(0.5, 0.85);
+        // Anchor near the bottom of the sprite so it stands on the tile
+        s.anchor.set(0.5, 0.95);
         const { sx, sy } = gridToScreen(d.gx, d.gy, originX, originY);
         s.position.set(sx, sy + 4);
-        s.scale.set(d.scale * 0.55);
-        s.alpha = 0.95;
+        s.scale.set(d.scale * TILE_SCALE * 0.6);
         s.zIndex = d.gx + d.gy;
         decorLayer.addChild(s);
       }
