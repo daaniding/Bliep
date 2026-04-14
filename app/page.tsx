@@ -34,14 +34,9 @@ export default function Home() {
 
   return (
     <GameShell>
-      <div
-        className="fixed inset-0 flex flex-col"
-        style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 76px)',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 110px)',
-        }}
-      >
-        {/* === 3D scene fills all remaining space === */}
+      <div className="fixed inset-0 flex flex-col">
+        {/* === Full-bleed scene: video runs edge-to-edge, HUD + nav
+             sit on top via their own fixed positioning === */}
         <div className="relative flex-1 overflow-hidden">
           <VideoHeroScene />
           <HomeAtmosphere />
@@ -49,7 +44,10 @@ export default function Home() {
           {/* === Floating CTA over the scene === */}
           <div
             className="absolute left-0 right-0 px-4 animate-fade-up"
-            style={{ bottom: 16, animationDelay: '120ms' }}
+            style={{
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 126px)',
+              animationDelay: '120ms',
+            }}
           >
             <Link
               href="/opdracht"
