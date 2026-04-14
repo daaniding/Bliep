@@ -2,42 +2,28 @@
 
 import { useEffect, useState, ReactNode } from 'react';
 import { isReady as chestReady, loadFreeChest } from '@/lib/freeChest';
-import { unreadCount, MAILBOX_CHANGED_EVENT } from '@/lib/mailbox';
 import { sfxTap } from '@/lib/sound';
 
 interface RailItem {
   id: string;
   label: string;
   icon: ReactNode;
-  badge?: number;
-  highlight?: boolean;
-  onTap?: () => void;
+  badge?: number;      // red dot with optional count
+  highlight?: boolean; // gold glow
 }
 
-interface Props {
-  onMailClick?: () => void;
-  onChestClick?: () => void;
-}
-
-export default function SideRail({ onMailClick, onChestClick }: Props = {}) {
+export default function SideRail() {
   const [chestIsReady, setChestIsReady] = useState(() => chestReady(loadFreeChest()));
-  const [unread, setUnread] = useState(() => (typeof window !== 'undefined' ? unreadCount() : 0));
   const [flash, setFlash] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
-      setChestIsReady(chestReady(loadFreeChest()));
-      setUnread(unreadCount());
-    }, 1000);
-    const refresh = () => setUnread(unreadCount());
-    window.addEventListener(MAILBOX_CHANGED_EVENT, refresh);
-    return () => { clearInterval(id); window.removeEventListener(MAILBOX_CHANGED_EVENT, refresh); };
+    const id = window.setInterval(() => setChestIsReady(chestReady(loadFreeChest())), 1000);
+    return () => clearInterval(id);
   }, []);
 
-  function handleTap(item: RailItem) {
+  function handleTap(label: string) {
     sfxTap();
-    if (item.onTap) { item.onTap(); return; }
-    setFlash(item.label);
+    setFlash(label);
     window.setTimeout(() => setFlash(null), 1800);
   }
 
@@ -45,8 +31,7 @@ export default function SideRail({ onMailClick, onChestClick }: Props = {}) {
     {
       id: 'mail',
       label: 'Post',
-      badge: unread,
-      onTap: onMailClick,
+      badge: 2,
       icon: (
         <svg viewBox="0 0 32 32" fill="none">
           <rect x="4" y="8" width="24" height="18" rx="2" fill="#fdd069" stroke="#0d0a06" strokeWidth="2.2" />
@@ -56,11 +41,40 @@ export default function SideRail({ onMailClick, onChestClick }: Props = {}) {
       ),
     },
     {
+      id: 'events',
+      label: 'Events',
+      badge: 1,
+      highlight: true,
+      icon: (
+        <svg viewBox="0 0 32 32" fill="none">
+          <path
+            d="M16 3 L19 10 L26 11 L21 16 L22 23 L16 19 L10 23 L11 16 L6 11 L13 10 Z"
+            fill="#fdd069"
+            stroke="#0d0a06"
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
+          <path d="M16 7 L17.5 11 L22 11.5 L19 14 L19.8 18 L16 16 L12.2 18 L13 14 L10 11.5 L14.5 11 Z" fill="#fff6dc" opacity="0.6" />
+        </svg>
+      ),
+    },
+    {
+      id: 'friends',
+      label: 'Vrienden',
+      icon: (
+        <svg viewBox="0 0 32 32" fill="none">
+          <circle cx="12" cy="11" r="5" fill="#c0392b" stroke="#0d0a06" strokeWidth="2" />
+          <circle cx="22" cy="13" r="4" fill="#2a4a6a" stroke="#0d0a06" strokeWidth="2" />
+          <path d="M4 27 Q4 18 12 18 Q20 18 20 27" stroke="#0d0a06" strokeWidth="2" fill="#c0392b" strokeLinejoin="round" />
+          <path d="M16 27 Q16 20 22 20 Q28 20 28 27" stroke="#0d0a06" strokeWidth="2" fill="#2a4a6a" strokeLinejoin="round" />
+          <circle cx="26" cy="6" r="2.5" fill="#5ea05c" stroke="#0d0a06" strokeWidth="1.5" />
+        </svg>
+      ),
+    },
+    {
       id: 'shop',
-      label: 'Kist',
+      label: 'Winkel',
       badge: chestIsReady ? 1 : 0,
-      highlight: chestIsReady,
-      onTap: onChestClick,
       icon: (
         <svg viewBox="0 0 32 32" fill="none">
           <rect x="5" y="12" width="22" height="16" fill="#7a4f2a" stroke="#0d0a06" strokeWidth="2" />
@@ -82,38 +96,26 @@ export default function SideRail({ onMailClick, onChestClick }: Props = {}) {
       {items.map(item => (
         <button
           key={item.id}
-          onClick={() => handleTap(item)}
+          onClick={() => handleTap(item.label)}
           className="relative active:scale-90 transition-transform"
           style={{
-            width: 52,
-            height: 52,
-            borderRadius: 12,
-            // Three-layer 3D: gold outer ring, dark middle, subtle inner glow
-            background: item.highlight
-              ? 'radial-gradient(circle at 30% 25%, rgba(255, 240, 180, 0.4), transparent 55%), ' +
-                'linear-gradient(180deg, #6e4c10 0%, #2a1505 50%, #0d0a06 100%)'
-              : 'radial-gradient(circle at 30% 25%, rgba(255, 240, 200, 0.2), transparent 55%), ' +
-                'linear-gradient(180deg, #4a3020 0%, #1a1008 55%, #0d0a06 100%)',
-            border: '3px solid #0d0a06',
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            background:
+              'radial-gradient(circle at 30% 30%, rgba(255, 240, 200, 0.25), transparent 55%), ' +
+              'linear-gradient(180deg, #3a2410 0%, #0d0a06 100%)',
+            border: item.highlight ? '2px solid #f0b840' : '2px solid #7a4f2a',
             boxShadow: item.highlight
-              ? 'inset 0 0 0 1.5px #f0b840, ' +
-                'inset 0 2px 0 rgba(255, 220, 150, 0.55), ' +
-                'inset 0 -3px 0 rgba(0, 0, 0, 0.55), ' +
-                '0 3px 0 #0d0a06, ' +
-                '0 6px 12px rgba(0, 0, 0, 0.65), ' +
-                '0 0 18px rgba(240, 184, 64, 0.75)'
-              : 'inset 0 0 0 1.5px rgba(240, 184, 64, 0.55), ' +
-                'inset 0 2px 0 rgba(255, 220, 150, 0.35), ' +
-                'inset 0 -3px 0 rgba(0, 0, 0, 0.6), ' +
-                '0 3px 0 #0d0a06, ' +
-                '0 6px 12px rgba(0, 0, 0, 0.65)',
+              ? 'inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 0 #6e4c10, 0 4px 10px rgba(0,0,0,0.55), 0 0 14px rgba(240, 184, 64, 0.75)'
+              : 'inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 0 #0d0a06, 0 4px 8px rgba(0,0,0,0.55)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
           }}
         >
-          <div style={{ width: 30, height: 30 }}>{item.icon}</div>
+          <div style={{ width: 26, height: 26 }}>{item.icon}</div>
 
           {/* Red notification badge */}
           {item.badge != null && item.badge > 0 && (
