@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import DashboardHero from './components/DashboardHero';
-import SwordCTA from './components/SwordCTA';
 import DailyPickerModal from './components/DailyPickerModal';
 import SideRail from './components/SideRail';
-import FreeChestStrip from './components/FreeChestStrip';
 import DailyQuestStrip from './components/DailyQuestStrip';
+import FreeChestModal from './components/FreeChestModal';
+import MailModal from './components/MailModal';
+import { isReady as chestIsReady, loadFreeChest } from '@/lib/freeChest';
 import { getDailyTasks, loadDailyPick, saveDailyPick, TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -67,7 +68,20 @@ export default function Home() {
   const [tasks] = useState<DailyTask[]>(() => getDailyTasks());
   const [pick, setPick] = useState(() => loadDailyPick());
   const [showTimerModal, setShowTimerModal] = useState(false);
+  const [showChestModal, setShowChestModal] = useState(false);
+  const [showMailModal, setShowMailModal] = useState(false);
+  const [chestReady, setChestReady] = useState(() => typeof window !== 'undefined' ? chestIsReady(loadFreeChest()) : false);
   const confettiRef = useRef<HTMLDivElement>(null);
+
+  // Auto-offer the free chest on first visit when it's ready. Polls
+  // every second so the modal appears as soon as the cooldown expires
+  // while the user is already on the page.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setChestReady(chestIsReady(loadFreeChest()));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
   const { award } = useCoins();
   const { awardTrophies } = useTrophies();
 
@@ -173,17 +187,38 @@ export default function Home() {
       {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
 
       {/* Hero — animated castle scene fills all available space.
-          SideRail sits right, widgets + sword stack at bottom. */}
+          SideRail sits right, widgets stack at bottom. */}
       <div className="hero-fill animate-fade-up relative">
         <DashboardHero />
 
         {/* Side rail: 4 icon buttons on the right edge, vertically centred */}
         <div
           className="absolute z-10 pointer-events-none"
-          style={{ top: '50%', right: 8, transform: 'translateY(-50%)' }}
+          style={{ top: '48%', right: 8, transform: 'translateY(-50%)' }}
         >
-          <SideRail />
+          <SideRail onMailClick={() => setShowMailModal(true)} onChestClick={() => setShowChestModal(true)} />
         </div>
+
+        {/* Chest pop-up CTA button floating above the daily quest strip,
+            visible only when chest is ready */}
+        {chestReady && (
+          <div
+            className="absolute left-0 right-0 flex justify-center z-20 pointer-events-none"
+            style={{ bottom: 170 }}
+          >
+            <button
+              onClick={() => { setShowChestModal(true); }}
+              className="btn-gold-3d pointer-events-auto animate-fade-up"
+              style={{
+                padding: '12px 20px',
+                fontSize: 14,
+                animation: 'fadeUp 0.4s both, chestIdleBob 2.4s ease-in-out infinite 0.5s',
+              }}
+            >
+              📦 Gratis kist claimen
+            </button>
+          </div>
+        )}
 
         {/* Completed state — short overlay near the top */}
         {pick.completed && (
@@ -199,22 +234,29 @@ export default function Home() {
           </div>
         )}
 
-        {/* Bottom widget stack: free chest strip, daily quest strip, sword */}
+        {/* Bottom widget stack: daily quest strip (with featured start card) */}
         <div
           className="absolute left-0 right-0 px-3 z-10 flex flex-col gap-2 animate-fade-up"
           style={{ bottom: 10, animationDelay: '160ms' }}
         >
-          <FreeChestStrip />
-          <DailyQuestStrip />
-          <SwordCTA
-            taskText={chosenTask && !pick.completed ? chosenTask.text : null}
-            durationMin={chosenTask?.durationMin}
-            tierLabel={chosenTask ? TIER_CONFIG[chosenTask.tier].label.toUpperCase() : undefined}
-            disabled={!chosenTask || pick.completed}
-            onTap={handleSwordTap}
+          <DailyQuestStrip
+            chosenTask={chosenTask}
+            taskDoneOrLocked={pick.completed}
+            onStartTask={handleSwordTap}
           />
         </div>
       </div>
+
+      {/* Free chest popup modal */}
+      {showChestModal && (
+        <FreeChestModal
+          onClose={() => setShowChestModal(false)}
+          onOpenMail={() => setShowMailModal(true)}
+        />
+      )}
+
+      {/* Mail modal */}
+      {showMailModal && <MailModal onClose={() => setShowMailModal(false)} />}
 
       {/* Timer modal — opens when user taps the sword */}
       {showTimerModal && chosenTask && (
