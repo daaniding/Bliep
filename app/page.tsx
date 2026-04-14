@@ -6,6 +6,9 @@ import GameShell from './components/GameShell';
 import DashboardHero from './components/DashboardHero';
 import SwordCTA from './components/SwordCTA';
 import DailyPickerModal from './components/DailyPickerModal';
+import SideRail from './components/SideRail';
+import FreeChestStrip from './components/FreeChestStrip';
+import DailyQuestStrip from './components/DailyQuestStrip';
 import { getDailyTasks, loadDailyPick, saveDailyPick, TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -169,12 +172,20 @@ export default function Home() {
 
       {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
 
-      {/* Hero — animated castle scene fills all available space,
-          sword CTA floats absolutely on top of it near the bottom */}
+      {/* Hero — animated castle scene fills all available space.
+          SideRail sits right, widgets + sword stack at bottom. */}
       <div className="hero-fill animate-fade-up relative">
         <DashboardHero />
 
-        {/* Completed state — short message, overlay at top of hero */}
+        {/* Side rail: 4 icon buttons on the right edge, vertically centred */}
+        <div
+          className="absolute z-10 pointer-events-none"
+          style={{ top: '50%', right: 8, transform: 'translateY(-50%)' }}
+        >
+          <SideRail />
+        </div>
+
+        {/* Completed state — short overlay near the top */}
         {pick.completed && (
           <div
             className="absolute left-0 right-0 top-4 flex justify-center z-10 pointer-events-none animate-fade-up"
@@ -188,11 +199,13 @@ export default function Home() {
           </div>
         )}
 
-        {/* Sword CTA — absolutely positioned over the video near the bottom */}
+        {/* Bottom widget stack: free chest strip, daily quest strip, sword */}
         <div
-          className="absolute left-0 right-0 px-3 z-10 animate-fade-up"
-          style={{ bottom: 12, animationDelay: '160ms' }}
+          className="absolute left-0 right-0 px-3 z-10 flex flex-col gap-2 animate-fade-up"
+          style={{ bottom: 10, animationDelay: '160ms' }}
         >
+          <FreeChestStrip />
+          <DailyQuestStrip />
           <SwordCTA
             taskText={chosenTask && !pick.completed ? chosenTask.text : null}
             durationMin={chosenTask?.durationMin}
