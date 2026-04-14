@@ -83,34 +83,34 @@ export default function DashboardHero(_props: Props = {}) {
             object-fit: cover;
             filter: saturate(1.08);
             transform-origin: 50% 42%;
-            animation: heroKenBurns 18s ease-in-out infinite alternate;
+            animation: heroKenBurns 12s ease-in-out infinite alternate;
             user-select: none;
             -webkit-user-drag: none;
           }
           @keyframes heroKenBurns {
-            0%   { transform: scale(1.02) translate(0, 0); }
-            100% { transform: scale(1.08) translate(-1.5%, -1%); }
+            0%   { transform: scale(1.06) translate(2.5%, 1.5%); }
+            100% { transform: scale(1.16) translate(-3%, -2%); }
           }
 
           /* Cloud parallax strip — SVG background, twice as wide as the
              frame, sliding from 0 to -50% and bouncing back. */
           .hero-clouds {
             position: absolute;
-            left: -50%;
-            right: -50%;
-            top: 4%;
-            height: 32%;
+            left: -80%;
+            right: -80%;
+            top: 2%;
+            height: 34%;
             pointer-events: none;
-            opacity: 0.55;
+            opacity: 0.8;
             mix-blend-mode: screen;
             background-repeat: repeat-x;
-            background-size: 420px auto;
-            background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'%3E%3Cg fill='rgba(255,255,255,0.92)'%3E%3Cellipse cx='60' cy='60' rx='42' ry='14'/%3E%3Cellipse cx='90' cy='48' rx='30' ry='12'/%3E%3Cellipse cx='48' cy='48' rx='22' ry='10'/%3E%3Cellipse cx='220' cy='70' rx='48' ry='16'/%3E%3Cellipse cx='252' cy='56' rx='34' ry='12'/%3E%3Cellipse cx='200' cy='58' rx='22' ry='10'/%3E%3Cellipse cx='360' cy='50' rx='38' ry='13'/%3E%3Cellipse cx='386' cy='40' rx='26' ry='10'/%3E%3C/g%3E%3C/svg%3E");
-            animation: heroClouds 40s linear infinite alternate;
+            background-size: 360px auto;
+            background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='120' viewBox='0 0 360 120'%3E%3Cg fill='rgba(255,255,255,0.98)'%3E%3Cellipse cx='60' cy='60' rx='50' ry='18'/%3E%3Cellipse cx='92' cy='46' rx='36' ry='14'/%3E%3Cellipse cx='44' cy='46' rx='26' ry='12'/%3E%3Cellipse cx='200' cy='70' rx='56' ry='20'/%3E%3Cellipse cx='232' cy='52' rx='40' ry='14'/%3E%3Cellipse cx='180' cy='54' rx='26' ry='12'/%3E%3Cellipse cx='320' cy='46' rx='44' ry='16'/%3E%3Cellipse cx='348' cy='34' rx='30' ry='12'/%3E%3C/g%3E%3C/svg%3E");
+            animation: heroClouds 28s ease-in-out infinite alternate;
           }
           @keyframes heroClouds {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(-18%); }
+            0%   { transform: translateX(-4%); }
+            100% { transform: translateX(4%); }
           }
 
           /* Torch/forge pulse — pinned to the forge area in the lower
