@@ -138,22 +138,11 @@ export default function TopHud() {
           right: 0;
           z-index: 60;
           padding-top: env(safe-area-inset-top, 0px);
-          background: linear-gradient(180deg, #3d1220 0%, #1a0510 60%, #1a0510 100%);
-          border-bottom: 2px solid rgba(240, 184, 64, 0.55);
+          background: linear-gradient(180deg, #061a35 0%, #0a2d54 60%, #0a2d54 100%);
+          border-bottom: 2px solid rgba(74, 157, 232, 0.4);
           box-shadow:
-            inset 0 -1px 0 rgba(240, 184, 64, 0.35),
-            0 6px 16px rgba(0, 0, 0, 0.65);
-        }
-        .th-wrap::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background-image: url('/assets/ui/panel-wood-plank.png');
-          background-size: 256px 256px;
-          background-repeat: repeat;
-          opacity: 0.12;
-          pointer-events: none;
-          mix-blend-mode: overlay;
+            inset 0 -1px 0 rgba(74, 157, 232, 0.3),
+            0 6px 16px rgba(0, 0, 0, 0.55);
         }
         .th-row {
           display: grid;
@@ -166,7 +155,7 @@ export default function TopHud() {
           grid-template-columns: 1.55fr 1fr;
           padding-top: 0;
           padding-bottom: 8px;
-          border-top: 1px solid rgba(240, 184, 64, 0.2);
+          border-top: 1px solid rgba(74, 157, 232, 0.18);
         }
 
         .th-cell {
@@ -177,14 +166,14 @@ export default function TopHud() {
           padding: 4px 10px 4px 4px;
           min-height: 32px;
           border-radius: 999px;
-          background: linear-gradient(180deg, #5c2030 0%, #2a0a18 55%, #140208 100%);
-          border: 2px solid #f0b840;
+          background: linear-gradient(180deg, #04132a 0%, #02091a 100%);
+          border: 2px solid #1a5a9a;
           box-shadow:
-            inset 0 1.5px 0 rgba(255, 220, 140, 0.5),
+            inset 0 1.5px 0 rgba(74, 157, 232, 0.55),
             inset 0 -1.5px 0 rgba(0, 0, 0, 0.85),
-            0 2px 0 #0d0208,
-            0 4px 8px rgba(0, 0, 0, 0.6);
-          color: #fff6dc;
+            0 2px 0 #02091a,
+            0 4px 8px rgba(0, 0, 0, 0.55);
+          color: #e8f0ff;
           text-decoration: none;
         }
         .th-cell-left {
@@ -198,15 +187,15 @@ export default function TopHud() {
           width: 26px;
           height: 26px;
           border-radius: 50%;
-          background: radial-gradient(circle at 30% 28%, #5a1e2e 0%, #1a0510 80%);
-          border: 2px solid #f0b840;
+          background: radial-gradient(circle at 30% 28%, #1a3a6a 0%, #02091a 80%);
+          border: 2px solid #4a9de8;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           box-shadow:
             inset 0 0 8px rgba(0, 0, 0, 0.85),
-            inset 0 1px 0 rgba(255, 246, 220, 0.3),
-            0 1px 0 #0d0208;
+            inset 0 1px 0 rgba(255, 255, 255, 0.25),
+            0 1px 0 #02091a;
         }
         .th-cell-body {
           flex: 1;
@@ -223,30 +212,30 @@ export default function TopHud() {
         .th-label {
           font-size: 9px;
           letter-spacing: 0.14em;
-          color: #f0b840;
+          color: #4a9de8;
           text-transform: uppercase;
-          text-shadow: 0 1px 0 #0d0208;
+          text-shadow: 0 1px 0 #02091a;
         }
         .th-value {
           font-size: 14px;
           color: #fff6dc;
-          text-shadow: 0 1.5px 0 #0d0208, 0 0 8px rgba(240, 184, 64, 0.45);
+          text-shadow: 0 1.5px 0 #02091a, 0 0 8px rgba(240, 184, 64, 0.35);
           line-height: 1;
         }
         .th-xp {
           position: relative;
           height: 5px;
           border-radius: 4px;
-          background: #0d0208;
-          border: 1px solid #0d0208;
+          background: #02091a;
+          border: 1px solid #02091a;
           box-shadow: inset 0 1.5px 2px rgba(0, 0, 0, 0.85);
           overflow: hidden;
         }
         .th-xp-fill {
           position: absolute;
           inset: 0 auto 0 0;
-          background: linear-gradient(180deg, #fff6dc 0%, #fdd069 30%, #f0b840 70%, #8a5a10 100%);
-          box-shadow: 0 0 8px rgba(240, 184, 64, 0.95);
+          background: linear-gradient(180deg, #b8e8ff 0%, #4a9de8 50%, #1a5a9a 100%);
+          box-shadow: 0 0 8px rgba(74, 157, 232, 0.9);
         }
         .th-xp-shine {
           position: absolute;
@@ -267,13 +256,13 @@ export default function TopHud() {
           gap: 8px;
           padding: 4px 10px 4px 4px;
           border-radius: 999px;
-          background: linear-gradient(180deg, #5c2030 0%, #2a0a18 55%, #140208 100%);
-          border: 2px solid #f0b840;
+          background: linear-gradient(180deg, #04132a 0%, #02091a 100%);
+          border: 2px solid #1a5a9a;
           box-shadow:
-            inset 0 1.5px 0 rgba(255, 220, 140, 0.5),
+            inset 0 1.5px 0 rgba(74, 157, 232, 0.55),
             inset 0 -1.5px 0 rgba(0, 0, 0, 0.85),
-            0 2px 0 #0d0208,
-            0 4px 8px rgba(0, 0, 0, 0.6);
+            0 2px 0 #02091a,
+            0 4px 8px rgba(0, 0, 0, 0.55);
           text-decoration: none;
           color: #fff6dc;
           min-height: 36px;
@@ -281,18 +270,18 @@ export default function TopHud() {
         }
         .th-avatar {
           flex: 0 0 auto;
-          width: 34px;
-          height: 34px;
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
-          background: radial-gradient(circle at 32% 28%, #5a1e2e 0%, #1a0510 80%);
-          border: 2.5px solid #fdd069;
+          background: radial-gradient(circle at 32% 28%, #1a3a6a 0%, #02091a 80%);
+          border: 2px solid #fdd069;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           box-shadow:
-            inset 0 0 8px rgba(0, 0, 0, 0.9),
-            0 1px 0 #0d0208,
-            0 0 12px rgba(240, 184, 64, 0.75);
+            inset 0 0 8px rgba(0, 0, 0, 0.85),
+            0 1px 0 #02091a,
+            0 0 10px rgba(240, 184, 64, 0.5);
           overflow: hidden;
         }
         .th-player-body {
@@ -305,7 +294,7 @@ export default function TopHud() {
         .th-player-name {
           font-size: 13px;
           color: #fff6dc;
-          text-shadow: 0 1.5px 0 #0d0208;
+          text-shadow: 0 1.5px 0 #02091a;
           line-height: 1;
           white-space: nowrap;
           overflow: hidden;
@@ -315,14 +304,14 @@ export default function TopHud() {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          padding: 2px 7px 2px 4px;
+          padding: 2px 6px 2px 4px;
           border-radius: 999px;
           background: linear-gradient(180deg, var(--rankRing) 0%, var(--rank) 100%);
-          border: 1.5px solid #0d0208;
+          border: 1.5px solid #02091a;
           box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.55),
-            inset 0 -1px 0 rgba(0, 0, 0, 0.45),
-            0 1px 0 #0d0208;
+            inset 0 1px 0 rgba(255, 255, 255, 0.5),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+            0 1px 0 #02091a;
           font-size: 9px;
           letter-spacing: 0.06em;
           color: #2a1505;
@@ -337,16 +326,16 @@ export default function TopHud() {
           justify-content: flex-end;
         }
         .th-gear {
-          width: 34px;
-          height: 34px;
+          width: 32px;
+          height: 32px;
           border-radius: 10px;
-          background: linear-gradient(180deg, #5c2030 0%, #2a0a18 55%, #140208 100%);
-          border: 2px solid #f0b840;
+          background: linear-gradient(180deg, #04132a 0%, #02091a 100%);
+          border: 2px solid #1a5a9a;
           box-shadow:
-            inset 0 1.5px 0 rgba(255, 220, 140, 0.5),
+            inset 0 1.5px 0 rgba(74, 157, 232, 0.55),
             inset 0 -1.5px 0 rgba(0, 0, 0, 0.85),
-            0 2px 0 #0d0208,
-            0 4px 8px rgba(0, 0, 0, 0.6);
+            0 2px 0 #02091a,
+            0 4px 8px rgba(0, 0, 0, 0.55);
           display: inline-flex;
           align-items: center;
           justify-content: center;
