@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import { sfxBattleStart } from '@/lib/sound';
 
 interface Props {
   taskText: string | null;
@@ -19,9 +20,9 @@ export default function SwordCTA({ taskText, durationMin, tierLabel, onTap, disa
 
   function handleTap() {
     if (disabled) return;
+    sfxBattleStart();
     const root = rootRef.current;
     if (root) {
-      // Kick off a brief flash animation via a short lifecycle class
       root.animate(
         [
           { filter: 'brightness(1) drop-shadow(0 0 0 rgba(255,200,80,0))' },
@@ -43,7 +44,16 @@ export default function SwordCTA({ taskText, durationMin, tierLabel, onTap, disa
       className="block w-full active:scale-[0.98] transition-transform"
       style={{ background: 'transparent', border: 0, padding: 0, cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
-      <svg viewBox="0 0 440 90" xmlns="http://www.w3.org/2000/svg" className="w-full drop-shadow-[0_8px_14px_rgba(0,0,0,0.6)]">
+      <svg
+        viewBox="0 0 440 90"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full"
+        style={{
+          filter:
+            'drop-shadow(0 6px 14px rgba(0,0,0,0.75)) ' +
+            'drop-shadow(0 0 24px rgba(255, 190, 90, 0.35))',
+        }}
+      >
         <defs>
           {/* Silver blade gradient */}
           <linearGradient id="swBlade" x1="0" y1="0" x2="0" y2="1">
@@ -102,19 +112,22 @@ export default function SwordCTA({ taskText, durationMin, tierLabel, onTap, disa
         {/* Blade highlight stripe */}
         <path d="M135 34 L395 34 L395 40 L135 40 Z" fill="url(#swBladeStripe)" />
 
-        {/* Engraved task text along the blade */}
+        {/* Engraved task text along the blade — gold fill with dark
+            stroke so it reads as raised gilded metal. */}
         {taskText && (
           <text
             x="260"
-            y="49"
+            y="50"
             textAnchor="middle"
             fontFamily="Lilita One, sans-serif"
-            fontSize="12"
-            fill="#1a0f05"
-            stroke="none"
+            fontSize="13"
+            fill="#fdd069"
+            stroke="#1a0f05"
+            strokeWidth="1.4"
+            paintOrder="stroke fill"
             style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
           >
-            {truncate(taskText, 36)}
+            {truncate(taskText, 34)}
           </text>
         )}
 

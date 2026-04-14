@@ -10,6 +10,7 @@ import { getDailyTasks, loadDailyPick, saveDailyPick, TIER_CONFIG, type DailyTas
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { trophiesForTier } from '@/lib/trophies';
+import { sfxClaim, sfxFail, sfxTap } from '@/lib/sound';
 
 function getToday(): string {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })).toISOString().split('T')[0];
@@ -91,12 +92,14 @@ export default function Home() {
   }, []);
 
   function handlePick(task: DailyTask) {
+    sfxTap();
     const next: typeof pick = { date: pick.date, chosenId: task.id, completed: false, outcome: null };
     saveDailyPick(next);
     setPick(next);
   }
 
   function handleClaim(coinAmount: number) {
+    sfxClaim();
     award(coinAmount);
     if (chosenTask) {
       awardTrophies(trophiesForTier(chosenTask.tier), `Taak voltooid (${chosenTask.tier})`);
@@ -140,6 +143,7 @@ export default function Home() {
   }
 
   function handleAbort() {
+    sfxFail();
     const next: typeof pick = { ...pick, completed: true, outcome: 'gave-up' };
     saveDailyPick(next);
     setPick(next);
@@ -147,6 +151,7 @@ export default function Home() {
   }
 
   function handleFailLock() {
+    sfxFail();
     const next: typeof pick = { ...pick, completed: true, outcome: 'failed-locked' };
     saveDailyPick(next);
     setPick(next);

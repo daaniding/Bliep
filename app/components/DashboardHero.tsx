@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
 import { useStreak } from '@/lib/useStreak';
 
@@ -27,7 +28,7 @@ export default function DashboardHero(_props: Props = {}) {
   }, []);
 
   const streak = useStreak();
-  const showStreakFlame = streak.current > 0;
+  const streakActive = streak.current > 0;
 
   // Night tint colour + opacity for mix-blend
   const nightTint = tod.darkness > 0.3;
@@ -42,20 +43,30 @@ export default function DashboardHero(_props: Props = {}) {
         // like it sits inside the same world.
       }}
     >
-      {/* === Background video (native loop — Runway already made a loop) === */}
-      <video
-        src="/dashboard-hero.mp4"
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        className="absolute inset-0 w-full h-full"
-        style={{
-          objectFit: 'cover',
-          filter: 'saturate(1.08)',
-        }}
-      />
+      {/* === Background video (native loop — Runway already made a loop) ===
+           Wrapped in a Link so tapping on the castle navigates to /stad.
+           The sword + overlays above have higher z-index so they stay
+           tappable. */}
+      <Link
+        href="/stad"
+        aria-label="Naar je stad"
+        className="absolute inset-0 z-0 active:brightness-110 transition-all"
+        style={{ WebkitTapHighlightColor: 'transparent' }}
+      >
+        <video
+          src="/dashboard-hero.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 w-full h-full"
+          style={{
+            objectFit: 'cover',
+            filter: 'saturate(1.08)',
+          }}
+        />
+      </Link>
 
       {/* Hidden SVG defs used by overlay filters / gradients */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
@@ -69,7 +80,7 @@ export default function DashboardHero(_props: Props = {}) {
         </defs>
       </svg>
 
-      {/* === Day/night tint overlay === */}
+      {/* === Day/night tint overlay — subtle, no multiply === */}
       {nightTint && (
         <div
           aria-hidden
@@ -77,8 +88,7 @@ export default function DashboardHero(_props: Props = {}) {
             position: 'absolute',
             inset: 0,
             background:
-              'linear-gradient(180deg, rgba(12, 14, 40, 0.65) 0%, rgba(40, 10, 20, 0.45) 55%, rgba(0, 0, 0, 0.55) 100%)',
-            mixBlendMode: 'multiply',
+              'linear-gradient(180deg, rgba(12, 20, 50, 0.22) 0%, rgba(30, 10, 30, 0.12) 60%, rgba(0, 0, 0, 0.15) 100%)',
             pointerEvents: 'none',
           }}
         />
@@ -90,8 +100,7 @@ export default function DashboardHero(_props: Props = {}) {
             position: 'absolute',
             inset: 0,
             background:
-              'linear-gradient(180deg, rgba(255, 120, 30, 0.15) 0%, rgba(200, 40, 30, 0.1) 100%)',
-            mixBlendMode: 'screen',
+              'linear-gradient(180deg, rgba(255, 120, 30, 0.08) 0%, rgba(200, 40, 30, 0.05) 100%)',
             pointerEvents: 'none',
           }}
         />
@@ -113,38 +122,39 @@ export default function DashboardHero(_props: Props = {}) {
           />
         </g>
 
-        {/* Streak flame above the castle — approximate centre top */}
-        {showStreakFlame && (
-          <g
-            className="hero-svg-anim"
-            style={{
-              animation: 'torchFlicker 0.8s ease-in-out infinite',
-              transform: 'translate(210px, 60px)',
-            }}
+        {/* Streak flame above the castle — active = warm flicker + number,
+            inactive = grey ember with "0" and a hint below. Always rendered
+            so new users learn the feature exists. */}
+        <g
+          className="hero-svg-anim"
+          style={{
+            animation: streakActive ? 'torchFlicker 0.8s ease-in-out infinite' : undefined,
+            transform: 'translate(210px, 60px)',
+            opacity: streakActive ? 1 : 0.55,
+          }}
+        >
+          <path
+            d="M0 0 Q-10 -22 0 -34 Q-4 -16 8 -24 Q4 -4 14 -12 Q10 10 0 16 Q-14 10 -18 4 Q-14 -8 0 0 Z"
+            fill={streakActive ? 'url(#heroTorchFlame)' : '#5a5a62'}
+            stroke={streakActive ? '#7a2e0a' : '#2a2a2e'}
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          {streakActive && <circle cx="0" cy="-10" r="4" fill="#fff8c0" opacity="0.9" />}
+          <text
+            x="0"
+            y="28"
+            textAnchor="middle"
+            fontFamily="Lilita One, sans-serif"
+            fontSize="18"
+            fill={streakActive ? '#fdd069' : '#9a9aa2'}
+            stroke="#0d0a06"
+            strokeWidth="1.8"
+            paintOrder="stroke fill"
           >
-            <path
-              d="M0 0 Q-10 -22 0 -34 Q-4 -16 8 -24 Q4 -4 14 -12 Q10 10 0 16 Q-14 10 -18 4 Q-14 -8 0 0 Z"
-              fill="url(#heroTorchFlame)"
-              stroke="#7a2e0a"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            />
-            <circle cx="0" cy="-10" r="4" fill="#fff8c0" opacity="0.9" />
-            <text
-              x="0"
-              y="28"
-              textAnchor="middle"
-              fontFamily="Lilita One, sans-serif"
-              fontSize="18"
-              fill="#fdd069"
-              stroke="#0d0a06"
-              strokeWidth="1.8"
-              paintOrder="stroke fill"
-            >
-              {streak.current}
-            </text>
-          </g>
-        )}
+            {streak.current}
+          </text>
+        </g>
       </svg>
 
       {/* === Drifting clouds overlay === */}

@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import BannerChip from './BannerChip';
 import StoneArchNav from './StoneArchNav';
+import KingdomLevelBar from './KingdomLevelBar';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { useStreak } from '@/lib/useStreak';
@@ -30,6 +31,13 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
               )}
               <BannerChip variant="magic" value={trophies} label="Trofee" href="/league" />
             </div>
+          </div>
+          {/* Kingdom level bar spans the middle under the banners */}
+          <div
+            className="max-w-[380px] mx-auto px-4 pt-1 pointer-events-none"
+            style={{ marginTop: -4 }}
+          >
+            <KingdomLevelBar />
           </div>
         </div>
       )}

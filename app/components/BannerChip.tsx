@@ -14,17 +14,14 @@ export default function BannerChip({ variant, value, label, href }: Props) {
   const palette = PALETTES[variant];
   const content = (
     <div className={`hanging-banner ${variant}`}>
-      {/* Rope + knot */}
-      <svg width="88" height="22" viewBox="0 0 88 22" aria-hidden>
-        <line x1="14" y1="0" x2="22" y2="18" stroke="#3d2813" strokeWidth="2.5" strokeLinecap="round" />
-        <line x1="74" y1="0" x2="66" y2="18" stroke="#3d2813" strokeWidth="2.5" strokeLinecap="round" />
-        {/* Rope knot */}
-        <circle cx="18" cy="10" r="3" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1" />
-        <circle cx="70" cy="10" r="3" fill="#5c3a1e" stroke="#0d0a06" strokeWidth="1" />
+      {/* Rope — short hanger */}
+      <svg width="60" height="14" viewBox="0 0 60 14" aria-hidden>
+        <line x1="12" y1="0" x2="16" y2="12" stroke="#3d2813" strokeWidth="2" strokeLinecap="round" />
+        <line x1="48" y1="0" x2="44" y2="12" stroke="#3d2813" strokeWidth="2" strokeLinecap="round" />
       </svg>
 
-      {/* Banner cloth */}
-      <svg width="110" height="96" viewBox="0 0 110 96" aria-hidden style={{ marginTop: -6 }}>
+      {/* Banner cloth — smaller than before */}
+      <svg width="72" height="62" viewBox="0 0 110 96" aria-hidden style={{ marginTop: -4 }}>
         <defs>
           <linearGradient id={`bannerFill-${variant}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={palette.top} />
