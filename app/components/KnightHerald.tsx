@@ -38,47 +38,26 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
 
   return (
     <>
-      {/* SVG defs holding the chroma-key filter — luminance threshold
-          turns near-white pixels fully transparent. */}
-      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
-        <defs>
-          <filter id="knightChromaKey" colorInterpolationFilters="sRGB">
-            {/* Step 1: convert near-white to alpha 0 by subtracting
-                a high-luminance threshold from the alpha channel. */}
-            <feColorMatrix
-              type="matrix"
-              values="
-                1 0 0 0 0
-                0 1 0 0 0
-                0 0 1 0 0
-               -1 -1 -1 0 2.6"
-            />
-            {/* Step 2: clean up edge fringe with a slight composite */}
-            <feComposite in2="SourceGraphic" operator="in" />
-          </filter>
-        </defs>
-      </svg>
-
-      {/* Knight sprite — chroma-keyed, drop-shadow for depth */}
+      {/* Knight sprite — true transparent PNG, drop-shadow for depth */}
       <div
         className="absolute pointer-events-none"
         style={{
-          bottom: 220,
-          left: 14,
-          width: 110,
-          height: 110,
+          bottom: 200,
+          left: 6,
+          width: 130,
+          height: 130,
           zIndex: 15,
           animation: 'fadeUp 0.8s ease-out 0.4s both, knightBob 3.2s ease-in-out infinite 1s',
         }}
       >
         <img
-          src="/assets/ui/knight.jpeg"
+          src="/assets/ui/knight.png"
           alt=""
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            filter: 'url(#knightChromaKey) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 18px rgba(240, 184, 64, 0.35))',
+            filter: 'drop-shadow(0 8px 12px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 22px rgba(240, 184, 64, 0.35))',
           }}
         />
       </div>
@@ -88,7 +67,7 @@ export default function KnightHerald({ chosenTaskTitle, taskDone }: Props) {
         className="absolute pointer-events-none"
         style={{
           bottom: 320,
-          left: 8,
+          left: 16,
           maxWidth: 200,
           padding: '10px 14px 11px 14px',
           background:
