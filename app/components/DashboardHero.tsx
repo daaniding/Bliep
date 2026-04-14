@@ -43,29 +43,100 @@ export default function DashboardHero(_props: Props = {}) {
         // like it sits inside the same world.
       }}
     >
-      {/* === Background video (native loop — Runway already made a loop) ===
-           Wrapped in a Link so tapping on the castle navigates to /stad.
-           The sword + overlays above have higher z-index so they stay
-           tappable. */}
+      {/* === Background scene ===
+           A single cartoon illustration (/dashboard-hero.png) is given
+           life via CSS: a slow Ken Burns push-in that ping-pongs via
+           `animation-direction: alternate`, a drifting cloud parallax
+           layer, and a torch-glow pulse near the forge. Wrapped in a
+           Link so tapping the castle navigates to /stad. */}
       <Link
         href="/stad"
         aria-label="Naar je stad"
         className="absolute inset-0 z-0 active:brightness-110 transition-all"
         style={{ WebkitTapHighlightColor: 'transparent' }}
       >
-        <video
-          src="/dashboard-hero.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full"
-          style={{
-            objectFit: 'cover',
-            filter: 'saturate(1.08)',
-          }}
-        />
+        <div className="hero-scene">
+          <img
+            src="/dashboard-hero.png"
+            alt=""
+            className="hero-art"
+            draggable={false}
+          />
+          {/* Drifting cloud parallax — a wide SVG strip that slowly slides
+              right across the sky. Ping-pongs for a seamless feel. */}
+          <div className="hero-clouds" aria-hidden />
+          {/* Torch glow — a soft orange radial that pulses near the forge
+              position in the lower-right of the illustration. */}
+          <div className="hero-torch" aria-hidden />
+        </div>
+        <style jsx>{`
+          .hero-scene {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+          }
+          .hero-art {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: saturate(1.08);
+            transform-origin: 50% 42%;
+            animation: heroKenBurns 18s ease-in-out infinite alternate;
+            user-select: none;
+            -webkit-user-drag: none;
+          }
+          @keyframes heroKenBurns {
+            0%   { transform: scale(1.02) translate(0, 0); }
+            100% { transform: scale(1.08) translate(-1.5%, -1%); }
+          }
+
+          /* Cloud parallax strip — SVG background, twice as wide as the
+             frame, sliding from 0 to -50% and bouncing back. */
+          .hero-clouds {
+            position: absolute;
+            left: -50%;
+            right: -50%;
+            top: 4%;
+            height: 32%;
+            pointer-events: none;
+            opacity: 0.55;
+            mix-blend-mode: screen;
+            background-repeat: repeat-x;
+            background-size: 420px auto;
+            background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'%3E%3Cg fill='rgba(255,255,255,0.92)'%3E%3Cellipse cx='60' cy='60' rx='42' ry='14'/%3E%3Cellipse cx='90' cy='48' rx='30' ry='12'/%3E%3Cellipse cx='48' cy='48' rx='22' ry='10'/%3E%3Cellipse cx='220' cy='70' rx='48' ry='16'/%3E%3Cellipse cx='252' cy='56' rx='34' ry='12'/%3E%3Cellipse cx='200' cy='58' rx='22' ry='10'/%3E%3Cellipse cx='360' cy='50' rx='38' ry='13'/%3E%3Cellipse cx='386' cy='40' rx='26' ry='10'/%3E%3C/g%3E%3C/svg%3E");
+            animation: heroClouds 40s linear infinite alternate;
+          }
+          @keyframes heroClouds {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-18%); }
+          }
+
+          /* Torch/forge pulse — pinned to the forge area in the lower
+             right of the illustration. */
+          .hero-torch {
+            position: absolute;
+            right: 18%;
+            bottom: 18%;
+            width: 120px;
+            height: 120px;
+            pointer-events: none;
+            background: radial-gradient(
+              circle at 50% 50%,
+              rgba(255, 200, 80, 0.55) 0%,
+              rgba(255, 120, 30, 0.3) 35%,
+              rgba(255, 80, 20, 0) 70%
+            );
+            mix-blend-mode: screen;
+            filter: blur(6px);
+            animation: heroTorch 2.4s ease-in-out infinite alternate;
+          }
+          @keyframes heroTorch {
+            0%   { opacity: 0.55; transform: scale(1); }
+            100% { opacity: 0.95; transform: scale(1.12); }
+          }
+        `}</style>
       </Link>
 
       {/* Hidden SVG defs used by overlay filters / gradients */}
