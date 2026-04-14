@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: '/aanvallen',
+    href: '/battle',
     label: 'Battle',
     center: true,
     icon: (
@@ -100,7 +100,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: '/settings',
+    href: '/meer',
     label: 'Meer',
     icon: (
       <svg viewBox="0 0 32 32" fill="none">

@@ -193,9 +193,12 @@ export default function LeagueClient() {
           </div>
         )}
 
+        {/* Mock leaderboard preview — shown before any league setup */}
+        {!displayName && <MockLeaderboardPreview hasAccount={!!user} />}
+
         {/* Display name setup */}
         {!displayName && (
-          <section className="card-elevated p-5 mb-4">
+          <section className="card-elevated p-5 mb-4 mt-4">
             <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Eerst even</p>
             <label className="block text-ink text-sm font-medium mb-2">Hoe wil je heten in de league?</label>
             <input
@@ -237,12 +240,15 @@ export default function LeagueClient() {
         {displayName && view === 'menu' && (
           <section className="space-y-3">
             {myLeagues.length === 0 && (
-              <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 mb-2">
-                <p className="text-ink text-sm font-medium mb-1">👋 Eerste keer hier?</p>
-                <p className="text-muted text-xs leading-relaxed">
-                  Een Friend League is een klein groepje vrienden waar je trofeeën van iedereen kunt zien. Maak er één en stuur de 6-letter code naar je broer, vriendin of collega — dan zien jullie elkaars score op de ranglijst.
-                </p>
-              </div>
+              <>
+                <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 mb-2">
+                  <p className="text-ink text-sm font-medium mb-1">👋 Eerste keer hier?</p>
+                  <p className="text-muted text-xs leading-relaxed">
+                    Een Friend League is een klein groepje vrienden waar je trofeeën van iedereen kunt zien. Maak er één en stuur de 6-letter code naar je broer, vriendin of collega — dan zien jullie elkaars score op de ranglijst.
+                  </p>
+                </div>
+                <MockLeaderboardPreview hasAccount={!!user} />
+              </>
             )}
             <button
               onClick={() => { setError(null); setView('create'); }}
@@ -403,6 +409,123 @@ export default function LeagueClient() {
           <p className="text-muted text-sm text-center mt-8">League laden...</p>
         )}
       </main>
+    </div>
+  );
+}
+
+// Mock leaderboard with blur overlay — shown to first-time visitors
+// so they can SEE what League looks like before they sign up / pick
+// a name. Names are obviously fictional.
+const MOCK_ROWS: { name: string; trophies: number }[] = [
+  { name: 'Tim',    trophies: 142 },
+  { name: 'Lotte',  trophies: 98 },
+  { name: 'Sven',   trophies: 76 },
+  { name: 'Mira',   trophies: 54 },
+  { name: 'Jasper', trophies: 31 },
+];
+
+function MockLeaderboardPreview({ hasAccount }: { hasAccount: boolean }) {
+  return (
+    <div className="relative mb-4 rounded-2xl overflow-hidden" style={{
+      background: 'linear-gradient(180deg, #1a0f05 0%, #0d0a06 100%)',
+      border: '2.5px solid #0d0a06',
+      boxShadow:
+        'inset 0 0 0 1.5px rgba(240, 184, 64, 0.55), ' +
+        'inset 0 2px 0 rgba(255, 220, 150, 0.15), ' +
+        '0 6px 16px rgba(0, 0, 0, 0.6)',
+    }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <p className="font-display" style={{
+          fontSize: 10, color: '#fdd069', letterSpacing: '0.18em', textTransform: 'uppercase',
+          textShadow: '0 1px 0 rgba(0,0,0,0.7)',
+        }}>
+          Voorbeeld league
+        </p>
+        <p className="font-display" style={{
+          fontSize: 10, color: '#f4e6b8', opacity: 0.6, letterSpacing: '0.06em',
+        }}>
+          De Bliepers
+        </p>
+      </div>
+
+      {/* Mock rows */}
+      <div className="px-2 pb-3 space-y-1">
+        {MOCK_ROWS.map((row, i) => (
+          <div
+            key={row.name}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg"
+            style={{
+              background: i === 0
+                ? 'linear-gradient(180deg, rgba(240,184,64,0.18) 0%, rgba(240,184,64,0.05) 100%)'
+                : 'rgba(255, 246, 220, 0.04)',
+              border: i === 0 ? '1.5px solid rgba(240, 184, 64, 0.55)' : '1px solid rgba(240, 184, 64, 0.18)',
+            }}
+          >
+            <span className="font-display" style={{
+              fontSize: 14, color: i === 0 ? '#fdd069' : '#f4e6b8', minWidth: 18, textAlign: 'center',
+              textShadow: '0 1px 0 rgba(0,0,0,0.7)',
+            }}>
+              {i + 1}
+            </span>
+            <span className="font-body flex-1 truncate" style={{
+              fontSize: 13, color: '#fff6dc', fontWeight: 600,
+            }}>
+              {row.name}
+            </span>
+            <span className="font-display" style={{
+              fontSize: 13, color: '#fdd069', textShadow: '0 1px 0 rgba(0,0,0,0.7)',
+            }}>
+              {row.trophies} 🏆
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Soft blur + CTA overlay */}
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-end pb-5 px-4"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(13,10,6,0) 0%, rgba(13,10,6,0.05) 35%, rgba(13,10,6,0.78) 78%, rgba(13,10,6,0.96) 100%)',
+          backdropFilter: 'blur(0.6px)',
+          WebkitBackdropFilter: 'blur(0.6px)',
+        }}
+      >
+        <p className="text-center font-body mb-3" style={{
+          fontSize: 12, color: '#fff6dc', maxWidth: 280, lineHeight: 1.4,
+        }}>
+          Speel met een groepje vrienden op een ranglijst van trofeeën.
+        </p>
+        {!hasAccount ? (
+          <Link
+            href="/signup"
+            className="inline-flex items-center justify-center font-display"
+            style={{
+              padding: '10px 22px',
+              borderRadius: 999,
+              background:
+                'linear-gradient(180deg, #fff6dc 0%, #fdd069 18%, #f0b840 50%, #c8891e 100%)',
+              border: '3px solid #0d0a06',
+              boxShadow:
+                'inset 0 1.5px 0 rgba(255,255,255,0.7), 0 3px 0 #6e4c10, 0 6px 14px rgba(0,0,0,0.6)',
+              fontSize: 12,
+              color: '#2a1505',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              textShadow: '0 1px 0 rgba(255,255,255,0.5)',
+              minHeight: 44,
+              textDecoration: 'none',
+            }}
+          >
+            Account maken om mee te doen
+          </Link>
+        ) : (
+          <p className="font-body text-center" style={{ fontSize: 11, color: '#fdd069', opacity: 0.85 }}>
+            Maak hieronder je eigen league of join met een code ↓
+          </p>
+        )}
+      </div>
     </div>
   );
 }
