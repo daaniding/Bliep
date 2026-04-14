@@ -134,50 +134,67 @@ export default function StoneArchNav() {
         aria-hidden
       >
         <defs>
-          <linearGradient id="stoneG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#5c3a1e" />
-            <stop offset="0.4" stopColor="#3d2813" />
-            <stop offset="1" stopColor="#1a0f05" />
+          <linearGradient id="woodG" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#7a4a1f" />
+            <stop offset="0.45" stopColor="#3a2410" />
+            <stop offset="1" stopColor="#0d0a06" />
           </linearGradient>
-          <pattern id="stoneBrick" width="40" height="22" patternUnits="userSpaceOnUse">
-            <rect width="40" height="22" fill="url(#stoneG)" />
-            <line x1="0" y1="11" x2="40" y2="11" stroke="#1a0f05" strokeWidth="1" opacity="0.6" />
-            <line x1="20" y1="0" x2="20" y2="11" stroke="#1a0f05" strokeWidth="1" opacity="0.6" />
-            <line x1="0" y1="22" x2="40" y2="22" stroke="#1a0f05" strokeWidth="1" opacity="0.6" />
+          <pattern id="woodPlank" width="60" height="22" patternUnits="userSpaceOnUse">
+            <rect width="60" height="22" fill="url(#woodG)" />
+            {/* horizontal plank seams */}
+            <line x1="0" y1="0.5" x2="60" y2="0.5" stroke="#0d0a06" strokeWidth="1.2" />
+            <line x1="0" y1="11" x2="60" y2="11" stroke="#0d0a06" strokeWidth="0.8" opacity="0.7" />
+            <line x1="0" y1="21.5" x2="60" y2="21.5" stroke="#0d0a06" strokeWidth="1.2" />
+            {/* wood grain streaks */}
+            <line x1="6" y1="2" x2="56" y2="3" stroke="#5a3214" strokeWidth="0.5" opacity="0.4" />
+            <line x1="4" y1="13" x2="58" y2="14" stroke="#5a3214" strokeWidth="0.5" opacity="0.4" />
+            <line x1="8" y1="18" x2="52" y2="19" stroke="#5a3214" strokeWidth="0.5" opacity="0.3" />
           </pattern>
         </defs>
 
-        {/* Base stone bar */}
+        {/* Base wood plank bar */}
         <path
           d="M0 40 Q60 20 120 32 Q180 44 220 22 Q260 0 300 22 Q360 44 440 32 L440 120 L0 120 Z"
-          fill="url(#stoneBrick)"
-          stroke="#1a0f05"
+          fill="url(#woodPlank)"
+          stroke="#0d0a06"
           strokeWidth="3"
         />
 
-        {/* Top arch highlight */}
+        {/* Top gold rim */}
         <path
           d="M0 40 Q60 20 120 32 Q180 44 220 22 Q260 0 300 22 Q360 44 440 32"
           fill="none"
-          stroke="#7a4f2a"
-          strokeWidth="2"
-          opacity="0.7"
+          stroke="#f0b840"
+          strokeWidth="2.5"
+          opacity="0.85"
+        />
+        <path
+          d="M0 42 Q60 22 120 34 Q180 46 220 24 Q260 2 300 24 Q360 46 440 34"
+          fill="none"
+          stroke="#fff6dc"
+          strokeWidth="0.8"
+          opacity="0.5"
         />
 
-        {/* Center keystone (bigger) */}
+        {/* Center wood keystone with gold rim */}
         <polygon
           points="200,24 240,24 244,60 196,60"
-          fill="url(#stoneG)"
-          stroke="#1a0f05"
+          fill="url(#woodG)"
+          stroke="#0d0a06"
           strokeWidth="2.5"
         />
         <polygon
           points="200,24 240,24 244,60 196,60"
           fill="none"
-          stroke="#d19225"
-          strokeWidth="1.5"
-          opacity="0.6"
+          stroke="#f0b840"
+          strokeWidth="2"
+          opacity="0.9"
         />
+        {/* Decorative gold rivets on the keystone */}
+        <circle cx="206" cy="32" r="2" fill="#fdd069" stroke="#0d0a06" strokeWidth="0.6" />
+        <circle cx="234" cy="32" r="2" fill="#fdd069" stroke="#0d0a06" strokeWidth="0.6" />
+        <circle cx="208" cy="52" r="2" fill="#fdd069" stroke="#0d0a06" strokeWidth="0.6" />
+        <circle cx="232" cy="52" r="2" fill="#fdd069" stroke="#0d0a06" strokeWidth="0.6" />
       </svg>
 
       <div className="arch-row">

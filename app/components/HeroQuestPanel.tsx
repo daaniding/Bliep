@@ -71,20 +71,18 @@ export default function HeroQuestPanel({
         zIndex: 20,
       }}
     >
-      {/* === Painted scroll banner with task text ===
-          The scroll PNG is 600×600. Square container + objectFit:contain
-          renders it 1:1 so positions stay predictable. Parchment area
-          measured from the asset: roughly center 56% horizontally,
-          center 38% vertically. */}
+      {/* === Painted scroll banner with task text === */}
       <div
         className="animate-fade-up"
         style={{
           position: 'relative',
-          width: 260,
-          height: 260,
-          marginBottom: -65,
-          marginTop: -30,
-          filter: 'drop-shadow(0 10px 16px rgba(0,0,0,0.75))',
+          width: 300,
+          height: 300,
+          marginBottom: -90,
+          marginTop: -40,
+          filter: 'drop-shadow(0 12px 18px rgba(0,0,0,0.8))',
+          animation: 'fadeUp 0.6s ease-out both, scrollSway 7s ease-in-out infinite 0.6s',
+          transformOrigin: 'center 60%',
         }}
       >
         <img
@@ -103,10 +101,10 @@ export default function HeroQuestPanel({
           <div
             style={{
               position: 'absolute',
-              top: 50,
+              top: 60,
               left: '50%',
               transform: 'translateX(-50%)',
-              padding: '3px 18px',
+              padding: '4px 22px',
               background:
                 'linear-gradient(180deg, #ff5a3a 0%, #c0392b 50%, #7a1f12 100%)',
               border: '2.5px solid #0d0a06',
@@ -134,14 +132,16 @@ export default function HeroQuestPanel({
             </span>
           </div>
         )}
-        {/* Task text — over the parchment area of the painted scroll */}
+        {/* Task text — over the parchment area of the painted scroll.
+            Scroll asset's clear parchment band is roughly center 50%
+            horizontal × middle 30% vertical. */}
         <div
           style={{
             position: 'absolute',
-            top: 90,
-            left: 60,
-            right: 60,
-            bottom: 95,
+            top: 116,
+            left: 92,
+            right: 92,
+            bottom: 116,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -151,12 +151,12 @@ export default function HeroQuestPanel({
             className="font-body"
             style={{
               margin: 0,
-              fontSize: 12,
-              lineHeight: 1.22,
+              fontSize: 11,
+              lineHeight: 1.2,
               color: '#3a1f08',
               fontWeight: 800,
               textAlign: 'center',
-              textShadow: '0 1px 0 rgba(255, 240, 200, 0.55)',
+              textShadow: '0 1px 0 rgba(255, 240, 200, 0.6)',
               display: '-webkit-box',
               WebkitLineClamp: 3,
               WebkitBoxOrient: 'vertical',
@@ -179,26 +179,52 @@ export default function HeroQuestPanel({
           width: '100%',
         }}
       >
-        {/* Huge knight */}
+        {/* Knight stage: ground shadow + huge knight on top */}
         <div
           style={{
-            width: 200,
-            height: 200,
             position: 'relative',
-            animation: 'fadeUp 0.7s ease-out 0.3s both, knightBob 3s ease-in-out infinite 1s',
-            filter: 'drop-shadow(0 14px 18px rgba(0,0,0,0.85)) drop-shadow(0 0 26px rgba(240,184,64,0.45))',
+            width: 220,
+            height: 220,
           }}
         >
-          <img
-            src="/assets/ui/knight.png"
-            alt=""
+          {/* Ground shadow ellipse — anchors knight to the world */}
+          <div
+            aria-hidden
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              transform: taskDoneOrLocked && outcome !== 'won' ? 'rotate(-6deg)' : undefined,
+              position: 'absolute',
+              left: '50%',
+              bottom: 24,
+              transform: 'translateX(-50%)',
+              width: 160,
+              height: 28,
+              borderRadius: '50%',
+              background:
+                'radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.2) 65%, transparent 85%)',
+              filter: 'blur(4px)',
             }}
           />
+          {/* Knight sprite */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              animation: 'fadeUp 0.7s ease-out 0.3s both, knightBob 3s ease-in-out infinite 1s',
+              filter: 'drop-shadow(0 16px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 30px rgba(240,184,64,0.55))',
+            }}
+          >
+            <img
+              src="/assets/ui/knight.png"
+              alt=""
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                transform: taskDoneOrLocked && outcome !== 'won' ? 'rotate(-6deg)' : undefined,
+                animation: 'knightBreathe 4s ease-in-out infinite 0.5s',
+                transformOrigin: 'center bottom',
+              }}
+            />
+          </div>
         </div>
 
         {/* GIANT primary CTA — only when there's a chosen task and not done */}
@@ -207,18 +233,18 @@ export default function HeroQuestPanel({
             onClick={handleStart}
             className="pointer-events-auto active:scale-[0.96] transition-transform"
             style={{
-              marginTop: -28,
-              padding: '14px 44px',
-              borderRadius: 16,
+              marginTop: -22,
+              padding: '18px 56px',
+              borderRadius: 20,
               background:
                 'linear-gradient(180deg, #fff6dc 0%, #fdd069 12%, #f0b840 35%, #c8891e 75%, #8a5a10 100%)',
-              border: '3.5px solid #0d0a06',
+              border: '4px solid #0d0a06',
               boxShadow:
                 'inset 0 2px 0 rgba(255,255,255,0.85), ' +
                 'inset 0 -3px 0 rgba(90,45,0,0.5), ' +
-                '0 4px 0 #6e4c10, ' +
-                '0 8px 18px rgba(0,0,0,0.7), ' +
-                '0 0 26px rgba(240,184,64,0.7)',
+                '0 5px 0 #6e4c10, ' +
+                '0 10px 22px rgba(0,0,0,0.75), ' +
+                '0 0 32px rgba(240,184,64,0.8)',
               cursor: 'pointer',
               animation: 'startPulse 1.6s ease-in-out infinite',
             }}
@@ -226,15 +252,15 @@ export default function HeroQuestPanel({
             <span
               className="font-display"
               style={{
-                fontSize: 22,
+                fontSize: 30,
                 color: '#2a1505',
-                textShadow: '0 1.5px 0 rgba(255,255,255,0.55)',
-                letterSpacing: '0.08em',
+                textShadow: '0 2px 0 rgba(255,255,255,0.55)',
+                letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 lineHeight: 1,
               }}
             >
-              ⚔ Start ⚔
+              Start
             </span>
           </button>
         )}

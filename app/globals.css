@@ -438,6 +438,33 @@ body {
   z-index: 1;
 }
 
+/* Painted castle HD background with slow Ken Burns zoom/pan so the
+   scene breathes without feeling like a static image. */
+.hero-castle-kenburns {
+  position: absolute;
+  inset: 0;
+  background: url('/assets/ui/castle-hero.jpg') center 30% / cover no-repeat;
+  filter: saturate(1.15) contrast(1.08);
+  animation: kenBurns 32s ease-in-out infinite alternate;
+  transform-origin: center 40%;
+}
+
+@keyframes kenBurns {
+  0%   { transform: scale(1.05) translate(-1%, 0); }
+  50%  { transform: scale(1.10) translate(1%, -1%); }
+  100% { transform: scale(1.07) translate(0, 0); }
+}
+
+@keyframes scrollSway {
+  0%, 100% { transform: rotate(-0.6deg); }
+  50%      { transform: rotate(0.6deg); }
+}
+
+@keyframes knightBreathe {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(1.015); }
+}
+
 /* Chunky gold rivet — decorative dot used at frame corners */
 .rivet {
   position: absolute;
