@@ -20,43 +20,26 @@ interface NavItem {
 }
 
 /**
- * Bottom nav — Clash Royale style.
- *
- *   Home · Stad · OPDRACHT (center, raised) · Aanvallen · League
+ * Bottom nav — Warm Royal, with real Kenney buttonSquare PNGs as
+ * the tab chrome. The OPDRACHT centre tab is raised and lights up
+ * with a beige PNG instead of a hand-rolled gradient.
  */
 const NAV_ITEMS: NavItem[] = [
   {
     href: '/',
     label: 'Home',
     icon: (
-      <svg viewBox="0 0 32 32" fill="none">
-        <path d="M5 16 L16 5 L27 16 L27 26 Q27 28 25 28 L7 28 Q5 28 5 26 Z" fill="#4a9de8" stroke="#02091a" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M13 28 L13 19 Q13 18 14 18 L18 18 Q19 18 19 19 L19 28 Z" fill="#02091a" />
-        <path d="M5 16 L16 5 L27 16" stroke="#fff" strokeWidth="1.4" fill="none" opacity="0.7" />
+      <svg viewBox="0 0 32 32" fill="none" width="26" height="26">
+        <path d="M5 16 L16 5 L27 16 L27 26 Q27 28 25 28 L7 28 Q5 28 5 26 Z" fill="#c08038" stroke="#0d0208" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M13 28 L13 19 Q13 18 14 18 L18 18 Q19 18 19 19 L19 28 Z" fill="#0d0208" />
+        <path d="M5 16 L16 5 L27 16" stroke="#fff6dc" strokeWidth="1.4" fill="none" opacity="0.7" />
       </svg>
     ),
   },
-  {
-    href: '/stad',
-    label: 'Stad',
-    icon: <CastleIcon size={26} />,
-  },
-  {
-    href: '/opdracht',
-    label: 'Opdracht',
-    center: true,
-    icon: <ScrollIcon size={32} />,
-  },
-  {
-    href: '/aanvallen',
-    label: 'Aanval',
-    icon: <SwordIcon size={26} />,
-  },
-  {
-    href: '/league',
-    label: 'League',
-    icon: <TrophyIcon size={26} />,
-  },
+  { href: '/stad', label: 'Stad', icon: <CastleIcon size={26} /> },
+  { href: '/opdracht', label: 'Opdracht', center: true, icon: <ScrollIcon size={34} /> },
+  { href: '/aanvallen', label: 'Aanval', icon: <SwordIcon size={26} /> },
+  { href: '/league', label: 'League', icon: <TrophyIcon size={26} /> },
 ];
 
 export default function StoneArchNav() {
@@ -89,17 +72,26 @@ export default function StoneArchNav() {
           const showBadge =
             (item.href === '/' && (questBadge || chestBadge)) ||
             (item.href === '/opdracht' && questBadge);
+
+          // Every tab uses kenney-btn-square-* as the base. Active
+          // and center tabs get the beige PNG instead of brown.
+          const squareVariant =
+            item.center || active ? 'beige' : 'brown';
+          const centerClass = item.center ? 'cr-tab-center' : '';
+          const activeClass = active ? 'cr-tab-active' : '';
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`cr-tab ${active ? 'active' : ''} ${item.center ? 'center' : ''}`}
+              className={`kenney-btn-square kenney-btn-square-${squareVariant} cr-tab ${centerClass} ${activeClass}`}
+              aria-current={active ? 'page' : undefined}
             >
               <span className="cr-tab-icon">
                 {item.icon}
                 {showBadge && <span className="cr-badge" aria-hidden />}
               </span>
-              <span className="cr-tab-label font-display">{item.label}</span>
+              <span className="cr-tab-label">{item.label}</span>
             </Link>
           );
         })}
@@ -118,60 +110,35 @@ export default function StoneArchNav() {
         .cr-nav-bar {
           position: absolute;
           inset: 0;
-          background: linear-gradient(180deg, #071e3d 0%, #03101e 100%);
-          border-top: 2px solid rgba(74, 157, 232, 0.45);
+          background:
+            linear-gradient(180deg, rgba(61, 18, 32, 0.96) 0%, rgba(13, 2, 8, 0.98) 100%);
+          border-top: 2px solid rgba(240, 184, 64, 0.6);
           box-shadow:
-            inset 0 1px 0 rgba(74, 157, 232, 0.35),
-            0 -8px 22px rgba(0, 0, 0, 0.6);
+            inset 0 1px 0 rgba(240, 184, 64, 0.4),
+            0 -8px 22px rgba(0, 0, 0, 0.75);
           pointer-events: auto;
+        }
+        .cr-nav-bar::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image: url('/assets/ui/panel-wood-plank.png');
+          background-size: 256px 256px;
+          background-repeat: repeat;
+          opacity: 0.14;
+          mix-blend-mode: overlay;
+          pointer-events: none;
         }
         .cr-nav-row {
           position: relative;
           display: grid;
-          grid-template-columns: 1fr 1fr 1.2fr 1fr 1fr;
+          grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr;
           gap: 6px;
-          padding: 12px 10px 14px;
+          padding: 14px 10px 16px;
           max-width: 480px;
           margin: 0 auto;
           pointer-events: auto;
           align-items: end;
-        }
-        .cr-tab {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 3px;
-          padding: 6px 4px 6px;
-          border-radius: 12px;
-          background: linear-gradient(180deg, #0a2d54 0%, #04132a 100%);
-          border: 2px solid #1a5a9a;
-          box-shadow:
-            0 4px 0 #061828,
-            0 8px 14px rgba(0, 0, 0, 0.55),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1),
-            inset 0 -1.5px 0 rgba(0, 0, 0, 0.6);
-          color: #b8d8ff;
-          text-decoration: none;
-          font-family: var(--font-display), system-ui, sans-serif;
-          font-size: 9px;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          transition: transform 100ms ease-out;
-          min-height: 56px;
-        }
-        .cr-tab:active { transform: translateY(2px); }
-        .cr-tab.active {
-          border-color: #f0b840;
-          background: linear-gradient(180deg, #143b6a 0%, #0a2349 100%);
-          color: #fff6dc;
-          box-shadow:
-            0 4px 0 #6e4c10,
-            0 8px 14px rgba(0, 0, 0, 0.55),
-            inset 0 1px 0 rgba(255, 246, 220, 0.25),
-            inset 0 -1.5px 0 rgba(0, 0, 0, 0.6),
-            0 0 22px rgba(240, 184, 64, 0.75);
         }
         .cr-tab-icon {
           position: relative;
@@ -182,50 +149,29 @@ export default function StoneArchNav() {
           height: 32px;
           filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.85));
         }
-        .cr-tab.active .cr-tab-icon {
+        .cr-tab-label {
+          line-height: 1;
+          margin-top: 1px;
+        }
+        .cr-tab-active .cr-tab-icon {
           filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.85))
-                  drop-shadow(0 0 6px rgba(255, 220, 140, 0.85));
+                  drop-shadow(0 0 6px rgba(255, 220, 140, 0.9));
           transform: scale(1.08);
         }
-        .cr-tab-label {
-          text-shadow: 0 1px 0 #02091a;
-          line-height: 1;
-        }
-        .cr-tab.active .cr-tab-label {
-          text-shadow: 0 1px 0 #02091a, 0 0 8px rgba(240, 184, 64, 0.85);
-        }
 
-        /* ===== Center OPDRACHT tab ===== */
-        .cr-tab.center {
-          margin-top: -22px;
-          padding: 8px 4px 8px;
-          background: linear-gradient(180deg, #ffe566 0%, #f0c030 30%, #c8891e 70%, #6e4c10 100%);
-          border: 3px solid #6e4c10;
-          color: #2a1505;
-          box-shadow:
-            0 6px 0 #3d2800,
-            0 10px 22px rgba(0, 0, 0, 0.65),
-            inset 0 2px 0 rgba(255, 255, 255, 0.7),
-            inset 0 -3px 0 rgba(0, 0, 0, 0.3),
-            0 0 24px rgba(240, 184, 64, 0.6);
-          min-height: 72px;
+        /* ===== Centre OPDRACHT tab ===== */
+        .cr-tab-center {
+          margin-top: -28px;
+          min-height: 84px !important;
+          padding-top: 14px !important;
+          padding-bottom: 18px !important;
           z-index: 2;
+          filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7))
+                  drop-shadow(0 0 20px rgba(255, 220, 120, 0.7)) !important;
         }
-        .cr-tab.center.active {
-          box-shadow:
-            0 6px 0 #3d2800,
-            0 10px 22px rgba(0, 0, 0, 0.65),
-            inset 0 2px 0 rgba(255, 255, 255, 0.7),
-            inset 0 -3px 0 rgba(0, 0, 0, 0.3),
-            0 0 36px rgba(255, 220, 100, 0.95);
-        }
-        .cr-tab.center .cr-tab-icon {
-          width: 42px;
-          height: 42px;
-        }
-        .cr-tab.center .cr-tab-label {
-          color: #2a1505;
-          text-shadow: 0 1px 0 rgba(255, 246, 220, 0.65);
+        .cr-tab-center .cr-tab-icon {
+          width: 44px;
+          height: 44px;
         }
 
         /* ===== Notification badge ===== */
