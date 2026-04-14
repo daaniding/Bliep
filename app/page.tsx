@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
-import DashboardHero from './components/DashboardHero';
+import CityPreview from './components/CityPreview';
 import SwordCTA from './components/SwordCTA';
 import DailyPickerModal from './components/DailyPickerModal';
 import SideRail from './components/SideRail';
@@ -11,6 +11,7 @@ import FreeChestStrip from './components/FreeChestStrip';
 import DailyQuestStrip from './components/DailyQuestStrip';
 import { getDailyTasks, loadDailyPick, saveDailyPick, TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
+import { loadCity, saveCity, addSpeedTokens } from '@/lib/cityStore';
 import { useTrophies } from '@/lib/useTrophies';
 import { trophiesForTier } from '@/lib/trophies';
 import { sfxClaim, sfxFail, sfxTap } from '@/lib/sound';
@@ -104,6 +105,8 @@ export default function Home() {
   function handleClaim(coinAmount: number) {
     sfxClaim();
     award(coinAmount);
+    // Reward a speed-up token for finishing a real task — fuels the city loop
+    saveCity(addSpeedTokens(loadCity(), 1));
     if (chosenTask) {
       awardTrophies(trophiesForTier(chosenTask.tier), `Taak voltooid (${chosenTask.tier})`);
     }
@@ -175,7 +178,7 @@ export default function Home() {
       {/* Hero — animated castle scene fills all available space.
           SideRail sits right, widgets + sword stack at bottom. */}
       <div className="hero-fill animate-fade-up relative">
-        <DashboardHero />
+        <CityPreview />
 
         {/* Side rail: 4 icon buttons on the right edge, vertically centred */}
         <div

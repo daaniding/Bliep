@@ -1,6 +1,6 @@
 export const TILE_W = 96;
 export const TILE_H = 48;
-export const GRID_SIZE = 16;
+export const GRID_SIZE = 32;
 
 export interface GridCoord {
   gx: number;
@@ -34,4 +34,16 @@ export function centerOrigin(viewW: number, viewH: number): { originX: number; o
   const originX = viewW / 2;
   const originY = viewH / 2 - ((GRID_SIZE - 1) * TILE_H) / 2;
   return { originX, originY };
+}
+
+/** Center tile coordinate (used for daily chest, build zone center, etc). */
+export const CITY_CENTER = { gx: Math.floor(GRID_SIZE / 2), gy: Math.floor(GRID_SIZE / 2) };
+
+/** Player buildable zone radius around center. Outside this, decor lives. */
+export const BUILD_ZONE_RADIUS = 12;
+
+export function inBuildZone(gx: number, gy: number): boolean {
+  const dx = gx - CITY_CENTER.gx;
+  const dy = gy - CITY_CENTER.gy;
+  return inBounds(gx, gy) && Math.max(Math.abs(dx), Math.abs(dy)) <= BUILD_ZONE_RADIUS;
 }

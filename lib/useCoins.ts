@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { loadCity, saveCity, addCoins, claimProduction, COINS_CHANGED_EVENT } from './cityStore';
+import { loadCity, saveCity, addCoins, collectAllFarms, processBuildQueue, COINS_CHANGED_EVENT } from './cityStore';
 
 // Hook that returns current coin balance and an awardCoins function. Listens
 // for changes from other tabs (storage event) and the same tab (custom
@@ -10,14 +10,14 @@ export function useCoins() {
   const [coins, setCoins] = useState<number>(0);
 
   useEffect(() => {
-    // Initial: claim any passive production accrued while away
-    const loaded = loadCity();
-    const { state: claimed } = claimProduction(loaded);
+    // Initial: process build queue + auto-collect any pending farm coins
+    const loaded = processBuildQueue(loadCity());
+    const { state: claimed } = collectAllFarms(loaded);
     saveCity(claimed);
     setCoins(claimed.coins);
 
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'bliep:city:v1') {
+      if (e.key === 'bliep:city:v2') {
         try {
           const c = JSON.parse(e.newValue ?? '{}').coins ?? 0;
           setCoins(c);
