@@ -5,7 +5,7 @@ import GameDashboard from './components/GameDashboard';
 
 export default function Home() {
   return (
-    <GameShell hideTopBar>
+    <GameShell>
       <GameDashboard />
     </GameShell>
   );

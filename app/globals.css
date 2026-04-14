@@ -60,13 +60,9 @@
 }
 
 html, body {
-  background: #0d0a06;
   color: var(--color-parch-100);
   min-height: 100dvh;
-}
-
-html, body {
-  background-color: #0a1328;
+  background-color: #0d3a6a;
 }
 
 body {
@@ -83,18 +79,18 @@ body {
      Everything is fixed so the layers stay calm while content scrolls. */
   background-image:
     radial-gradient(ellipse 80% 55% at 50% 0%,
-      rgba(255, 204, 102, 0.22) 0%,
-      rgba(255, 180, 60, 0.0) 70%),
+      rgba(120, 200, 255, 0.18) 0%,
+      rgba(74, 157, 232, 0.0) 70%),
     radial-gradient(ellipse 90% 60% at 50% 100%,
-      rgba(180, 50, 30, 0.22) 0%,
-      rgba(90, 20, 10, 0.0) 70%),
-    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cdefs%3E%3Cpattern id='d' patternUnits='userSpaceOnUse' width='56' height='56'%3E%3Cpath d='M28 0 L56 28 L28 56 L0 28 Z' fill='none' stroke='rgba(255,220,140,0.08)' stroke-width='1.2'/%3E%3Cpath d='M28 4 L52 28 L28 52 L4 28 Z' fill='none' stroke='rgba(255,220,140,0.04)' stroke-width='0.8'/%3E%3Ccircle cx='28' cy='28' r='1.1' fill='rgba(255,220,140,0.28)'/%3E%3Ccircle cx='0' cy='0' r='1.1' fill='rgba(255,220,140,0.18)'/%3E%3Ccircle cx='56' cy='0' r='1.1' fill='rgba(255,220,140,0.18)'/%3E%3Ccircle cx='0' cy='56' r='1.1' fill='rgba(255,220,140,0.18)'/%3E%3Ccircle cx='56' cy='56' r='1.1' fill='rgba(255,220,140,0.18)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='56' height='56' fill='url(%23d)'/%3E%3C/svg%3E"),
+      rgba(0, 0, 0, 0.45) 0%,
+      rgba(0, 0, 0, 0.0) 70%),
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cdefs%3E%3Cpattern id='d' patternUnits='userSpaceOnUse' width='56' height='56'%3E%3Cpath d='M28 0 L56 28 L28 56 L0 28 Z' fill='none' stroke='rgba(180,220,255,0.12)' stroke-width='1.4'/%3E%3Cpath d='M28 4 L52 28 L28 52 L4 28 Z' fill='none' stroke='rgba(180,220,255,0.06)' stroke-width='0.9'/%3E%3Ccircle cx='28' cy='28' r='1.2' fill='rgba(200,230,255,0.32)'/%3E%3Ccircle cx='0' cy='0' r='1.2' fill='rgba(200,230,255,0.22)'/%3E%3Ccircle cx='56' cy='0' r='1.2' fill='rgba(200,230,255,0.22)'/%3E%3Ccircle cx='0' cy='56' r='1.2' fill='rgba(200,230,255,0.22)'/%3E%3Ccircle cx='56' cy='56' r='1.2' fill='rgba(200,230,255,0.22)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='56' height='56' fill='url(%23d)'/%3E%3C/svg%3E"),
     linear-gradient(180deg,
-      #1a2a52 0%,
-      #132144 22%,
-      #0d1a38 55%,
-      #081127 85%,
-      #060b1c 100%);
+      #1d5a9a 0%,
+      #134076 25%,
+      #0d3a6a 55%,
+      #082445 85%,
+      #04132a 100%);
   background-attachment: fixed, fixed, fixed, fixed;
   background-size: 100% 100%, 100% 100%, 56px 56px, 100% 100%;
   background-position: center top, center bottom, center center, center top;
