@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import GameShell from './components/GameShell';
 import VideoHeroScene from './components/VideoHeroScene';
+import HomeAtmosphere from './components/HomeAtmosphere';
 import { getDailyTasks, loadDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { sfxTap } from '@/lib/sound';
 
@@ -43,6 +44,7 @@ export default function Home() {
         {/* === 3D scene fills all remaining space === */}
         <div className="relative flex-1 overflow-hidden">
           <VideoHeroScene />
+          <HomeAtmosphere />
 
           {/* === Floating CTA over the scene === */}
           <div
