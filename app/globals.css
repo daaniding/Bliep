@@ -391,6 +391,53 @@ body {
   backdrop-filter: blur(3px);
 }
 
+/* === PAINTED ASSET PANELS (9-slice border-image) ===
+   Replaces CSS chrome with actual hand-painted art. */
+
+.panel-wood-img {
+  position: relative;
+  border-style: solid;
+  border-width: 28px 32px 32px 32px;
+  border-image-source: url('/assets/ui/panel-wood.jpg');
+  border-image-slice: 130 150 145 150 fill;
+  border-image-repeat: stretch;
+  border-image-width: 28px 32px 32px 32px;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.75));
+}
+
+.panel-wood-img > .panel-inner {
+  margin: -8px -10px -10px -10px;
+  padding: 4px 6px 6px 6px;
+  min-height: 0;
+}
+
+.frame-gold-img {
+  position: relative;
+  border-style: solid;
+  border-width: 34px 46px 38px 46px;
+  border-image-source: url('/assets/ui/frame-gold-gem.jpg');
+  border-image-slice: 110 140 120 140 fill;
+  border-image-repeat: stretch;
+  border-image-width: 34px 46px 38px 46px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
+}
+
+.frame-gold-img > .frame-inner {
+  margin: -10px -14px -12px -14px;
+  padding: 4px 6px;
+  min-height: 0;
+}
+
+/* Painted castle hero layer — sits behind the video as a poster-style
+   fallback and to unify the art style on slow connections. */
+.hero-castle-painting {
+  position: absolute;
+  inset: 0;
+  background: url('/assets/ui/castle-hero.jpg') center 30% / cover no-repeat;
+  filter: saturate(1.12) contrast(1.06);
+  z-index: 1;
+}
+
 /* Chunky gold rivet — decorative dot used at frame corners */
 .rivet {
   position: absolute;

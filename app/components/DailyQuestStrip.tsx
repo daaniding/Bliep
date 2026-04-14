@@ -41,13 +41,8 @@ export default function DailyQuestStrip({ chosenTask, taskDoneOrLocked, onStartT
   const tierCfg = chosenTask ? TIER_CONFIG[chosenTask.tier] : null;
 
   return (
-    <div className="panel-dark-glass flex flex-col gap-2 relative" style={{ padding: '10px 10px' }}>
-      {/* Corner rivets */}
-      <span className="rivet" style={{ top: 4, left: 4 }} />
-      <span className="rivet" style={{ top: 4, right: 4 }} />
-      <span className="rivet" style={{ bottom: 4, left: 4 }} />
-      <span className="rivet" style={{ bottom: 4, right: 4 }} />
-
+    <div className="panel-wood-img relative">
+     <div className="panel-inner flex flex-col gap-2">
       <div className="flex items-center justify-between px-2">
         <p
           className="font-display"
@@ -74,7 +69,7 @@ export default function DailyQuestStrip({ chosenTask, taskDoneOrLocked, onStartT
         </p>
       </div>
 
-      {/* Primary quest — featured card */}
+      {/* Primary quest — featured card on parchment */}
       <button
         onClick={handleStart}
         disabled={!chosenTask || taskDoneOrLocked}
@@ -192,6 +187,7 @@ export default function DailyQuestStrip({ chosenTask, taskDoneOrLocked, onStartT
         <SecondaryChip icon="🏰" title="Bouw iets in je stad" done={buildDone} />
         <SecondaryChip icon="🏆" title="Verdien een trofee" done={trophyDone} />
       </div>
+     </div>
     </div>
   );
 }

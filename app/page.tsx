@@ -6,6 +6,7 @@ import GameShell from './components/GameShell';
 import DashboardHero from './components/DashboardHero';
 import DailyPickerModal from './components/DailyPickerModal';
 import SideRail from './components/SideRail';
+import KnightHerald from './components/KnightHerald';
 import DailyQuestStrip from './components/DailyQuestStrip';
 import FreeChestModal from './components/FreeChestModal';
 import MailModal from './components/MailModal';
@@ -191,6 +192,12 @@ export default function Home() {
       <div className="hero-fill animate-fade-up relative">
         <DashboardHero />
 
+        {/* Knight herald — character + speech scroll on the hero */}
+        <KnightHerald
+          chosenTaskTitle={chosenTask?.text ?? null}
+          taskDone={pick.completed}
+        />
+
         {/* Side rail: 4 icon buttons on the right edge, vertically centred */}
         <div
           className="absolute z-10 pointer-events-none"
@@ -269,16 +276,10 @@ export default function Home() {
           onClick={() => setShowTimerModal(false)}
         >
           <div className="max-w-sm w-full" onClick={e => e.stopPropagation()}>
-            <div
-              className="surface-floating p-5"
-              style={{
-                background: 'linear-gradient(180deg, #fff6dc 0%, #fae6b6 60%, #d6b67a 100%)',
-                border: '4px solid #1a0f05',
-                boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.6), 0 10px 40px rgba(0,0,0,0.6), 0 0 0 3px #f0b840',
-                borderRadius: 20,
-              }}
-            >
+            <div className="frame-gold-img">
+             <div className="frame-inner" style={{ padding: '8px 10px' }}>
               <TaskTimer task={chosenTask} onClaim={handleClaim} onAbort={handleAbort} onFailLock={handleFailLock} />
+             </div>
             </div>
             <button
               onClick={() => setShowTimerModal(false)}

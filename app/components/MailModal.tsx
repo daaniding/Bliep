@@ -48,7 +48,7 @@ export default function MailModal({ onClose }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="panel-wood relative w-full"
+        className="panel-wood-img relative w-full"
         style={{
           maxWidth: 460,
           borderRadius: '18px 18px 0 0',

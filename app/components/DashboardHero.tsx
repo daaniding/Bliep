@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
 import { useStreak } from '@/lib/useStreak';
+
+// Remotion Player must be SSR-disabled (uses browser APIs)
+const HeroPlayer = dynamic(() => import('./HeroPlayer'), { ssr: false });
 
 // Hero scene — a looping Runway-generated medieval kingdom video as
 // the background, with animated overlays on top:
@@ -53,19 +57,10 @@ export default function DashboardHero(_props: Props = {}) {
         className="absolute inset-0 z-0 active:brightness-110 transition-all"
         style={{ WebkitTapHighlightColor: 'transparent' }}
       >
-        <video
-          src="/dashboard-hero.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full"
-          style={{
-            objectFit: 'cover',
-            filter: 'saturate(1.08)',
-          }}
-        />
+        {/* Remotion-driven hero scene: castle ken-burns, knight bob,
+            dragon flight, fireflies, embers, vignette — all
+            frame-perfect and loop-friendly. */}
+        <HeroPlayer />
       </Link>
 
       {/* Hidden SVG defs used by overlay filters / gradients */}
