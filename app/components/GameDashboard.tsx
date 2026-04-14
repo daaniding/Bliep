@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import CityPreview from './CityPreview';
+import HomeCityScene from './HomeCityScene';
 import {
   TrophyIcon,
   ScrollIcon,
@@ -53,15 +53,6 @@ export default function GameDashboard() {
   const [buildingCount, setBuildingCount] = useState(1);
   const tickRef = useRef<number | null>(null);
 
-  // city rotation
-  const [cityRotation, setCityRotation] = useState(0);
-  const dragRef = useRef<{ startX: number; startRot: number; dragging: boolean }>({
-    startX: 0,
-    startRot: 0,
-    dragging: false,
-  });
-  const [dragging, setDragging] = useState(false);
-
   useEffect(() => {
     setTasks(getDailyTasks());
     setPick(loadDailyPick());
@@ -93,43 +84,6 @@ export default function GameDashboard() {
       : 'Start Opdracht';
 
   const freeChestAvailable = chestReady(loadFreeChest());
-
-  // ===== drag handlers =====
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (!e.touches[0]) return;
-    dragRef.current.startX = e.touches[0].clientX;
-    dragRef.current.startRot = cityRotation;
-    dragRef.current.dragging = true;
-    setDragging(true);
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!dragRef.current.dragging || !e.touches[0]) return;
-    const dx = e.touches[0].clientX - dragRef.current.startX;
-    setCityRotation(Math.max(-35, Math.min(35, dragRef.current.startRot + dx * 0.35)));
-  };
-  const onTouchEnd = () => {
-    dragRef.current.dragging = false;
-    setDragging(false);
-  };
-  const onMouseDown = (e: React.MouseEvent) => {
-    dragRef.current.startX = e.clientX;
-    dragRef.current.startRot = cityRotation;
-    dragRef.current.dragging = true;
-    setDragging(true);
-    const move = (ev: MouseEvent) => {
-      if (!dragRef.current.dragging) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      setCityRotation(Math.max(-35, Math.min(35, dragRef.current.startRot + dx * 0.35)));
-    };
-    const up = () => {
-      dragRef.current.dragging = false;
-      setDragging(false);
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  };
 
   return (
     <div className="gd-root">
@@ -167,17 +121,7 @@ export default function GameDashboard() {
         </div>
 
         <div className="gd-city-wrap">
-          <div
-            className={`gd-city-stage ${dragging ? 'gd-dragging' : ''}`}
-            style={{ transform: `rotateY(${cityRotation}deg)` }}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-            onTouchCancel={onTouchEnd}
-            onMouseDown={onMouseDown}
-          >
-            <CityPreview />
-          </div>
+          <HomeCityScene />
         </div>
 
         <div className="gd-rail gd-rail-right">
@@ -307,14 +251,34 @@ export default function GameDashboard() {
         .gd-stage {
           position: relative;
           width: 100%;
-          flex: 1 1 auto;
-          min-height: 240px;
-          max-height: 360px;
+          flex: 0 0 auto;
+          height: 36vh;
+          min-height: 260px;
+          max-height: 340px;
           display: grid;
           grid-template-columns: auto 1fr auto;
           gap: 6px;
-          align-items: center;
+          align-items: stretch;
           z-index: 1;
+          overflow: hidden;
+          border-radius: 22px;
+          background:
+            radial-gradient(ellipse 75% 55% at 50% 30%,
+              rgba(180, 230, 255, 0.35) 0%,
+              rgba(100, 180, 240, 0.1) 55%,
+              rgba(20, 60, 120, 0) 90%),
+            linear-gradient(180deg,
+              #6ab6f0 0%,
+              #4a9de8 25%,
+              #2f7fc8 55%,
+              #1a5a9a 85%,
+              #0a3a6a 100%);
+          border: 3px solid rgba(255, 255, 255, 0.35);
+          box-shadow:
+            inset 0 2px 0 rgba(255, 255, 255, 0.5),
+            inset 0 -10px 30px rgba(0, 30, 80, 0.55),
+            0 8px 18px rgba(0, 0, 0, 0.6),
+            0 0 0 2px #0d1a38;
         }
         .gd-stage::before {
           content: '';
@@ -352,66 +316,18 @@ export default function GameDashboard() {
         .gd-rail {
           display: flex;
           flex-direction: column;
+          justify-content: center;
           gap: 10px;
           z-index: 2;
         }
 
         .gd-city-wrap {
           position: relative;
+          width: 100%;
           height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          perspective: 900px;
+          min-height: 260px;
+          display: block;
           z-index: 1;
-        }
-        .gd-city-stage {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform-style: preserve-3d;
-          will-change: transform;
-          touch-action: pan-y;
-          user-select: none;
-          -webkit-user-select: none;
-          cursor: grab;
-          animation: cityWiggle 6s ease-in-out infinite;
-        }
-        .gd-city-stage.gd-dragging {
-          animation: none;
-          cursor: grabbing;
-        }
-        @keyframes cityWiggle {
-          0%, 100% { transform: rotateY(-2deg); }
-          50%      { transform: rotateY(2deg); }
-        }
-        .gd-city-stage :global(.city-preview) {
-          max-width: 100% !important;
-          width: 100%;
-          filter: none;
-        }
-        .gd-city-stage :global(.city-preview .card) {
-          background: transparent !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-        }
-        .gd-city-stage :global(.city-preview .card-inner) {
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-          aspect-ratio: auto !important;
-          height: 100% !important;
-        }
-        .gd-city-stage :global(.city-preview .card-header),
-        .gd-city-stage :global(.city-preview .card-footer) {
-          display: none !important;
-        }
-        .gd-city-stage :global(svg) {
-          filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7));
         }
 
         /* ===== Doe Opdracht ===== */

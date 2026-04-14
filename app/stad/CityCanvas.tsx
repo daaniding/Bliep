@@ -12,6 +12,7 @@ interface Props {
   state: CityState;
   onTapTile: (gx: number, gy: number) => void;
   onTapBuilding: (b: PlacedBuilding) => void;
+  className?: string;
 }
 
 const MIN_ZOOM = 0.55;
@@ -28,7 +29,7 @@ function drawTile(g: Graphics, fill: number, stroke: number, strokeWidth = 1) {
   g.stroke({ color: stroke, width: strokeWidth, alpha: 0.4 });
 }
 
-export default function CityCanvas({ state, onTapTile, onTapBuilding }: Props) {
+export default function CityCanvas({ state, onTapTile, onTapBuilding, className }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const worldRef = useRef<Container | null>(null);
@@ -312,5 +313,5 @@ export default function CityCanvas({ state, onTapTile, onTapBuilding }: Props) {
     npcContainers.forEach(c => layer.addChild(c));
   }
 
-  return <div ref={hostRef} className="fixed inset-0 touch-none" />;
+  return <div ref={hostRef} className={className ?? 'fixed inset-0 touch-none'} />;
 }
