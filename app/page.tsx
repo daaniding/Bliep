@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import CityPreview from './components/CityPreview';
-import KnightIntro from './components/KnightIntro';
-import TaskCard from './components/TaskCard';
+import SwordCTA from './components/SwordCTA';
+import DailyPickerModal from './components/DailyPickerModal';
+import SideRail from './components/SideRail';
 import FreeChestStrip from './components/FreeChestStrip';
 import DailyQuestStrip from './components/DailyQuestStrip';
-import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
+import { getDailyTasks, loadDailyPick, saveDailyPick, TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { loadCity, saveCity, addSpeedTokens } from '@/lib/cityStore';
 import { useTrophies } from '@/lib/useTrophies';
@@ -163,9 +164,8 @@ export default function Home() {
     setShowTimerModal(false);
   }
 
-  function handleTaskTap() {
+  function handleSwordTap() {
     if (!chosenTask || pick.completed) return;
-    sfxTap();
     setShowTimerModal(true);
   }
 
@@ -173,47 +173,58 @@ export default function Home() {
     <GameShell>
       <div ref={confettiRef} className="fixed inset-0 pointer-events-none z-[9999]" />
 
-      {showPickerModal ? (
-        <KnightIntro tasks={tasks} onPick={handlePick} />
-      ) : (
-        <div className="hero-fill animate-fade-up relative flex flex-col items-stretch px-3 pt-2 pb-2 gap-3">
-          {/* Header banner */}
-          <div className="flex flex-col items-center animate-fade-up">
-            <p className="font-display text-[9px] uppercase tracking-[0.25em] text-[var(--color-parch-200)]">
-              Welkom in
+      {showPickerModal && <DailyPickerModal tasks={tasks} onPick={handlePick} />}
+
+      {/* Hero column: small header, square city window in the middle, widgets below */}
+      <div className="hero-fill animate-fade-up relative flex flex-col items-stretch px-3 pt-3">
+        {/* Top header above the city window */}
+        <div className="flex flex-col items-center gap-1 mb-2 animate-fade-up">
+          <p className="font-display text-[10px] uppercase tracking-[0.25em] text-[var(--color-parch-200)]">
+            Welkom in
+          </p>
+          <h2 className="font-display text-[20px] text-[var(--color-gold-100)] text-stroke-dark leading-none flex items-center gap-2">
+            <span>🏰</span>
+            <span>Je Koninkrijk</span>
+            <span>⚔️</span>
+          </h2>
+          {pick.completed && (
+            <p className="font-display text-[11px] text-[var(--color-gold-100)] text-stroke-dark mt-0.5">
+              {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
+              {pick.outcome === 'gave-up' && '💤 Dag is voorbij'}
+              {pick.outcome === 'failed-locked' && '⚔️ Dag is voorbij'}
             </p>
-            <h2 className="font-display text-[18px] text-[var(--color-gold-100)] text-stroke-dark leading-none flex items-center gap-1.5">
-              <span>🏰</span>
-              <span>Je Koninkrijk</span>
-              <span>⚔️</span>
-            </h2>
-          </div>
+          )}
+        </div>
 
-          {/* Compact 240x240 city window — the centerpiece */}
-          <div className="relative mx-auto w-full max-w-[240px] aspect-square animate-fade-up">
-            <CityPreview />
-          </div>
-
-          {/* Active daily task card — the main CTA */}
-          <div className="pt-3 animate-fade-up" style={{ animationDelay: '100ms' }}>
-            <TaskCard
-              task={chosenTask}
-              completed={pick.completed}
-              outcome={pick.outcome}
-              onStart={handleTaskTap}
-            />
-          </div>
-
-          {/* Spacer pushes side widgets down */}
-          <div className="flex-1" />
-
-          {/* Bottom widgets — chest + daily quests */}
-          <div className="flex flex-col gap-1.5 animate-fade-up" style={{ animationDelay: '200ms' }}>
-            <FreeChestStrip />
-            <DailyQuestStrip />
+        {/* The city window — square card showing the live stad */}
+        <div className="relative mx-auto w-full max-w-[360px] aspect-square animate-fade-up">
+          <CityPreview />
+          {/* Side rail floats over the right edge of the city window */}
+          <div
+            className="absolute z-20 pointer-events-none"
+            style={{ top: '50%', right: -6, transform: 'translateY(-50%)' }}
+          >
+            <SideRail />
           </div>
         </div>
-      )}
+
+        {/* Bottom widget stack — pushed to the bottom of hero with flex spacer */}
+        <div className="flex-1" />
+        <div
+          className="px-0 z-10 flex flex-col gap-2 animate-fade-up pb-2"
+          style={{ animationDelay: '160ms' }}
+        >
+          <FreeChestStrip />
+          <DailyQuestStrip />
+          <SwordCTA
+            taskText={chosenTask && !pick.completed ? chosenTask.text : null}
+            durationMin={chosenTask?.durationMin}
+            tierLabel={chosenTask ? TIER_CONFIG[chosenTask.tier].label.toUpperCase() : undefined}
+            disabled={!chosenTask || pick.completed}
+            onTap={handleSwordTap}
+          />
+        </div>
+      </div>
 
       {/* Timer modal — opens when user taps the sword */}
       {showTimerModal && chosenTask && (

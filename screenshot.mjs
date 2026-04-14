@@ -71,16 +71,16 @@ try {
   });
 
   if (flags.has('--pick')) {
-    // Click the first task choice card in the KnightIntro flex column
+    // Click the first task scroll (the first button inside the picker modal)
     const clicked = await page.evaluate(() => {
       const btns = Array.from(document.querySelectorAll('button'));
-      // Find the first button that has tier ribbon text (MAKKELIJK / MEDIUM / LASTIG)
-      const pickerBtn = btns.find(b => /MAKKELIJK|MEDIUM|LASTIG/.test(b.innerText));
+      // Find a button whose SVG contains a parchment path
+      const pickerBtn = btns.find(b => b.querySelector('svg rect[width="292"]'));
       if (pickerBtn) { pickerBtn.click(); return true; }
       return false;
     });
     if (clicked) {
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 500));
     }
   }
 
