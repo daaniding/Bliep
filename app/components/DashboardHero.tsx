@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getTimeOfDay, type TimeOfDay } from '@/lib/timeOfDay';
-import { useStreak } from '@/lib/useStreak';
 
 // Hero scene — a looping Runway-generated medieval kingdom video as
 // the background, with animated overlays on top:
@@ -26,9 +25,6 @@ export default function DashboardHero(_props: Props = {}) {
     const id = window.setInterval(() => setTod(getTimeOfDay()), 60_000);
     return () => clearInterval(id);
   }, []);
-
-  const streak = useStreak();
-  const streakActive = streak.current > 0;
 
   // Night tint colour + opacity for mix-blend
   const nightTint = tod.darkness > 0.3;
@@ -106,56 +102,6 @@ export default function DashboardHero(_props: Props = {}) {
         />
       )}
 
-      {/* === SVG overlays (dragon, streak flame) === */}
-      <svg
-        viewBox="0 0 420 320"
-        preserveAspectRatio="xMidYMid slice"
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Dragon silhouette flying across */}
-        <g className="hero-svg-anim dragon-fly">
-          <path
-            d="M0 0 Q-8 -6 -14 -4 Q-18 0 -14 4 Q-10 6 -6 4 Q-2 8 2 4 Q8 8 14 4 Q18 0 14 -4 Q8 -6 2 -4 Q-2 0 -6 -4 Q-8 -2 -6 0 Q0 2 0 0 Z"
-            fill="#0d0a06"
-            opacity="0.7"
-          />
-        </g>
-
-        {/* Streak flame above the castle — active = warm flicker + number,
-            inactive = grey ember with "0" and a hint below. Always rendered
-            so new users learn the feature exists. */}
-        <g
-          className="hero-svg-anim"
-          style={{
-            animation: streakActive ? 'torchFlicker 0.8s ease-in-out infinite' : undefined,
-            transform: 'translate(210px, 60px)',
-            opacity: streakActive ? 1 : 0.55,
-          }}
-        >
-          <path
-            d="M0 0 Q-10 -22 0 -34 Q-4 -16 8 -24 Q4 -4 14 -12 Q10 10 0 16 Q-14 10 -18 4 Q-14 -8 0 0 Z"
-            fill={streakActive ? 'url(#heroTorchFlame)' : '#5a5a62'}
-            stroke={streakActive ? '#7a2e0a' : '#2a2a2e'}
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-          {streakActive && <circle cx="0" cy="-10" r="4" fill="#fff8c0" opacity="0.9" />}
-          <text
-            x="0"
-            y="28"
-            textAnchor="middle"
-            fontFamily="Lilita One, sans-serif"
-            fontSize="18"
-            fill={streakActive ? '#fdd069' : '#9a9aa2'}
-            stroke="#0d0a06"
-            strokeWidth="1.8"
-            paintOrder="stroke fill"
-          >
-            {streak.current}
-          </text>
-        </g>
-      </svg>
 
       {/* === Drifting clouds overlay === */}
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">

@@ -6,11 +6,9 @@ import GameShell from './components/GameShell';
 import DashboardHero from './components/DashboardHero';
 import DailyPickerModal from './components/DailyPickerModal';
 import SideRail from './components/SideRail';
-import KnightHerald from './components/KnightHerald';
-import DailyQuestStrip from './components/DailyQuestStrip';
+import HeroQuestPanel from './components/HeroQuestPanel';
 import FreeChestModal from './components/FreeChestModal';
 import MailModal from './components/MailModal';
-import { isReady as chestIsReady, loadFreeChest } from '@/lib/freeChest';
 import { getDailyTasks, loadDailyPick, saveDailyPick, TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -71,18 +69,7 @@ export default function Home() {
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [showChestModal, setShowChestModal] = useState(false);
   const [showMailModal, setShowMailModal] = useState(false);
-  const [chestReady, setChestReady] = useState(() => typeof window !== 'undefined' ? chestIsReady(loadFreeChest()) : false);
   const confettiRef = useRef<HTMLDivElement>(null);
-
-  // Auto-offer the free chest on first visit when it's ready. Polls
-  // every second so the modal appears as soon as the cooldown expires
-  // while the user is already on the page.
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setChestReady(chestIsReady(loadFreeChest()));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
   const { award } = useCoins();
   const { awardTrophies } = useTrophies();
 
@@ -192,66 +179,24 @@ export default function Home() {
       <div className="hero-fill animate-fade-up relative">
         <DashboardHero />
 
-        {/* Knight herald — character + speech scroll on the hero */}
-        <KnightHerald
-          chosenTaskTitle={chosenTask?.text ?? null}
-          taskDone={pick.completed}
-        />
-
-        {/* Side rail: 4 icon buttons on the right edge, vertically centred */}
+        {/* Slim side rail (mail + kist) — top-right corner */}
         <div
           className="absolute z-10 pointer-events-none"
-          style={{ top: '48%', right: 8, transform: 'translateY(-50%)' }}
+          style={{ top: 64, right: 6 }}
         >
-          <SideRail onMailClick={() => setShowMailModal(true)} onChestClick={() => setShowChestModal(true)} />
-        </div>
-
-        {/* Chest pop-up CTA button floating above the daily quest strip,
-            visible only when chest is ready */}
-        {chestReady && (
-          <div
-            className="absolute left-0 right-0 flex justify-center z-20 pointer-events-none"
-            style={{ bottom: 170 }}
-          >
-            <button
-              onClick={() => { setShowChestModal(true); }}
-              className="btn-gold-3d pointer-events-auto animate-fade-up"
-              style={{
-                padding: '12px 20px',
-                fontSize: 14,
-                animation: 'fadeUp 0.4s both, chestIdleBob 2.4s ease-in-out infinite 0.5s',
-              }}
-            >
-              📦 Gratis kist claimen
-            </button>
-          </div>
-        )}
-
-        {/* Completed state — short overlay near the top */}
-        {pick.completed && (
-          <div
-            className="absolute left-0 right-0 top-4 flex justify-center z-10 pointer-events-none animate-fade-up"
-            style={{ animationDelay: '160ms' }}
-          >
-            <p className="font-display text-[15px] text-[var(--color-gold-100)] text-stroke-dark">
-              {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
-              {pick.outcome === 'gave-up' && '💤 Dag is voorbij'}
-              {pick.outcome === 'failed-locked' && '⚔️ Dag is voorbij'}
-            </p>
-          </div>
-        )}
-
-        {/* Bottom widget stack: daily quest strip (with featured start card) */}
-        <div
-          className="absolute left-0 right-0 px-3 z-10 flex flex-col gap-2 animate-fade-up"
-          style={{ bottom: 10, animationDelay: '160ms' }}
-        >
-          <DailyQuestStrip
-            chosenTask={chosenTask}
-            taskDoneOrLocked={pick.completed}
-            onStartTask={handleSwordTap}
+          <SideRail
+            onMailClick={() => setShowMailModal(true)}
+            onChestClick={() => setShowChestModal(true)}
           />
         </div>
+
+        {/* Central hero quest panel: parchment + huge knight + giant START */}
+        <HeroQuestPanel
+          chosenTask={chosenTask}
+          taskDoneOrLocked={pick.completed}
+          outcome={pick.outcome}
+          onStartTask={handleSwordTap}
+        />
       </div>
 
       {/* Free chest popup modal */}

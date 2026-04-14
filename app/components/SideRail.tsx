@@ -56,37 +56,6 @@ export default function SideRail({ onMailClick, onChestClick }: Props = {}) {
       ),
     },
     {
-      id: 'events',
-      label: 'Events',
-      badge: 1,
-      highlight: true,
-      icon: (
-        <svg viewBox="0 0 32 32" fill="none">
-          <path
-            d="M16 3 L19 10 L26 11 L21 16 L22 23 L16 19 L10 23 L11 16 L6 11 L13 10 Z"
-            fill="#fdd069"
-            stroke="#0d0a06"
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-          <path d="M16 7 L17.5 11 L22 11.5 L19 14 L19.8 18 L16 16 L12.2 18 L13 14 L10 11.5 L14.5 11 Z" fill="#fff6dc" opacity="0.6" />
-        </svg>
-      ),
-    },
-    {
-      id: 'friends',
-      label: 'Vrienden',
-      icon: (
-        <svg viewBox="0 0 32 32" fill="none">
-          <circle cx="12" cy="11" r="5" fill="#c0392b" stroke="#0d0a06" strokeWidth="2" />
-          <circle cx="22" cy="13" r="4" fill="#2a4a6a" stroke="#0d0a06" strokeWidth="2" />
-          <path d="M4 27 Q4 18 12 18 Q20 18 20 27" stroke="#0d0a06" strokeWidth="2" fill="#c0392b" strokeLinejoin="round" />
-          <path d="M16 27 Q16 20 22 20 Q28 20 28 27" stroke="#0d0a06" strokeWidth="2" fill="#2a4a6a" strokeLinejoin="round" />
-          <circle cx="26" cy="6" r="2.5" fill="#5ea05c" stroke="#0d0a06" strokeWidth="1.5" />
-        </svg>
-      ),
-    },
-    {
       id: 'shop',
       label: 'Kist',
       badge: chestIsReady ? 1 : 0,
