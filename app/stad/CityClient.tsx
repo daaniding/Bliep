@@ -374,7 +374,7 @@ function BuildDrawer({
                 <div className="w-full aspect-square flex items-center justify-center bg-[#0d0a06]/60 rounded-lg mb-1 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`/assets/kenney/buildings/${slug}.png`}
+                    src={topdownSpriteUrl(slug)}
                     alt={def.name}
                     className="max-w-full max-h-full object-contain"
                     style={{ imageRendering: 'pixelated' }}
@@ -428,7 +428,7 @@ function BuildingInfoSheet({
           <div className="w-16 h-16 bg-[#0d0a06]/60 rounded-xl border-2 border-[#fdd069]/40 flex items-center justify-center overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`/assets/kenney/buildings/${slug}.png`}
+              src={topdownSpriteUrl(slug)}
               alt={def.name}
               className="max-w-full max-h-full object-contain"
               style={{ imageRendering: 'pixelated' }}
@@ -548,6 +548,13 @@ function ChestStatus({ state }: { state: CityState }) {
       )}
     </div>
   );
+}
+
+/** Map a building sprite slug to its preview image URL. */
+function topdownSpriteUrl(slug: string): string {
+  // Big house variants are sliced from a single sheet — preview the whole sheet
+  if (slug.startsWith('big_house')) return '/assets/topdown/buildings/big_houses.png';
+  return `/assets/topdown/buildings/${slug}.png`;
 }
 
 function fmtCountdown(ms: number): string {

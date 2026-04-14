@@ -27,21 +27,17 @@ export interface BuildingDef {
 
 export const MAX_LEVEL = 10;
 
-// Sprite slug helper. Kenney files are named medievalStructure_01.png … _23.png.
-const slug = (n: number) => `medievalStructure_${n.toString().padStart(2, '0')}`;
-
 /**
- * Each building uses a different Kenney sprite for visual variety per level
- * breakpoint. We re-use the same sprite within each band so we don't run out
- * of unique structures.
+ * Top-down sprite slugs. Each building has 4 visual breakpoints across its
+ * 10 levels using the available Fan-tasy + Houses Pack assets.
  */
-function levelSprites(seed: number[]): string[] {
+function levelSpritesT(slugs: string[]): string[] {
   const out: string[] = [];
   for (let l = 1; l <= MAX_LEVEL; l++) {
-    if (l <= 3) out.push(slug(seed[0]));
-    else if (l <= 6) out.push(slug(seed[1]));
-    else if (l <= 9) out.push(slug(seed[2]));
-    else out.push(slug(seed[3]));
+    if (l <= 3) out.push(slugs[0]);
+    else if (l <= 6) out.push(slugs[1] ?? slugs[0]);
+    else if (l <= 9) out.push(slugs[2] ?? slugs[1] ?? slugs[0]);
+    else out.push(slugs[3] ?? slugs[2] ?? slugs[1] ?? slugs[0]);
   }
   return out;
 }
@@ -56,7 +52,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 30,
     buildTimeGrowth: 1.7,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSprites([1, 4, 11, 19]),
+    // Hay houses 1-4 → Big house variants
+    spritesPerLevel: levelSpritesT(['house_hay_1', 'house_hay_2', 'house_hay_3', 'big_house_purple']),
     spriteScale: 1.0,
   },
   farm: {
@@ -68,7 +65,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 45,
     buildTimeGrowth: 1.7,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSprites([7, 8, 9, 10]),
+    spritesPerLevel: levelSpritesT(['house_hay_2', 'house_hay_3', 'house_hay_4', 'house_hay_4']),
     productionPerMin: [1, 2, 4, 7, 11, 16, 23, 32, 44, 60],
     spriteScale: 1.0,
   },
@@ -81,9 +78,9 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 90,
     buildTimeGrowth: 1.8,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSprites([13, 14, 15, 16]),
+    spritesPerLevel: levelSpritesT(['wall_gate', 'wall_gate', 'big_house_grey', 'big_house_grey']),
     troopsPerLevel: [2, 4, 7, 11, 16, 22, 30, 40, 52, 70],
-    spriteScale: 1.05,
+    spriteScale: 1.0,
   },
   wall: {
     type: 'wall',
@@ -94,8 +91,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 20,
     buildTimeGrowth: 1.6,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSprites([20, 20, 21, 21]),
-    spriteScale: 0.9,
+    spritesPerLevel: levelSpritesT(['wall_gate']),
+    spriteScale: 0.85,
   },
   tower: {
     type: 'tower',
@@ -106,8 +103,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 80,
     buildTimeGrowth: 1.8,
     maxLevel: MAX_LEVEL,
-    spritesPerLevel: levelSprites([22, 22, 23, 23]),
-    spriteScale: 1.1,
+    spritesPerLevel: levelSpritesT(['wall_gate', 'big_house_grey', 'big_house_grey', 'big_house_grey']),
+    spriteScale: 1.0,
   },
   fountain: {
     type: 'fountain',
@@ -118,8 +115,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     baseBuildSec: 25,
     buildTimeGrowth: 1.5,
     maxLevel: 5,
-    spritesPerLevel: levelSprites([2, 3, 5, 6]),
-    spriteScale: 0.95,
+    spritesPerLevel: levelSpritesT(['well']),
+    spriteScale: 1.0,
   },
 };
 

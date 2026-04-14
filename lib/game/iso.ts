@@ -1,29 +1,22 @@
-export const TILE_W = 96;
-export const TILE_H = 48;
+// Top-down grid math (file kept named iso.ts for import compat — Bliep
+// switched from isometric to top-down view in stad v2).
+
+export const TILE_W = 64;
+export const TILE_H = 64;
 export const GRID_SIZE = 32;
 
-export interface GridCoord {
-  gx: number;
-  gy: number;
-}
-
-export interface ScreenCoord {
-  sx: number;
-  sy: number;
-}
+export interface GridCoord { gx: number; gy: number }
+export interface ScreenCoord { sx: number; sy: number }
 
 export function gridToScreen(gx: number, gy: number, originX: number, originY: number): ScreenCoord {
-  const sx = originX + (gx - gy) * (TILE_W / 2);
-  const sy = originY + (gx + gy) * (TILE_H / 2);
-  return { sx, sy };
+  return { sx: originX + gx * TILE_W + TILE_W / 2, sy: originY + gy * TILE_H + TILE_H / 2 };
 }
 
 export function screenToGrid(sx: number, sy: number, originX: number, originY: number): GridCoord {
-  const dx = sx - originX;
-  const dy = sy - originY;
-  const gx = (dx / (TILE_W / 2) + dy / (TILE_H / 2)) / 2;
-  const gy = (dy / (TILE_H / 2) - dx / (TILE_W / 2)) / 2;
-  return { gx: Math.floor(gx), gy: Math.floor(gy) };
+  return {
+    gx: Math.floor((sx - originX) / TILE_W),
+    gy: Math.floor((sy - originY) / TILE_H),
+  };
 }
 
 export function inBounds(gx: number, gy: number): boolean {
@@ -31,15 +24,13 @@ export function inBounds(gx: number, gy: number): boolean {
 }
 
 export function centerOrigin(viewW: number, viewH: number): { originX: number; originY: number } {
-  const originX = viewW / 2;
-  const originY = viewH / 2 - ((GRID_SIZE - 1) * TILE_H) / 2;
-  return { originX, originY };
+  return {
+    originX: viewW / 2 - (GRID_SIZE * TILE_W) / 2,
+    originY: viewH / 2 - (GRID_SIZE * TILE_H) / 2,
+  };
 }
 
-/** Center tile coordinate (used for daily chest, build zone center, etc). */
 export const CITY_CENTER = { gx: Math.floor(GRID_SIZE / 2), gy: Math.floor(GRID_SIZE / 2) };
-
-/** Player buildable zone radius around center. Outside this, decor lives. */
 export const BUILD_ZONE_RADIUS = 12;
 
 export function inBuildZone(gx: number, gy: number): boolean {

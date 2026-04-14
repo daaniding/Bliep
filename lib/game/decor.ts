@@ -1,12 +1,6 @@
 import { GRID_SIZE, BUILD_ZONE_RADIUS, CITY_CENTER, inBounds } from './iso';
-import {
-  TRPG_DECOR_TREES,
-  TRPG_DECOR_BUSHES,
-  TRPG_DECOR_ROCKS,
-  TRPG_DECOR_MOUNTAINS,
-} from './sprites';
 
-export type DecorKind = 'tree' | 'rock' | 'mountain' | 'bush';
+export type DecorKind = 'tree' | 'rock' | 'mountain' | 'bush' | 'flower';
 
 export interface DecorTile {
   gx: number;
@@ -16,7 +10,13 @@ export interface DecorTile {
   scale: number;
 }
 
-// Tiny LCG so the same seed -> same decor layout.
+const TREE_SLUGS = ['oak_tree', 'tree_emerald_1', 'tree_emerald_2', 'tree_emerald_3', 'tree_emerald_4'];
+const SMALL_TREE_SLUGS = ['oak_tree_small'];
+const BUSH_SLUGS = ['bush_emerald_1', 'bush_emerald_2', 'bush_emerald_3', 'bush_emerald_4', 'bush_emerald_5'];
+const ROCK_SLUGS = ['rock_brown_1', 'rock_brown_2', 'rock_brown_4', 'rock_brown_6', 'rock_brown_9'];
+const FLOWER_SLUGS = ['flowers_red', 'flowers_white'];
+const MOUNTAIN_SLUGS = ['rock_brown_6', 'rock_brown_9'];
+
 function lcg(seed: number) {
   let s = seed | 0;
   return () => {
@@ -29,32 +29,28 @@ function pick<T>(rand: () => number, arr: T[]): T {
   return arr[Math.floor(rand() * arr.length)];
 }
 
-/**
- * Determine the decor kind for a tile based on its position relative to the
- * build zone. Outer ring = mountains, middle ring = mix of rocks + trees,
- * inner ring (just outside build zone) = mostly trees + bushes.
- */
 function decorKindFor(distance: number, rand: () => number): DecorKind | null {
   const fromBuildEdge = distance - BUILD_ZONE_RADIUS;
   if (fromBuildEdge <= 0) return null;
   if (fromBuildEdge <= 1) {
     const r = rand();
-    if (r < 0.5) return 'tree';
-    if (r < 0.7) return 'bush';
+    if (r < 0.45) return 'tree';
+    if (r < 0.65) return 'bush';
+    if (r < 0.78) return 'flower';
     return null;
   }
   if (fromBuildEdge <= 3) {
     const r = rand();
     if (r < 0.55) return 'tree';
-    if (r < 0.7) return 'bush';
+    if (r < 0.72) return 'bush';
     if (r < 0.85) return 'rock';
     return null;
   }
-  // Outer rim — mountains and rocks
+  // Outer rim — denser forest with mountains
   const r = rand();
-  if (r < 0.5) return 'mountain';
-  if (r < 0.75) return 'rock';
-  if (r < 0.9) return 'tree';
+  if (r < 0.5) return 'tree';
+  if (r < 0.7) return 'mountain';
+  if (r < 0.85) return 'rock';
   return null;
 }
 
@@ -71,20 +67,21 @@ export function seedDecor(seed: number): DecorTile[] {
       if (gy === CITY_CENTER.gy && gx < CITY_CENTER.gx - BUILD_ZONE_RADIUS) continue;
       const kind = decorKindFor(dist, rand);
       if (!kind) continue;
-      const slugs =
-        kind === 'tree' ? TRPG_DECOR_TREES :
-        kind === 'bush' ? TRPG_DECOR_BUSHES :
-        kind === 'rock' ? TRPG_DECOR_ROCKS :
-        TRPG_DECOR_MOUNTAINS;
-      const slug = pick(rand, slugs);
-      const scale = kind === 'mountain' ? 1.15 + rand() * 0.25 : 0.9 + rand() * 0.2;
+      let slug: string;
+      switch (kind) {
+        case 'tree':     slug = pick(rand, rand() < 0.2 ? SMALL_TREE_SLUGS : TREE_SLUGS); break;
+        case 'bush':     slug = pick(rand, BUSH_SLUGS); break;
+        case 'rock':     slug = pick(rand, ROCK_SLUGS); break;
+        case 'flower':   slug = pick(rand, FLOWER_SLUGS); break;
+        case 'mountain': slug = pick(rand, MOUNTAIN_SLUGS); break;
+      }
+      const scale = kind === 'mountain' ? 1.4 + rand() * 0.4 : 0.9 + rand() * 0.3;
       tiles.push({ gx, gy, kind, slug, scale });
     }
   }
   return tiles;
 }
 
-/** Tiles that are part of the road into the city (no buildings, no decor). */
 export function isRoadTile(gx: number, gy: number): boolean {
   return gy === CITY_CENTER.gy && gx < CITY_CENTER.gx - BUILD_ZONE_RADIUS && gx >= 0;
 }
