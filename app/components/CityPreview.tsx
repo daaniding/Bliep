@@ -337,9 +337,9 @@ export default function CityPreview() {
       <style jsx>{`
         .city-preview {
           width: 100%;
-          max-width: 380px;
+          max-width: 340px;
           margin: 0 auto;
-          filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.75));
+          filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.7));
           pointer-events: none;
           animation: cpFadeUp 600ms ease-out 150ms both;
         }
@@ -371,7 +371,7 @@ export default function CityPreview() {
           );
           border: 2px solid #0d0a06;
           padding: 6px 8px 8px;
-          aspect-ratio: 4 / 3;
+          aspect-ratio: 16 / 9;
           display: flex;
           flex-direction: column;
         }
