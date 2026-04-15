@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import {
+  AnimatedSprite,
   Application,
   Container,
   Graphics,
@@ -14,7 +15,12 @@ import {
   FederatedPointerEvent,
   Point,
 } from 'pixi.js';
-import { loadTinyswordsTerrain } from '@/lib/game/tinyswordsTerrain';
+import {
+  loadTinyswordsTerrain,
+  GRASS_TILE_CELLS,
+  CLIFF_TILE_CELLS,
+  TILEMAP_CELL,
+} from '@/lib/game/tinyswordsTerrain';
 import {
   TILE_W,
   TILE_H,
@@ -62,7 +68,7 @@ interface Props {
   onReady?: () => void;
 }
 
-const MIN_ZOOM_INTERACTIVE = 0.2;
+const MIN_ZOOM_INTERACTIVE = 0.04;
 const MAX_ZOOM_INTERACTIVE = 2.4;
 const TAP_THRESHOLD_PX = 6;
 const COIN_BADGE_THRESHOLD = 1;
@@ -223,21 +229,29 @@ export default function CityCanvas({
       // Origin: world local (0,0) is top-left of grid
       originRef.current = { originX: 0, originY: 0 };
 
-      // ---- Tiny Swords terrain: water backdrop + grass island + cliff edge ----
-      // TilingSprite in Pixi tiles on the full source texture, ignoring any
-      // frame crop — so tiles sliced from a spritesheet repeat the whole sheet
-      // instead of the single cell. Fix: bake each cropped source into a
-      // standalone Texture via renderer.generateTexture(Sprite).
-      const bake = (tex: Texture): Texture => {
-        const s = new Sprite(tex);
+      // ---- Tiny Swords terrain ----
+      // Pixi v8 TilingSprite ignores source frames (tiles the whole source),
+      // so spritesheet cells must be baked to standalone textures via
+      // renderer.generateTexture.
+      const bakeCell = (col: number, row: number): Texture => {
+        const framed = new Texture({
+          source: terrain.tilemap.source,
+          frame: new Rectangle(col * TILEMAP_CELL, row * TILEMAP_CELL, TILEMAP_CELL, TILEMAP_CELL),
+        });
+        const s = new Sprite(framed);
         const t = app.renderer.generateTexture({ target: s, resolution: 1 });
         if (t.source) t.source.scaleMode = 'nearest';
         s.destroy();
         return t;
       };
-      const grassTex = bake(terrain.grass);
-      const cliffTex = bake(terrain.cliff);
-      const waterTex = terrain.water; // already a standalone texture
+
+      // Single interior grass cell. Mosaic variation attempted but Pixi v8's
+      // generateTexture produced cliff artifacts from the composed container
+      // — not worth chasing, the uniform grass reads fine in-game.
+      const grassTex = bakeCell(GRASS_TILE_CELLS[0][0], GRASS_TILE_CELLS[0][1]);
+
+      const cliffTex = bakeCell(CLIFF_TILE_CELLS[0][0], CLIFF_TILE_CELLS[0][1]);
+      const waterTex = terrain.water;
 
       const waterLeft = -WATER_MARGIN * TILE_W;
       const waterTop = -WATER_MARGIN * TILE_H;
@@ -252,7 +266,6 @@ export default function CityCanvas({
       water.position.set(waterLeft, waterTop);
       tileLayer.addChild(water);
 
-      // Grass island covers the full playable grid.
       const grass = new TilingSprite({
         texture: grassTex,
         width: GRID_SIZE * TILE_W,
@@ -261,8 +274,25 @@ export default function CityCanvas({
       grass.position.set(0, 0);
       tileLayer.addChild(grass);
 
-      // Cliff front strip along the south edge of the grass — adds depth so
-      // the grass reads as a raised island above the water.
+      // Streams — thin water bands crossing the island at fixed ratios so
+      // they look like natural rivers. Each stream is clipped to the grass
+      // area and sits above the grass layer. Placed outside the build zone.
+      const streamData = [
+        { row: Math.floor(GRID_SIZE * 0.18), height: 2 },
+        { row: Math.floor(GRID_SIZE * 0.83), height: 2 },
+      ];
+      for (const stream of streamData) {
+        const band = new TilingSprite({
+          texture: waterTex,
+          width: GRID_SIZE * TILE_W,
+          height: stream.height * TILE_H,
+        });
+        band.position.set(0, stream.row * TILE_H);
+        band.alpha = 0.9;
+        tileLayer.addChild(band);
+      }
+
+      // Cliff front strip along the south edge of the grass.
       const cliffRow = new TilingSprite({
         texture: cliffTex,
         width: GRID_SIZE * TILE_W,
@@ -270,6 +300,24 @@ export default function CityCanvas({
       });
       cliffRow.position.set(0, GRID_SIZE * TILE_H);
       tileLayer.addChild(cliffRow);
+
+      // Water foam — static row of foam sprites along the cliff base so the
+      // island meets the water with a soft edge. AnimatedSprite cycles frames.
+      const foamSheet = terrain.waterFoam;
+      const foamCount = Math.ceil((GRID_SIZE * TILE_W) / (foamSheet.frameW * 0.6));
+      for (let i = 0; i < foamCount; i++) {
+        const foam = new AnimatedSprite(foamSheet.frames);
+        foam.animationSpeed = 0.2;
+        foam.loop = true;
+        foam.play();
+        foam.anchor.set(0.5, 0.5);
+        const stepPx = (GRID_SIZE * TILE_W) / foamCount;
+        foam.position.set(i * stepPx + stepPx / 2, GRID_SIZE * TILE_H + TILE_H * 0.5);
+        foam.scale.set((stepPx * 1.05) / foamSheet.frameW);
+        foam.alpha = 0.85;
+        tileLayer.addChild(foam);
+      }
+
       // Road overlay tiles
       for (let gy = 0; gy < GRID_SIZE; gy++) {
         for (let gx = 0; gx < GRID_SIZE; gx++) {
@@ -294,9 +342,25 @@ export default function CityCanvas({
         tileLayer.addChild(ring);
       }
 
-      // ---- Tiny Swords decor scatter — forest clusters, bushes, rocks ----
-      // Only place outside the build zone so gameplay stays clean. Uses a
-      // simple hash so placement is deterministic across reloads.
+      // ---- Unlock zones — dark overlay on tiles beyond the explored radius.
+      // Visual only for now; game logic (unlocking via trophies) is future work.
+      const EXPLORED_RADIUS = BUILD_ZONE_RADIUS + 28;
+      const shroud = new Graphics();
+      const shroudLeft = (CITY_CENTER.gx - EXPLORED_RADIUS) * TILE_W;
+      const shroudTop = (CITY_CENTER.gy - EXPLORED_RADIUS) * TILE_H;
+      const shroudW = (EXPLORED_RADIUS * 2 + 1) * TILE_W;
+      const shroudH = (EXPLORED_RADIUS * 2 + 1) * TILE_H;
+      // Cover everything, then punch out the explored square.
+      shroud.rect(waterLeft, waterTop, waterW, waterH);
+      shroud.rect(shroudLeft, shroudTop, shroudW, shroudH);
+      shroud.cut();
+      shroud.fill({ color: 0x0a0604, alpha: 0.55 });
+      tileLayer.addChild(shroud);
+
+      // ---- Tiny Swords decor scatter ----
+      // Uniform sparse scatter over the whole grass island outside the build
+      // zone + away from streams. No edge ring — the map should feel open,
+      // not framed by dense forest.
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
         let h = (x * 374761393 + y * 668265263 + salt * 2147483647 + seed * 69069) | 0;
@@ -305,7 +369,40 @@ export default function CityCanvas({
         return ((h >>> 0) % 10000) / 10000;
       };
 
-      const placeTsDecor = (gx: number, gy: number, tex: Texture, targetTiles: number, jitter: number, salt: number) => {
+      const onStream = (gy: number): boolean => {
+        for (const s of streamData) {
+          if (gy >= s.row && gy < s.row + s.height) return true;
+        }
+        return false;
+      };
+
+      let animatedDecorCount = 0;
+      const MAX_ANIMATED_DECOR = 350;
+
+      const placeAnimated = (gx: number, gy: number, sheet: typeof terrain.trees[number], targetTiles: number, jitter: number, salt: number) => {
+        let sprite: Sprite | AnimatedSprite;
+        if (animatedDecorCount < MAX_ANIMATED_DECOR && hash(gx, gy, salt + 10) < 0.4) {
+          const anim = new AnimatedSprite(sheet.frames);
+          anim.animationSpeed = 0.08 + hash(gx, gy, salt + 11) * 0.04;
+          anim.loop = true;
+          anim.play();
+          sprite = anim;
+          animatedDecorCount++;
+        } else {
+          sprite = new Sprite(sheet.frames[0]);
+        }
+        sprite.anchor.set(0.5, 0.95);
+        const { sx, sy } = gridToScreen(gx, gy, 0, 0);
+        const jx = (hash(gx, gy, salt) - 0.5) * TILE_W * jitter;
+        const jy = (hash(gx, gy, salt + 1) - 0.5) * TILE_H * jitter;
+        sprite.position.set(sx + jx, sy + TILE_H * 0.35 + jy);
+        const base = (TILE_W * targetTiles) / Math.max(sheet.frameW, sheet.frameH);
+        sprite.scale.set(base);
+        (sprite as Sprite).zIndex = gy * 1000 + gx + 50;
+        decorLayer.addChild(sprite as Sprite);
+      };
+
+      const placeStatic = (gx: number, gy: number, tex: Texture, targetTiles: number, jitter: number, salt: number) => {
         const s = new Sprite(tex);
         s.anchor.set(0.5, 0.95);
         const { sx, sy } = gridToScreen(gx, gy, 0, 0);
@@ -318,32 +415,26 @@ export default function CityCanvas({
         decorLayer.addChild(s);
       };
 
-      for (let gy = 0; gy < GRID_SIZE; gy++) {
-        for (let gx = 0; gx < GRID_SIZE; gx++) {
+      // Step across the grid in 2-tile strides to cut iteration count without
+      // losing visible density. 192×192 / 4 ≈ 9200 cells evaluated.
+      for (let gy = 0; gy < GRID_SIZE; gy += 2) {
+        for (let gx = 0; gx < GRID_SIZE; gx += 2) {
           if (inBuildZone(gx, gy)) continue;
+          if (onStream(gy)) continue;
           const r = hash(gx, gy, 0);
-          // Forest cluster: more trees near map edges, sparse near build zone
-          const distFromCenter = Math.max(
-            Math.abs(gx - CITY_CENTER.gx),
-            Math.abs(gy - CITY_CENTER.gy),
-          );
-          const edgeBoost = Math.min(1, (distFromCenter - BUILD_ZONE_RADIUS) / 12);
-          const treeChance = 0.05 + edgeBoost * 0.18;
-          if (r < treeChance) {
-            const tex = terrain.trees[Math.floor(hash(gx, gy, 2) * terrain.trees.length)];
-            placeTsDecor(gx, gy, tex, 1.8, 0.4, 2);
+          if (r < 0.08) {
+            const sheet = terrain.trees[Math.floor(hash(gx, gy, 2) * terrain.trees.length)];
+            placeAnimated(gx, gy, sheet, 1.6, 0.6, 2);
             continue;
           }
-          const rb = hash(gx, gy, 1);
-          if (rb < 0.08) {
-            const tex = terrain.bushes[Math.floor(hash(gx, gy, 3) * terrain.bushes.length)];
-            placeTsDecor(gx, gy, tex, 0.9, 0.3, 3);
+          if (r < 0.12) {
+            const sheet = terrain.bushes[Math.floor(hash(gx, gy, 3) * terrain.bushes.length)];
+            placeAnimated(gx, gy, sheet, 0.85, 0.5, 3);
             continue;
           }
-          const rr = hash(gx, gy, 4);
-          if (rr < 0.035) {
+          if (r < 0.14) {
             const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
-            placeTsDecor(gx, gy, tex, 0.8, 0.25, 5);
+            placeStatic(gx, gy, tex, 0.7, 0.4, 5);
           }
         }
       }
@@ -394,14 +485,14 @@ export default function CityCanvas({
       // surrounding water margin (island in the sea). Pinch-in for buildings,
       // pinch-out to see the full map.
       const defaultZoom = Math.min(
-        app.renderer.width / (44 * TILE_W),
-        app.renderer.height / (44 * TILE_H),
+        app.renderer.width / (36 * TILE_W),
+        app.renderer.height / (36 * TILE_H),
       );
-      // Preview view: show almost the whole island + water so the scale of
+      // Preview view: show the explored area + some water so the scale of
       // the map reads at a glance on home.
       const previewZoom = Math.min(
-        app.renderer.width / (72 * TILE_W),
-        app.renderer.height / (72 * TILE_H),
+        app.renderer.width / (70 * TILE_W),
+        app.renderer.height / (70 * TILE_H),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);
