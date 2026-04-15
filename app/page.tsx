@@ -134,28 +134,28 @@ export default function Home() {
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="cr-banner-btn">
               <div className="cr-banner-inner" style={{ borderTopColor: '#f5c518' }}>
-                <span style={{ fontSize: 22 }}>📦</span>
+                <img src="/assets/icons/chest.png" alt="" className="cr-banner-icon" />
                 <span className="cr-banner-label">Kist</span>
               </div>
             </button>
             <button className="cr-banner-btn">
               <div className="cr-banner-inner" style={{ borderTopColor: '#e05050', position: 'relative' }}>
                 <div className="cr-banner-badge">2</div>
-                <span style={{ fontSize: 22 }}>✉️</span>
+                <img src="/assets/icons/shield.png" alt="" className="cr-banner-icon" />
                 <span className="cr-banner-label">Mail</span>
               </div>
             </button>
             <button className="cr-banner-btn">
               <div className="cr-banner-inner" style={{ borderTopColor: '#60a0f0', position: 'relative' }}>
                 <div className="cr-banner-badge">1</div>
-                <span style={{ fontSize: 22 }}>⭐</span>
+                <img src="/assets/icons/star.png" alt="" className="cr-banner-icon" />
                 <span className="cr-banner-label">Events</span>
               </div>
             </button>
             <button className="cr-banner-btn">
               <div className="cr-banner-inner" style={{ borderTopColor: '#50b060', position: 'relative' }}>
                 <div className="cr-banner-badge">1</div>
-                <span style={{ fontSize: 22 }}>🏠</span>
+                <img src="/assets/icons/medal.png" alt="" className="cr-banner-icon" />
                 <span className="cr-banner-label">Stad</span>
               </div>
             </button>
@@ -181,14 +181,50 @@ export default function Home() {
           </div>
         )}
 
-        {/* Walking villagers along the bottom of the stad, right above the nav */}
-        <div className="nav-walkers" aria-hidden>
-          <div className="walker walker-man" style={{ animationDelay: '0s' }} />
-          <div className="walker walker-woman" style={{ animationDelay: '-7s' }} />
-          <div className="walker walker-boy" style={{ animationDelay: '-14s' }} />
-          <div className="walker walker-girl walker-reverse" style={{ animationDelay: '-3s' }} />
-          <div className="walker walker-old-man walker-reverse" style={{ animationDelay: '-11s' }} />
-        </div>
+        {/* Walking villagers right above the menu bar */}
+        {([
+          { src: 'man', dir: 1, delay: '0s' },
+          { src: 'woman', dir: 1, delay: '-7s' },
+          { src: 'boy', dir: 1, delay: '-14s' },
+          { src: 'girl', dir: -1, delay: '-3s' },
+          { src: 'old-man', dir: -1, delay: '-11s' },
+        ] as const).map((v) => (
+          <div
+            key={v.src}
+            aria-hidden
+            style={{
+              position: 'fixed',
+              bottom: `calc(200px + env(safe-area-inset-bottom))`,
+              width: 96,
+              height: 96,
+              overflow: 'hidden',
+              zIndex: 53,
+              pointerEvents: 'none',
+              animation: `${v.dir < 0 ? 'walker-move-rev 28s' : 'walker-move 24s'} linear infinite`,
+              animationDelay: v.delay,
+            }}
+          >
+            <img
+              src={`/assets/walkers/${v.src}-walk.png`}
+              alt=""
+              draggable={false}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: 576,
+                height: 96,
+                maxWidth: 'none',
+                minWidth: 576,
+                imageRendering: 'pixelated',
+                animation: 'walker-strip 0.7s steps(6) infinite',
+                transform: v.dir < 0 ? 'scaleX(-1)' : undefined,
+                transformOrigin: 'center',
+                filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.55))',
+              }}
+            />
+          </div>
+        ))}
 
       </div>
 
