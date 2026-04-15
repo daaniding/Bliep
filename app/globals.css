@@ -695,9 +695,12 @@ body {
    =========================================================== */
 
 /* Top bar: profile / xp / resources — sits above content stack */
-/* === CLASH-ROYALE TOP BAR: nameplate + chips, floating over city === */
+/* === CLASH-ROYALE TOP BAR: absolute float so city fills behind it === */
 .cr-topbar {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -705,8 +708,9 @@ body {
   gap: 8px;
   padding: calc(env(safe-area-inset-top) + 10px) 10px 10px;
   background: transparent;
-  pointer-events: auto;
+  pointer-events: none;
 }
+.cr-topbar > * { pointer-events: auto; }
 
 /* LEFT: level badge + nameplate with XP bar (single tappable pill) */
 .cr-nameplate {
@@ -890,7 +894,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 8px 10px 0;
+  margin: calc(env(safe-area-inset-top) + 62px) 10px 0;
   padding: 6px 12px 6px 8px;
   background:
     linear-gradient(180deg, rgba(253, 208, 105, 0.72) 0%, rgba(209, 146, 37, 0.62) 60%, rgba(110, 76, 16, 0.55) 100%);
