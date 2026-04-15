@@ -12,7 +12,11 @@ const CityCanvas = dynamic(() => import('../stad/CityCanvas'), { ssr: false });
  * rendered inside a contained square card. Same engine as /stad — never
  * drifts. No interaction (tap-through opens /stad).
  */
-export default function CityPreview() {
+interface Props {
+  bare?: boolean;
+}
+
+export default function CityPreview({ bare = false }: Props) {
   const [state, setState] = useState<CityState | null>(null);
 
   useEffect(() => {
@@ -35,6 +39,22 @@ export default function CityPreview() {
   const buildingCount = state?.buildings.length ?? 0;
   const cityLevel = state?.buildings.reduce((s, b) => s + b.level, 0) ?? 0;
 
+  if (bare) {
+    return (
+      <div
+        className="relative block w-full h-full overflow-hidden"
+        style={{ background: '#6b9c52' }}
+        aria-label="Stad"
+      >
+        {state && (
+          <div className="absolute inset-0 pointer-events-none">
+            <CityCanvas state={state} mode="interactive" showBuildZone={false} contained />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <Link
       href="/stad"
@@ -42,9 +62,6 @@ export default function CityPreview() {
       style={{ background: '#6b9c52' }}
       aria-label="Open je stad"
     >
-      {/* The actual stad — same Pixi canvas, interactive mode but contained
-          (so the host fills this card instead of the viewport). pointer-events
-          on the wrapper block input; the Link wrapping us routes taps to /stad. */}
       {state && (
         <div className="absolute inset-0 pointer-events-none">
           <CityCanvas state={state} mode="interactive" showBuildZone={false} contained />

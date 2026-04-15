@@ -125,7 +125,7 @@ export default function Home() {
 
         {/* STAD — volledige achtergrond */}
         <div className="cr-city-bg">
-          <CityPreview />
+          <CityPreview bare />
         </div>
         {/* bottom overlay removed — city fills full viewport */}
 
