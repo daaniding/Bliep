@@ -127,7 +127,7 @@ export default function Home() {
         <div className="cr-city-bg">
           <CityPreview />
         </div>
-        <div className="cr-bottom-overlay" />
+        {/* bottom overlay removed — city fills full viewport */}
 
         {/* 4 MEDIEVAL BANNERS */}
         <div className="cr-banner-row">

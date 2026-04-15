@@ -131,7 +131,7 @@ body {
 .app-shell {
   min-height: 100dvh;
   padding-top: 0;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 156px);
+  padding-bottom: 0;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   position: relative;
