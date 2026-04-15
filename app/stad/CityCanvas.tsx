@@ -682,11 +682,12 @@ export default function CityCanvas({
         app.renderer.width / (52 * TILE_W),
         app.renderer.height / (52 * TILE_H),
       );
-      // Preview (used by home CityPreview): tighter crop so the island
-      // fills the hero area instead of floating in a big water ring.
+      // Preview (used by home CityPreview): fits the whole island plus a
+      // thin water ring. Wider than 38 tiles so the full shape is visible
+      // on the home hero card without getting cropped.
       const previewZoom = Math.min(
-        app.renderer.width / (32 * TILE_W),
-        app.renderer.height / (32 * TILE_H),
+        app.renderer.width / (40 * TILE_W),
+        app.renderer.height / (40 * TILE_H),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);
