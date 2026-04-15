@@ -22,6 +22,7 @@ import {
 } from '@/lib/game/tinyswordsTerrain';
 import { parseElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
 import { autotileGrassSlot } from '@/lib/game/autotile';
+import { loadMinifolks, ANIMAL_KINDS, type AnimalKind, type MinifolksAnimals } from '@/lib/game/minifolks';
 import {
   TILE_W,
   TILE_H,
@@ -178,9 +179,10 @@ export default function CityCanvas({
       }
       host.appendChild(app.canvas);
 
-      const [atlas, terrain] = await Promise.all([
+      const [atlas, terrain, animals] = await Promise.all([
         loadTopdownAtlas(),
         loadTinyswordsTerrain(),
+        loadMinifolks(),
       ]);
       if (cancelled) return;
       atlasRef.current = atlas;
@@ -530,25 +532,115 @@ export default function CityCanvas({
         }
       }
 
-      // Sheep — mix the 3 animations for variety
-      const sheepSheets = [terrain.sheepGrass, terrain.sheepIdle, terrain.sheepMove].filter((s) => s.frames.length);
-      for (let i = 0; i < sheepCount && sheepSheets.length; i++) {
+      // Tiny Swords sheep removed — replaced by Minifolks forest animals
+      // (bunny/deer/fox/boar/wolf/bear/bird) that actually wander around
+      // the island. Each spawn is an AnimatedSprite with a moving target;
+      // the ticker steps them toward it and flips on movement direction.
+      type Wanderer = {
+        sprite: AnimatedSprite;
+        x: number;
+        y: number;
+        tx: number;
+        ty: number;
+        speed: number;
+        restT: number;
+        baseScaleX: number;
+      };
+      const wanderers: Wanderer[] = [];
+      const ANIMAL_COUNT = 18;
+      const KIND_SIZE: Record<AnimalKind, number> = {
+        bird:  0.45,
+        bunny: 0.55,
+        deer:  0.9,
+        fox:   0.8,
+        boar:  0.85,
+        wolf:  0.9,
+        bear:  1.1,
+      };
+      const pickRandomLandWorld = (salt: number): { gx: number; gy: number } | null => {
+        const c = landCells[Math.floor(hash(salt, 0, 900) * landCells.length)];
+        return c ?? null;
+      };
+      for (let i = 0; i < ANIMAL_COUNT; i++) {
         if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
-        const c = pickLand(i * 11 + 31);
-        if (!c) break;
-        const sheet = sheepSheets[Math.floor(hash(i, 0, 77) * sheepSheets.length)];
-        const sheep = new AnimatedSprite(sheet.frames);
-        sheep.animationSpeed = 0.07 + hash(i, 0, 78) * 0.04;
-        sheep.loop = true;
-        sheep.play();
-        sheep.anchor.set(0.5, 0.95);
+        const kind = ANIMAL_KINDS[i % ANIMAL_KINDS.length];
+        const sheet = animals[kind];
+        if (!sheet.frames.length) continue;
+        const c = pickRandomLandWorld(i * 7 + 11);
+        if (!c) continue;
+        const sprite = new AnimatedSprite(sheet.frames);
+        sprite.animationSpeed = 0.1 + hash(i, 0, 1001) * 0.05;
+        sprite.loop = true;
+        sprite.play();
+        sprite.anchor.set(0.5, 0.9);
         const { sx, sy } = gridToScreen(c.gx, c.gy, 0, 0);
-        sheep.position.set(sx + (hash(i, 0, 79) - 0.5) * TILE_W * 0.4, sy + TILE_H * 0.3);
-        sheep.scale.set((TILE_W * 1.0) / sheet.frameW);
-        (sheep as unknown as { zIndex: number }).zIndex = c.gy * 1000 + c.gx + 55;
-        decorLayer.addChild(sheep);
+        const pxX = sx;
+        const pxY = sy;
+        sprite.position.set(pxX, pxY);
+        const baseScaleX = (TILE_W * KIND_SIZE[kind]) / sheet.frameW;
+        sprite.scale.set(baseScaleX, baseScaleX);
+        (sprite as unknown as { zIndex: number }).zIndex = c.gy * 1000 + c.gx + 60;
+        decorLayer.addChild(sprite);
         animatedDecorCount++;
+        wanderers.push({
+          sprite,
+          x: pxX,
+          y: pxY,
+          tx: pxX,
+          ty: pxY,
+          speed: 0.2 + hash(i, 0, 1002) * 0.25,
+          restT: 60 + Math.random() * 120,
+          baseScaleX,
+        });
       }
+
+      // Wander update — each animal steps toward its target, stops briefly,
+      // then picks a new nearby land target. Horizontal flip by movement.
+      const wanderLandCheck = (px: number, py: number): boolean => {
+        const gx = Math.floor(px / TILE_W);
+        const gy = Math.floor(py / TILE_H);
+        return landAtWorld(gx, gy);
+      };
+      app.ticker.add((ticker) => {
+        const dt = ticker.deltaTime ?? 1;
+        for (const w of wanderers) {
+          if (w.restT > 0) {
+            w.restT -= dt;
+            continue;
+          }
+          const dx = w.tx - w.x;
+          const dy = w.ty - w.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 1) {
+            // Pick a new nearby target on land
+            for (let tries = 0; tries < 6; tries++) {
+              const r = 1.5 + Math.random() * 3.5;
+              const a = Math.random() * Math.PI * 2;
+              const nx = w.x + Math.cos(a) * r * TILE_W;
+              const ny = w.y + Math.sin(a) * r * TILE_H;
+              if (wanderLandCheck(nx, ny)) {
+                w.tx = nx;
+                w.ty = ny;
+                break;
+              }
+            }
+            w.restT = 30 + Math.random() * 90;
+            continue;
+          }
+          const step = w.speed * dt;
+          const moveX = (dx / dist) * step;
+          const moveY = (dy / dist) * step;
+          w.x += moveX;
+          w.y += moveY;
+          w.sprite.position.set(w.x, w.y);
+          if (Math.abs(moveX) > 0.05) {
+            w.sprite.scale.x = moveX < 0 ? -w.baseScaleX : w.baseScaleX;
+          }
+          const gy = Math.floor(w.y / TILE_H);
+          const gx = Math.floor(w.x / TILE_W);
+          (w.sprite as unknown as { zIndex: number }).zIndex = gy * 1000 + gx + 60;
+        }
+      });
 
       // Loose ground-items (tools, meat, wood drops) removed — they read
       // as "random stuff plopped on grass" rather than coherent landscape.
@@ -682,12 +774,14 @@ export default function CityCanvas({
         app.renderer.width / (52 * TILE_W),
         app.renderer.height / (52 * TILE_H),
       );
-      // Preview (used by home CityPreview): fits the whole island plus a
-      // thin water ring. Wider than 38 tiles so the full shape is visible
-      // on the home hero card without getting cropped.
+      // Preview (used by home CityPreview): auto-fits the actual static
+      // map bounding box (44×30 tiles) plus a thin water ring, so the
+      // whole island is visible on home regardless of viewport size.
+      const previewMapW = (MAP_COLS + 6) * TILE_W;
+      const previewMapH = (MAP_ROWS + 6) * TILE_H;
       const previewZoom = Math.min(
-        app.renderer.width / (40 * TILE_W),
-        app.renderer.height / (40 * TILE_H),
+        app.renderer.width / previewMapW,
+        app.renderer.height / previewMapH,
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);
@@ -1112,22 +1206,9 @@ export default function CityCanvas({
         overlay.addChild(clock);
       }
 
-      // NPC per active building — random villager type, animated walk
-      if (mode === 'interactive' && (!q || q.finishesAt <= Date.now()) && atlas.villagerSheets.size > 0) {
-        const types = Array.from(atlas.villagerSheets.keys());
-        const villagerType = types[stringHash(b.id) % types.length];
-        const sheet = atlas.villagerSheets.get(villagerType)!;
-        const npc = makeNPC(b, sheet, villagerType);
-        if (npc) {
-          // Spawn 1-2 tiles below the building so they're not eclipsed
-          npc.x += Math.random() * 80 - 40;
-          npc.y += TILE_H * 1.4;
-          npc.targetX = npc.x;
-          npc.targetY = npc.y;
-          layer.addChild(npc.sprite);
-          npcsRef.current.push(npc);
-        }
-      }
+      // NPC per building removed — those old Fan-tasy villagers walked
+      // stiffly ("mensen lopen zo raar"). Minifolks animals now handle
+      // wandering life on the island.
     }
   }
 
