@@ -434,13 +434,13 @@ export default function CityCanvas({
       const wanderers: Wanderer[] = [];
       const ANIMAL_COUNT = 18;
       const KIND_SIZE: Record<AnimalKind, number> = {
-        bird:  0.45,
-        bunny: 0.55,
-        deer:  0.9,
-        fox:   0.8,
-        boar:  0.85,
-        wolf:  0.9,
-        bear:  1.1,
+        bird:  0.7,
+        bunny: 0.85,
+        deer:  1.4,
+        fox:   1.25,
+        boar:  1.3,
+        wolf:  1.4,
+        bear:  1.7,
       };
       const pickRandomLandWorld = (salt: number): { gx: number; gy: number } | null => {
         const c = landCells[Math.floor(hash(salt, 0, 900) * landCells.length)];
@@ -464,7 +464,11 @@ export default function CityCanvas({
         sprite.position.set(pxX, pxY);
         const baseScaleX = (TILE_W * KIND_SIZE[kind]) / sheet.frameW;
         sprite.scale.set(baseScaleX, baseScaleX);
-        (sprite as unknown as { zIndex: number }).zIndex = c.gy * 1000 + c.gx + 60;
+        // Static zIndex based on spawn cell — reassigning zIndex every
+        // frame caused the sprite to re-sort inside the layer each tick,
+        // which showed up as flicker. Fine that animals walking south
+        // don't go behind further-south sprites on the same layer.
+        sprite.zIndex = 60 + i;
         decorLayer.addChild(sprite);
         animatedDecorCount++;
         wanderers.push({
@@ -535,9 +539,6 @@ export default function CityCanvas({
           if (Math.abs(moveX) > 0.05) {
             w.sprite.scale.x = moveX < 0 ? -w.baseScaleX : w.baseScaleX;
           }
-          const gy = Math.floor(w.y / TILE_H);
-          const gx = Math.floor(w.x / TILE_W);
-          (w.sprite as unknown as { zIndex: number }).zIndex = gy * 1000 + gx + 60;
         }
       });
 
@@ -618,8 +619,13 @@ export default function CityCanvas({
       const islandCenterPxY = islandMinY + islandH / 2;
 
       const centerWorld = () => {
-        const { originX, originY } = centerOrigin(app.renderer.width, app.renderer.height);
-        world.position.set(originX, originY);
+        // Always center on the actual island body, not the grid center,
+        // so home preview frames the grass instead of empty water.
+        const z = world.scale.x || 1;
+        world.position.set(
+          app.renderer.width / 2 - islandCenterPxX * z,
+          app.renderer.height / 2 - islandCenterPxY * z,
+        );
       };
       centerWorld();
       // Extended map dims (grass island + water margin on all sides). Used
@@ -636,8 +642,8 @@ export default function CityCanvas({
       // pinch-out to see the full map.
       // Default: show the whole island + a ring of water around it.
       const defaultZoom = Math.min(
-        app.renderer.width / (52 * TILE_W),
-        app.renderer.height / (52 * TILE_H),
+        app.renderer.width / (24 * TILE_W),
+        app.renderer.height / (24 * TILE_H),
       );
       // Preview (used by home CityPreview): auto-fits the ACTUAL grass
       // bounding box + small water ring, centered on the grass — not on
@@ -861,7 +867,16 @@ export default function CityCanvas({
       const ro = new ResizeObserver(() => {
         if (cancelled || !appRef.current) return;
         drawBg();
-        if (mode === 'preview') centerWorld();
+        if (mode === 'preview') {
+          // Recompute the preview zoom against the new viewport so the
+          // whole island fits whenever the hero card resizes.
+          const pz = Math.min(
+            app.renderer.width / (islandW + previewPadding * 2),
+            app.renderer.height / (islandH + previewPadding * 2),
+          );
+          world.scale.set(pz);
+          centerWorld();
+        }
       });
       ro.observe(host);
 
@@ -1044,7 +1059,7 @@ export default function CityCanvas({
         const sprite = new Sprite(sheet.frames[0]);
         sprite.anchor.set(0.5, 0.95);
         const longSide = Math.max(sheet.frameW, sheet.frameH);
-        const baseScale = (TILE_W * (def.spriteScale ?? 1.4)) / longSide;
+        const baseScale = (TILE_W * 1.2) / longSide;
         sprite.scale.set(baseScale);
         const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
         sprite.position.set(sx, sy + TILE_H * 0.4);
@@ -1053,12 +1068,17 @@ export default function CityCanvas({
         continue;
       }
       if (b.type === 'path') {
-        const g = new Graphics();
+        // Path is painted as a solid sand-colored tile. A Graphics fill
+        // works but can clash with layer sortableChildren — a Sprite of
+        // a baked 1×1 white tex with tint renders predictably.
+        const sprite = new Sprite(Texture.WHITE);
+        sprite.tint = 0xc8a878;
+        sprite.width = TILE_W;
+        sprite.height = TILE_H;
         const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
-        g.rect(sx - TILE_W / 2, sy - TILE_H / 2, TILE_W, TILE_H);
-        g.fill({ color: 0xc8a878 });
-        (g as unknown as { zIndex: number }).zIndex = Math.floor(sy);
-        layer.addChild(g);
+        sprite.position.set(sx - TILE_W / 2, sy - TILE_H / 2);
+        sprite.zIndex = -1; // under everything else in the layer
+        layer.addChild(sprite);
         continue;
       }
 
@@ -1067,10 +1087,11 @@ export default function CityCanvas({
       if (!tex || tex === Texture.EMPTY) continue;
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.95);
-      // Tiny Swords sprites range from 128px (small house) to 320px (castle).
-      // Target ~2.5 tile widths for small structures, scaling up for big ones.
+      // Buildings must fit within 1 tile so the '1 block = 1 tile' rule
+      // is visually enforced. Small sprites scale up to ~1.3 tiles, large
+      // ones stay at 1.3 — everyone's the same footprint.
       const longSide = Math.max(tex.width, tex.height);
-      const targetTiles = longSide >= 256 ? 4 : longSide >= 192 ? 3.2 : 2.5;
+      const targetTiles = 1.3;
       const baseScale = (TILE_W * targetTiles * (def.spriteScale ?? 1)) / longSide;
       sprite.scale.set(baseScale);
       const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
