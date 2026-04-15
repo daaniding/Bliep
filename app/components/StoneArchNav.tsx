@@ -3,6 +3,8 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { vibrate } from '@/lib/juice';
 
 interface NavItem {
   href: string;
@@ -101,17 +103,24 @@ export default function StoneArchNav() {
         {NAV_ITEMS.map(item => {
           const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
           return (
-            <Link
+            <motion.div
               key={item.href}
-              href={item.href}
-              className={`arch-tab ${active ? 'active' : ''} ${item.center ? 'center' : ''}`}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+              style={{ display: 'flex', flex: 1, minWidth: 0 }}
             >
-              <div className="arch-tab-icon">
-                {item.icon}
-                {item.badge ? <span className="arch-tab-badge">{item.badge}</span> : null}
-              </div>
-              <span>{item.label}</span>
-            </Link>
+              <Link
+                href={item.href}
+                className={`arch-tab ${active ? 'active' : ''} ${item.center ? 'center' : ''}`}
+                onClick={() => vibrate(15)}
+              >
+                <div className="arch-tab-icon">
+                  {item.icon}
+                  {item.badge ? <span className="arch-tab-badge">{item.badge}</span> : null}
+                </div>
+                <span>{item.label}</span>
+              </Link>
+            </motion.div>
           );
         })}
       </div>

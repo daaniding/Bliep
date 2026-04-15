@@ -2,10 +2,16 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import StoneArchNav from './StoneArchNav';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { useStreak } from '@/lib/useStreak';
+import { vibrate } from '@/lib/juice';
+
+const tapSpring = { scale: 0.92 };
+const tapTx = { type: 'spring' as const, stiffness: 520, damping: 22 };
+const haptic = () => vibrate(15);
 
 interface Props {
   children: ReactNode;
@@ -65,17 +71,33 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
               </div>
             </div>
             <div className="cr-icon-row">
-              <Link href="/settings" className="cr-icon-btn" aria-label="Instellingen">
-                <span className="cr-icon-emoji">⚙️</span>
-              </Link>
-              <button type="button" className="cr-icon-btn" aria-label="Streak">
+              <motion.div whileTap={tapSpring} transition={tapTx}>
+                <Link href="/settings" className="cr-icon-btn" aria-label="Instellingen" onClick={haptic}>
+                  <span className="cr-icon-emoji">⚙️</span>
+                </Link>
+              </motion.div>
+              <motion.button
+                type="button"
+                className="cr-icon-btn"
+                aria-label="Streak"
+                whileTap={tapSpring}
+                transition={tapTx}
+                onClick={haptic}
+              >
                 <img src="/assets/icons-rpg/streak.png" alt="" className="cr-icon-pix" />
                 {streak.current > 0 && <span className="cr-icon-badge">{streak.current}</span>}
-              </button>
-              <button type="button" className="cr-icon-btn" aria-label="Gratis kist">
+              </motion.button>
+              <motion.button
+                type="button"
+                className="cr-icon-btn"
+                aria-label="Gratis kist"
+                whileTap={tapSpring}
+                transition={tapTx}
+                onClick={haptic}
+              >
                 <img src="/assets/icons-rpg/kist.png" alt="" className="cr-icon-pix" />
                 <span className="cr-icon-badge cr-badge-red">1</span>
-              </button>
+              </motion.button>
             </div>
           </div>
 

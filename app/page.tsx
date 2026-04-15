@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import CityPreview from './components/CityPreview';
 import KnightIntro from './components/KnightIntro';
+import { vibrate } from '@/lib/juice';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { loadCity, saveCity, addSpeedTokens } from '@/lib/cityStore';
@@ -123,22 +126,34 @@ export default function Home() {
 
       <div className="cr-game-layout">
 
-        {/* STAD — volledige achtergrond */}
-        <div className="cr-city-bg">
+        {/* STAD — volledige achtergrond, tap → /stad */}
+        <Link
+          href="/stad"
+          className="cr-city-bg"
+          aria-label="Open je stad"
+          onClick={() => vibrate(15)}
+          style={{ display: 'block' }}
+        >
           <CityPreview bare />
-        </div>
+        </Link>
         {/* bottom overlay removed — city fills full viewport */}
 
         {/* === Single big OPDRACHT button === */}
         <div className="cr-cta-row">
-          <button
+          <motion.button
             type="button"
             className="cr-cta cr-cta-gold cr-cta-big"
             disabled={!chosenTask || pick.completed}
-            onClick={() => chosenTask && !pick.completed && setShowTimerModal(true)}
+            whileTap={{ scale: 0.92 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+            onClick={() => {
+              if (!chosenTask || pick.completed) return;
+              vibrate(25);
+              setShowTimerModal(true);
+            }}
           >
             {pick.completed ? '✓ Klaar' : 'Opdracht'}
-          </button>
+          </motion.button>
         </div>
         {pick.completed && (
           <div className="cr-city-done">
