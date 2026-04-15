@@ -129,44 +129,15 @@ export default function Home() {
         </div>
         {/* bottom overlay removed — city fills full viewport */}
 
-        {/* === DAILY ROYALE banner with mini reward slots === */}
-        <div className="cr-pass-banner">
-          <img src="/assets/ui2/warrior-mascot.png" alt="" className="cr-pass-mascot" />
-          <div className="cr-pass-mid">
-            <div className="cr-pass-title">⚔ Daily Royale · Dag {new Date().getDate()}</div>
-            <div className="cr-pass-track">
-              <div
-                className="cr-pass-fill"
-                style={{ width: pick.completed ? '100%' : chosenTask ? '50%' : '12%' }}
-              />
-              <span className="cr-pass-text">
-                {pick.completed ? '✓ Voltooid' : chosenTask ? 'In gang' : 'Kies opdracht'}
-              </span>
-            </div>
-          </div>
-          <div className="cr-pass-slots">
-            <div className="cr-pass-slot"><img src="/assets/icons/coins.png" alt="" /></div>
-            <div className="cr-pass-slot"><img src="/assets/icons/star.png" alt="" /></div>
-            <div className="cr-pass-slot cr-pass-slot-big"><img src="/assets/icons/chest.png" alt="" /></div>
-          </div>
-        </div>
-
-        {/* === Dual CTA row — Battle + Party === */}
+        {/* === Single big OPDRACHT button === */}
         <div className="cr-cta-row">
           <button
             type="button"
-            className="cr-cta cr-cta-gold"
+            className="cr-cta cr-cta-gold cr-cta-big"
             disabled={!chosenTask || pick.completed}
             onClick={() => chosenTask && !pick.completed && setShowTimerModal(true)}
           >
-            Battle
-          </button>
-          <button
-            type="button"
-            className="cr-cta cr-cta-pink"
-            onClick={() => sfxTap()}
-          >
-            Party!
+            {pick.completed ? '✓ Klaar' : 'Opdracht'}
           </button>
         </div>
         {pick.completed && (
@@ -177,35 +148,6 @@ export default function Home() {
           </div>
         )}
 
-      </div>
-
-      {/* === Card hand above menu bar (warrior playing cards) === */}
-      <div className="cr-reward-row" aria-hidden>
-        {(['easy','medium','hard','daily'] as const).map((tier) => {
-          const cfg: Record<string, { hero: string; label: string; min: string }> = {
-            easy:   { hero: '/assets/walkers2/warrior-blue.png',   label: '15 min',  min: 'Arena 1' },
-            medium: { hero: '/assets/walkers2/warrior-yellow.png', label: '30 min',  min: 'Arena 2' },
-            hard:   { hero: '/assets/walkers2/warrior-red.png',    label: '60 min',  min: 'Arena 3' },
-            daily:  { hero: '/assets/walkers2/warrior-purple.png', label: 'DAILY',   min: 'Royal'  },
-          };
-          const c = cfg[tier];
-          const cls = tier === 'daily' ? '' : tier;
-          return (
-            <button key={tier} type="button" className={`cr-reward-card ${cls} ${pick.completed ? 'done' : ''}`}>
-              <span className="cr-reward-timer">{c.min}</span>
-              <div
-                className="cr-reward-art"
-                style={{
-                  backgroundImage: `url(${c.hero})`,
-                  backgroundSize: 'auto 100%',
-                  backgroundPosition: 'left center',
-                  backgroundRepeat: 'no-repeat',
-                }}
-              />
-              <span className="cr-reward-label">{c.label}</span>
-            </button>
-          );
-        })}
       </div>
 
       {/* Timer modal */}

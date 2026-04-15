@@ -228,14 +228,21 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 16px 0 calc(8px + env(safe-area-inset-bottom));
+  padding: 8px 6px calc(6px + env(safe-area-inset-bottom));
   pointer-events: none;
-  /* One flat color, single gold top edge */
-  background: #1a0f05;
-  border-top: 5px solid #f0b840;
+  /* Darker brown at top + bottom, lighter middle — like the CR nav strip */
+  background:
+    linear-gradient(180deg,
+      rgba(10, 6, 4, 0.98) 0%,
+      rgba(30, 18, 8, 0.92) 30%,
+      rgba(45, 28, 12, 0.9) 50%,
+      rgba(30, 18, 8, 0.92) 70%,
+      rgba(10, 6, 4, 0.98) 100%
+    );
+  border-top: 3px solid rgba(240, 184, 64, 0.75);
   box-shadow:
-    inset 0 4px 0 rgba(255, 230, 160, 0.14),
-    0 -6px 18px rgba(0, 0, 0, 0.6);
+    inset 0 2px 0 rgba(255, 230, 160, 0.2),
+    0 -4px 14px rgba(0, 0, 0, 0.55);
 }
 
 /* Legacy SVG arch background hidden */
@@ -245,16 +252,33 @@ body {
   position: relative;
   z-index: 2;
   display: flex;
-  justify-content: space-around;
-  align-items: center;
+  justify-content: space-between;
+  align-items: stretch;
   width: 100%;
-  padding: 6px 4px 6px;
+  padding: 0 2px;
   pointer-events: auto;
-  gap: 0;
+  gap: 5px;
 }
 .stone-arch-nav .arch-tab {
   flex: 1;
   min-width: 0;
+  padding: 8px 4px 6px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(80, 50, 20, 0.55) 0%, rgba(20, 12, 4, 0.7) 100%);
+  border: 2px solid rgba(13, 10, 6, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 230, 160, 0.25), inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 100ms ease, background 120ms ease;
+}
+.stone-arch-nav .arch-tab:active { transform: translateY(2px) scale(0.97); }
+.stone-arch-nav .arch-tab.active {
+  background: linear-gradient(180deg, rgba(240, 184, 64, 0.35) 0%, rgba(110, 76, 16, 0.55) 100%);
+  border-color: #fdd069;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 0 16px rgba(240, 184, 64, 0.45);
 }
 
 /* Walkers layer — on the top edge of the menu bar, city visible behind them.
@@ -291,24 +315,37 @@ body {
 .arch-tab:active { transform: translateY(2px); }
 .arch-tab.active { color: var(--color-gold-100); }
 
-/* Gold frame around every icon — 3D bevel + border */
+/* Icon container (transparent, the tab itself has the frame now) */
 .arch-tab-icon {
-  width: 54px;
-  height: 54px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 240, 200, 0.25), transparent 55%),
-    linear-gradient(180deg, #3a2410 0%, #0d0a06 100%);
-  border: 2px solid #f0b840;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
-    0 2px 0 #7a4f2a,
-    0 4px 8px rgba(0, 0, 0, 0.5);
   position: relative;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.arch-tab-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: linear-gradient(180deg, #ff5e4a 0%, #c41f1a 60%, #7a0c0a 100%);
+  border: 2px solid #0d0a06;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 11px;
+  color: #fff3c6;
+  text-shadow: 0 1px 0 #0d0a06;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  z-index: 2;
 }
 .arch-tab-icon > svg {
   width: 32px;
@@ -695,8 +732,272 @@ body {
    =========================================================== */
 
 /* Top bar: profile / xp / resources — sits above content stack */
-/* === CLASH-ROYALE TOP BAR: one packed row of pills === */
+/* ============================================
+   NEW CR HEADER (3 rows of rectangle pills)
+   ============================================ */
+.cr-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 10px) 10px 10px;
+  pointer-events: none;
+}
+.cr-header > * { pointer-events: auto; }
+.cr-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+.cr-header-row-right {
+  justify-content: flex-end;
+}
+
+/* --- Generic pill rectangle --- */
+.cr-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 5px 6px;
+  min-height: 38px;
+  background:
+    linear-gradient(180deg, rgba(20, 12, 6, 0.9) 0%, rgba(10, 6, 4, 0.82) 50%, rgba(20, 12, 6, 0.9) 100%);
+  border: 3px solid #0d0a06;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 160, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 rgba(13, 10, 6, 0.85),
+    0 6px 12px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 13px;
+  color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06;
+  line-height: 1;
+  text-decoration: none;
+}
+.cr-pill img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+/* Small round number badge on the left of a pill (level, pass progress) */
+.cr-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid #0d0a06;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 #0d0a06;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 15px;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+.cr-pill-badge-blue {
+  background: radial-gradient(circle at 35% 30%, #9fd8ff 0%, #4fa3d9 45%, #1e6fa8 100%);
+  text-shadow: 0 1px 0 #0d3a60;
+}
+.cr-pill-badge-gold {
+  background: radial-gradient(circle at 35% 30%, #fff3c6 0%, #fdd069 40%, #b8791f 100%);
+  color: #3a1e08;
+  text-shadow: 0 1px 0 rgba(255, 240, 180, 0.6);
+}
+
+/* Progress bar inside a pill */
+.cr-bar {
+  position: relative;
+  width: 70px;
+  height: 14px;
+  background: #0d0a06;
+  border: 2px solid #3a1e08;
+  border-radius: 7px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+.cr-bar-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+.cr-bar-fill-blue {
+  background: linear-gradient(180deg, #a2d5ff 0%, #4fa3d9 55%, #1e6fa8 100%);
+}
+.cr-bar-fill-gold {
+  background: linear-gradient(180deg, #ffec8c 0%, #fdd069 40%, #d19225 80%, #6e4c10 100%);
+}
+.cr-bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+/* Row 1 specific pills */
+.cr-pill-xp { padding-right: 8px; }
+.cr-pill-coins { color: #fdd069; }
+.cr-pill-coins img { width: 28px; height: 28px; }
+.cr-pill-gems { color: #a2d5ff; }
+.cr-pill-gems img { width: 26px; height: 26px; }
+
+/* Row 2 — Daan pill + Pass pill */
+.cr-pill-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  padding: 4px 12px 4px 4px;
+  gap: 8px;
+}
+.cr-avatar-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fdd069 0%, #b8791f 70%, #5c3a10 100%);
+  border: 3px solid #0d0a06;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.cr-name-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cr-name-label {
+  font-size: 13px;
+  color: #fdd069;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cr-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #fff3c6;
+}
+.cr-inline-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.cr-pill-pass {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 10px 5px 4px;
+  min-height: 46px;
+  background:
+    linear-gradient(180deg, rgba(45, 28, 8, 0.92) 0%, rgba(20, 12, 4, 0.88) 50%, rgba(45, 28, 8, 0.92) 100%);
+}
+.cr-pass-label {
+  font-size: 11px;
+  color: #fdd069;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.cr-pill-pass .cr-bar {
+  flex: 1;
+  width: auto;
+  min-width: 60px;
+}
+
+/* Row 3 — 4 quick action rectangles */
+.cr-action {
+  position: relative;
+  flex: 1;
+  max-width: 84px;
+  min-height: 58px;
+  background:
+    linear-gradient(180deg, rgba(20, 12, 6, 0.92) 0%, rgba(10, 6, 4, 0.85) 50%, rgba(20, 12, 6, 0.92) 100%);
+  border: 3px solid #0d0a06;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 160, 0.35),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 #0d0a06,
+    0 6px 12px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px 4px;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 10px;
+  color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cr-action-icon {
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
+}
+.cr-action-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: linear-gradient(180deg, #ff5e4a 0%, #c41f1a 60%, #7a0c0a 100%);
+  border: 2px solid #0d0a06;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 11px;
+  color: #fff3c6;
+  text-shadow: 0 1px 0 #0d0a06;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+.cr-badge-red { background: linear-gradient(180deg, #ff5e4a 0%, #c41f1a 60%, #7a0c0a 100%); }
+
+/* ============================================
+   LEGACY (old classes, kept or hidden)
+   ============================================ */
 .cr-topbar {
+  display: none;
+}
+.cr-pass-banner,
+.cr-reward-row,
+.cr-nameplate,
+.cr-top-right { display: none; }
+
+/* ============================================
+   OLD cr-topbar rules kept below as dead code
+   ============================================ */
+.cr-topbar-old {
   position: absolute;
   top: 0;
   left: 0;
@@ -1036,7 +1337,7 @@ body {
 .cr-cta-row {
   position: fixed;
   left: 50%;
-  bottom: calc(270px + env(safe-area-inset-bottom));
+  bottom: calc(130px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 48;
   display: flex;

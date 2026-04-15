@@ -9,6 +9,7 @@ interface NavItem {
   label: string;
   icon: ReactNode;
   center?: boolean;
+  badge?: number;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: '/stad',
     label: 'Stad',
+    badge: 2,
     icon: (
       <svg viewBox="0 0 32 32" fill="none">
         {/* Castle */}
@@ -102,6 +104,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: '/settings',
     label: 'Meer',
+    badge: 1,
     icon: (
       <svg viewBox="0 0 32 32" fill="none">
         {/* Gear */}
@@ -174,55 +177,6 @@ export default function StoneArchNav() {
         />
       </svg>
 
-      {/* Walkers walking on the top edge (gold road) of the menu bar */}
-      <div className="nav-walk-strip" aria-hidden>
-        {([
-          { src: 'walkers3/hero-knight',    w: 100, h: 55,  frames: 10, size: 160, delay:  '0s'  },
-          { src: 'walkers3/knight-horse',   w: 48,  h: 48,  frames: 8,  size: 140, delay: '-6s'  },
-          { src: 'walkers2/warrior-blue',   w: 192, h: 192, frames: 6,  size: 140, delay: '-12s' },
-          { src: 'walkers3/heavy-bandit',   w: 48,  h: 48,  frames: 8,  size: 124, delay: '-18s' },
-          { src: 'walkers2/warrior-purple', w: 192, h: 192, frames: 6,  size: 140, delay: '-24s' },
-        ] as const).map((v, i) => {
-          const scale = v.size / v.h;
-          const displayW = Math.round(v.w * scale);
-          const stripW = displayW * v.frames;
-          return (
-            <div
-              key={v.src}
-              style={{
-                position: 'absolute',
-                bottom: 40,
-                width: displayW,
-                height: v.size,
-                overflow: 'hidden',
-                animation: 'nav-walker-move 30s linear infinite',
-                animationDelay: v.delay,
-                zIndex: 3 - (i % 2),
-              }}
-            >
-              <img
-                src={`/assets/${v.src}.png`}
-                alt=""
-                draggable={false}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  width: stripW,
-                  height: v.size,
-                  maxWidth: 'none',
-                  minWidth: stripW,
-                  imageRendering: 'pixelated',
-                  animation: `nav-walker-strip-${v.frames} 0.7s steps(${v.frames}) infinite`,
-                  filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.65))',
-                  ['--stripW' as string]: `-${stripW}px`,
-                }}
-              />
-            </div>
-          );
-        })}
-      </div>
-
       <div className="arch-row">
         {NAV_ITEMS.map(item => {
           const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
@@ -232,7 +186,10 @@ export default function StoneArchNav() {
               href={item.href}
               className={`arch-tab ${active ? 'active' : ''} ${item.center ? 'center' : ''}`}
             >
-              <div className="arch-tab-icon">{item.icon}</div>
+              <div className="arch-tab-icon">
+                {item.icon}
+                {item.badge ? <span className="arch-tab-badge">{item.badge}</span> : null}
+              </div>
               <span>{item.label}</span>
             </Link>
           );
