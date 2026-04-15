@@ -221,36 +221,21 @@ body {
    The inner container is absolutely positioned; the arch SVG is a
    background layer. */
 
-/* === NEW FULL-WIDTH MENU BAR — ground texture + 5 equal tabs + walkers on top === */
+/* === CLASH ROYALE MENU BAR — solid dark color, full width, clean === */
 .stone-arch-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 64px 0 env(safe-area-inset-bottom);  /* top 64 = walker strip, bottom = safe area */
+  padding: 10px 0 env(safe-area-inset-bottom);
   pointer-events: none;
-  /* Tiled dirt ground as base, with a subtle dark overlay and gold top edge */
-  background:
-    linear-gradient(180deg, rgba(30, 18, 8, 0) 0%, rgba(30, 18, 8, 0.25) 64px, rgba(30, 18, 8, 0.55) 100%),
-    url('/assets/textures/farmland.png') repeat;
-  background-size: auto, 48px 48px;
+  /* One flat color, single gold top edge */
+  background: #1a0f05;
   border-top: 4px solid #f0b840;
   box-shadow:
-    inset 0 5px 0 #1a0f05,
-    inset 0 -3px 0 rgba(0, 0, 0, 0.55),
-    0 -6px 18px rgba(0, 0, 0, 0.55);
-  image-rendering: pixelated;
-}
-/* Dark translucent panel behind the 5 icons to keep them readable */
-.stone-arch-nav::before {
-  content: '';
-  position: absolute;
-  left: 0; right: 0;
-  bottom: 0;
-  height: calc(80px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(10, 6, 4, 0) 0%, rgba(10, 6, 4, 0.62) 45%, rgba(10, 6, 4, 0.85) 100%);
-  pointer-events: none;
+    inset 0 3px 0 rgba(255, 230, 160, 0.12),
+    0 -4px 14px rgba(0, 0, 0, 0.55);
 }
 
 /* Legacy SVG arch background hidden */
@@ -263,7 +248,7 @@ body {
   justify-content: space-around;
   align-items: center;
   width: 100%;
-  padding: 8px 4px 6px;
+  padding: 6px 4px 6px;
   pointer-events: auto;
   gap: 0;
 }
@@ -272,16 +257,19 @@ body {
   min-width: 0;
 }
 
-/* Walkers layer — actually walking ON the menu bar surface */
+/* Walkers layer — on the top edge of the menu bar, city visible behind them.
+   Strip straddles the gold border: half above (in city), half below (on bar). */
 .stone-arch-nav .nav-walk-strip {
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
-  height: 68px;
+  bottom: 100%;  /* sits ENTIRELY above the bar top edge */
+  margin-bottom: -40px;  /* overlap the gold border so they walk ON it */
+  height: 140px;
   overflow: hidden;
   pointer-events: none;
   z-index: 1;
+  background: transparent;
 }
 
 .arch-tab {
@@ -706,27 +694,17 @@ body {
    =========================================================== */
 
 /* Top bar: profile / xp / resources — sits above content stack */
-/* === NEW TOP BAR: stone tile strip with gold trim === */
+/* === TOP BAR: fully transparent, chips float directly over the city === */
 .cr-topbar {
   position: relative;
   z-index: 50;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: calc(env(safe-area-inset-top) + 10px) 12px 12px;
-  /* Stone background tile + top/bottom gold strip */
-  background:
-    linear-gradient(180deg, rgba(255, 230, 160, 0.18) 0%, rgba(0, 0, 0, 0) 12px),
-    linear-gradient(0deg,   rgba(255, 230, 160, 0.12) 0%, rgba(0, 0, 0, 0) 10px),
-    linear-gradient(180deg, rgba(10, 6, 4, 0.25) 0%, rgba(10, 6, 4, 0.55) 100%),
-    url('/assets/textures/stone.png') repeat;
-  background-size: auto, auto, auto, 96px 96px;
-  border-bottom: 4px solid #f0b840;
-  box-shadow:
-    inset 0 3px 0 rgba(255, 230, 160, 0.35),
-    inset 0 -4px 0 #1a0f05,
-    0 6px 14px rgba(0, 0, 0, 0.45);
-  image-rendering: pixelated;
+  padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   pointer-events: auto;
 }
 .cr-profile {

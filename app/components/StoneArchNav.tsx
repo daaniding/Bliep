@@ -174,23 +174,24 @@ export default function StoneArchNav() {
         />
       </svg>
 
-      {/* Walkers strolling along the top edge of the menu bar */}
+      {/* Walkers walking on the top edge (gold road) of the menu bar */}
       <div className="nav-walk-strip" aria-hidden>
         {([
-          { src: 'walkers3/hero-knight',    w: 100, h: 55,  frames: 10, size: 112, delay:  '0s'  },
-          { src: 'walkers3/knight-horse',   w: 48,  h: 48,  frames: 8,  size: 96,  delay: '-6s'  },
-          { src: 'walkers2/warrior-blue',   w: 192, h: 192, frames: 6,  size: 96,  delay: '-12s' },
-          { src: 'walkers3/heavy-bandit',   w: 48,  h: 48,  frames: 8,  size: 84,  delay: '-18s' },
-          { src: 'walkers2/warrior-purple', w: 192, h: 192, frames: 6,  size: 96,  delay: '-24s' },
+          { src: 'walkers3/hero-knight',    w: 100, h: 55,  frames: 10, size: 160, delay:  '0s'  },
+          { src: 'walkers3/knight-horse',   w: 48,  h: 48,  frames: 8,  size: 140, delay: '-6s'  },
+          { src: 'walkers2/warrior-blue',   w: 192, h: 192, frames: 6,  size: 140, delay: '-12s' },
+          { src: 'walkers3/heavy-bandit',   w: 48,  h: 48,  frames: 8,  size: 124, delay: '-18s' },
+          { src: 'walkers2/warrior-purple', w: 192, h: 192, frames: 6,  size: 140, delay: '-24s' },
         ] as const).map((v, i) => {
-          const stripW = v.w * v.frames * (v.size / v.h);
-          const displayW = v.size * (v.w / v.h);
+          const scale = v.size / v.h;
+          const displayW = Math.round(v.w * scale);
+          const stripW = displayW * v.frames;
           return (
             <div
               key={v.src}
               style={{
                 position: 'absolute',
-                bottom: 0,
+                bottom: 40,
                 width: displayW,
                 height: v.size,
                 overflow: 'hidden',
@@ -213,8 +214,7 @@ export default function StoneArchNav() {
                   minWidth: stripW,
                   imageRendering: 'pixelated',
                   animation: `nav-walker-strip-${v.frames} 0.7s steps(${v.frames}) infinite`,
-                  filter: 'drop-shadow(0 4px 5px rgba(0,0,0,0.55))',
-                  /* Per-strip translate end — different for each frame count */
+                  filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.65))',
                   ['--stripW' as string]: `-${stripW}px`,
                 }}
               />
