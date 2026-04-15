@@ -293,7 +293,11 @@ export default function CityCanvas({
       water.position.set(waterLeft, waterTop);
       tileLayer.addChild(water);
 
-      // ---- Grass + cliff-wall rendering from the elevation grid ----
+      // ---- Grass rendering from the elevation grid ----
+      // Two passes: first all grass tiles, then all cliff walls, so that
+      // a cliff-wall sprite at (gy+1) ends up ABOVE the grass sprite that
+      // was drawn for that same cell in the first pass.
+      const cliffWallPositions: Array<{ gx: number; gy: number }> = [];
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
           const slot = autotileGrassSlot(elevation, rx, ry);
@@ -305,40 +309,41 @@ export default function CityCanvas({
           tileLayer.addChild(sprite);
 
           if (shouldPaintCliffWall(elevation, rx, ry)) {
-            const wallTex = bakedOf(CLIFF_WALL_CELL.col, CLIFF_WALL_CELL.row);
-            const wall = new Sprite(wallTex);
-            wall.anchor.set(0, 0);
-            wall.position.set(worldGx(rx) * TILE_W, worldGy(ry + 1) * TILE_H);
-            tileLayer.addChild(wall);
+            cliffWallPositions.push({ gx: worldGx(rx), gy: worldGy(ry + 1) });
           }
         }
       }
+      const wallTex = bakedOf(CLIFF_WALL_CELL.col, CLIFF_WALL_CELL.row);
+      for (const pos of cliffWallPositions) {
+        const wall = new Sprite(wallTex);
+        wall.anchor.set(0, 0);
+        wall.position.set(pos.gx * TILE_W, pos.gy * TILE_H);
+        tileLayer.addChild(wall);
+      }
 
-      // ---- Water foam: every water cell with a grass neighbour ----
+      // ---- Water foam: sparse ring along the south coast only ----
+      // Ringing the whole island with foam looked like pixel noise, so we
+      // only place foam on water cells that border a grass cell on the
+      // north (= south coast of the island), and only every 3rd cell.
       const foamSheet = terrain.waterFoam;
       let foamCount = 0;
-      const MAX_FOAM = 90;
+      const MAX_FOAM = 40;
       for (let ry = 0; ry < MAP_ROWS && foamCount < MAX_FOAM; ry++) {
         for (let rx = 0; rx < MAP_COLS && foamCount < MAX_FOAM; rx++) {
           if (elevation[ry][rx] !== 0) continue;
-          const hasGrassNeighbor =
-            (elevation[ry - 1]?.[rx] ?? 0) > 0 ||
-            (elevation[ry + 1]?.[rx] ?? 0) > 0 ||
-            (elevation[ry]?.[rx - 1] ?? 0) > 0 ||
-            (elevation[ry]?.[rx + 1] ?? 0) > 0;
-          if (!hasGrassNeighbor) continue;
-          if ((rx + ry) % 2 !== 0) continue; // sparse out foam
+          if ((elevation[ry - 1]?.[rx] ?? 0) <= 0) continue;
+          if (rx % 3 !== 0) continue;
           const foam = new AnimatedSprite(foamSheet.frames);
-          foam.animationSpeed = 0.15 + Math.random() * 0.05;
+          foam.animationSpeed = 0.12 + Math.random() * 0.04;
           foam.loop = true;
           foam.play();
           foam.anchor.set(0.5, 0.5);
           foam.position.set(
             worldGx(rx) * TILE_W + TILE_W * 0.5,
-            worldGy(ry) * TILE_H + TILE_H * 0.5,
+            worldGy(ry) * TILE_H + TILE_H * 0.25,
           );
-          foam.scale.set((TILE_W * 2.0) / foamSheet.frameW);
-          foam.alpha = 0.55;
+          foam.scale.set((TILE_W * 2.4) / foamSheet.frameW);
+          foam.alpha = 0.38;
           tileLayer.addChild(foam);
           foamCount++;
         }
