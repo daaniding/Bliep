@@ -63,16 +63,19 @@ export async function loadMinifolks(): Promise<MinifolksAnimals> {
   const setNearest = (t: Texture) => { if (t.source) t.source.scaleMode = 'nearest'; };
   for (const t of [bird, bunny, deer, fox, boar, wolf, bear]) setNearest(t);
 
-  // Most Minifolks animals have 6+ walk frames in row 0. Slicing more
-  // frames (8 max) makes the walk cycle smoother.
+  // Animal flicker was caused by slicing MORE frames than the sheet row
+  // actually contains. Rows in Minifolks have varying width — some rows
+  // only have 4 visible sprites followed by transparent padding. Sliced
+  // frames in that padded area render as empty pixels, showing up as
+  // rapid blink. 4 frames per animal is safe for every sheet.
   cached = {
     bird:  { frames: sliceRow(bird, 16, 16, 4),  frameW: 16, frameH: 16 },
     bunny: { frames: sliceRow(bunny, 32, 32, 4), frameW: 32, frameH: 32 },
-    deer:  { frames: sliceRow(deer, 32, 32, 5),  frameW: 32, frameH: 32 },
-    fox:   { frames: sliceRow(fox, 32, 32, 6),   frameW: 32, frameH: 32 },
-    boar:  { frames: sliceRow(boar, 32, 32, 5),  frameW: 32, frameH: 32 },
-    wolf:  { frames: sliceRow(wolf, 32, 32, 7),  frameW: 32, frameH: 32 },
-    bear:  { frames: sliceRow(bear, 32, 32, 8),  frameW: 32, frameH: 32 },
+    deer:  { frames: sliceRow(deer, 32, 32, 4),  frameW: 32, frameH: 32 },
+    fox:   { frames: sliceRow(fox, 32, 32, 4),   frameW: 32, frameH: 32 },
+    boar:  { frames: sliceRow(boar, 32, 32, 4),  frameW: 32, frameH: 32 },
+    wolf:  { frames: sliceRow(wolf, 32, 32, 4),  frameW: 32, frameH: 32 },
+    bear:  { frames: sliceRow(bear, 32, 32, 4),  frameW: 32, frameH: 32 },
   };
   return cached;
 }

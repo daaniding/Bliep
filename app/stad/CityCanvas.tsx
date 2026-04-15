@@ -202,13 +202,11 @@ export default function CityCanvas({
       app.stage.addChild(stageBg);
 
       const world = new Container();
-      // Dusk color grade — subtly darker + slightly desaturated. We do NOT
-      // use ColorMatrixFilter.night() here (it crushes everything to near
-      // black). Instead a single brightness knob gives the dusk mood without
-      // making sprites unrecognisable.
-      const duskFilter = new ColorMatrixFilter();
-      duskFilter.brightness(0.82, false);
-      world.filters = [duskFilter];
+      // The earlier ColorMatrixFilter dusk grade interacted with
+      // AnimatedSprite updates inside the world and caused per-frame
+      // re-sort / re-filter cycles which showed up as animal flicker.
+      // Removed entirely — dusk mood is done via per-tile grass tints
+      // (GRASS_TINTS palette) which give the same feel without a filter.
       app.stage.addChild(world);
       worldRef.current = world;
 
@@ -319,13 +317,15 @@ export default function CityCanvas({
       // ("hoogteverschillen werken niet"). Grass cells get a per-tile tint
       // variation from a small dusk-green palette so the ground reads
       // alive instead of a flat repeating texture.
+      // Dusk-tone grass palette — slightly darker + desaturated so the
+      // map reads schemerig without a global color filter.
       const GRASS_TINTS = [
-        0x8cbc60,
-        0x7ea854,
-        0x6f984a,
-        0x87b25c,
-        0x78a450,
-        0x6a9044,
+        0x7ca054,
+        0x6e9048,
+        0x5e8040,
+        0x78985a,
+        0x688848,
+        0x5a7a3e,
       ];
       const hashForTint = (gx: number, gy: number): number => {
         let h = (gx * 374761393 + gy * 668265263) | 0;
@@ -1102,12 +1102,12 @@ export default function CityCanvas({
       if (!tex || tex === Texture.EMPTY) continue;
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.95);
-      // Scale to fill the footprint — a 2×2 building covers 2 tiles wide
-      // with a small overshoot (1.15×) so the sprite sits nicely above
-      // its grass base.
+      // Scale the building sprite to fill its footprint with some head-
+      // room so the building sits noticeably above its grass base. 1.4×
+      // the footprint span feels right for Tiny Swords buildings.
       const longSide = Math.max(tex.width, tex.height);
       const footprintSpan = Math.max(fp.w, fp.h);
-      const targetTiles = footprintSpan * 1.15;
+      const targetTiles = footprintSpan * 1.4;
       const baseScale = (TILE_W * targetTiles * (def.spriteScale ?? 1)) / longSide;
       sprite.scale.set(baseScale);
       const { sx, sy } = gridToScreen(centerGx, centerGy, 0, 0);
