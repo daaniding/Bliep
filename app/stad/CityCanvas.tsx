@@ -21,6 +21,7 @@ import {
   CLIFF_TILE_CELLS,
   TILEMAP_CELL,
 } from '@/lib/game/tinyswordsTerrain';
+import { generateWorld, type IslandTheme } from '@/lib/game/islandShape';
 import {
   TILE_W,
   TILE_H,
@@ -275,72 +276,74 @@ export default function CityCanvas({
       water.position.set(waterLeft, waterTop);
       tileLayer.addChild(water);
 
+      // ---- World shape: main island + 5 themed mini islands ----
+      const worldMask = generateWorld(state.npcSeed || 1);
+
+      // Grass layer masked to the island shapes. We render one full-grid
+      // TilingSprite and use a Graphics mask with one rect per land cell.
       const grass = new TilingSprite({
         texture: grassTex,
         width: GRID_SIZE * TILE_W,
         height: GRID_SIZE * TILE_H,
       });
       grass.position.set(0, 0);
-      tileLayer.addChild(grass);
 
-      // Streams — thin water bands crossing the island at fixed ratios so
-      // they look like natural rivers. Each stream is clipped to the grass
-      // area and sits above the grass layer. Placed outside the build zone.
-      const streamData = [
-        { row: Math.floor(GRID_SIZE * 0.18), height: 2 },
-        { row: Math.floor(GRID_SIZE * 0.83), height: 2 },
-      ];
-      for (const stream of streamData) {
-        const band = new TilingSprite({
-          texture: waterTex,
-          width: GRID_SIZE * TILE_W,
-          height: stream.height * TILE_H,
-        });
-        band.position.set(0, stream.row * TILE_H);
-        band.alpha = 0.9;
-        tileLayer.addChild(band);
+      const grassMask = new Graphics();
+      // Run-length encode land cells per row to reduce Graphics draw count.
+      for (let gy = 0; gy < GRID_SIZE; gy++) {
+        let runStart = -1;
+        for (let gx = 0; gx <= GRID_SIZE; gx++) {
+          const land = gx < GRID_SIZE && worldMask.isLand(gx, gy);
+          if (land && runStart < 0) runStart = gx;
+          if (!land && runStart >= 0) {
+            grassMask.rect(runStart * TILE_W, gy * TILE_H, (gx - runStart) * TILE_W, TILE_H);
+            runStart = -1;
+          }
+        }
       }
+      grassMask.fill({ color: 0xffffff });
 
-      // Cliff front strip along the south edge of the grass.
-      const cliffRow = new TilingSprite({
-        texture: cliffTex,
-        width: GRID_SIZE * TILE_W,
-        height: TILE_H,
-      });
-      cliffRow.position.set(0, GRID_SIZE * TILE_H);
-      tileLayer.addChild(cliffRow);
+      const grassContainer = new Container();
+      grassContainer.addChild(grass);
+      grassContainer.addChild(grassMask);
+      grass.mask = grassMask;
+      tileLayer.addChild(grassContainer);
 
-      // Water foam — static row of foam sprites along the cliff base so the
-      // island meets the water with a soft edge. AnimatedSprite cycles frames.
-      const foamSheet = terrain.waterFoam;
-      const foamCount = Math.ceil((GRID_SIZE * TILE_W) / (foamSheet.frameW * 0.6));
-      for (let i = 0; i < foamCount; i++) {
-        const foam = new AnimatedSprite(foamSheet.frames);
-        foam.animationSpeed = 0.2;
-        foam.loop = true;
-        foam.play();
-        foam.anchor.set(0.5, 0.5);
-        const stepPx = (GRID_SIZE * TILE_W) / foamCount;
-        foam.position.set(i * stepPx + stepPx / 2, GRID_SIZE * TILE_H + TILE_H * 0.5);
-        foam.scale.set((stepPx * 1.05) / foamSheet.frameW);
-        foam.alpha = 0.85;
-        tileLayer.addChild(foam);
-      }
-
-      // Road overlay tiles
+      // ---- Cliff-front tiles along every south-coast cell ----
       for (let gy = 0; gy < GRID_SIZE; gy++) {
         for (let gx = 0; gx < GRID_SIZE; gx++) {
-          if (!isRoadTile(gx, gy)) continue;
-          const road = new Graphics();
-          road.rect(gx * TILE_W, gy * TILE_H, TILE_W, TILE_H);
-          road.fill({ color: 0xc8a878 });
-          tileLayer.addChild(road);
+          if (!worldMask.isSouthCoast(gx, gy)) continue;
+          const cliff = new Sprite(cliffTex);
+          cliff.anchor.set(0, 0);
+          cliff.position.set(gx * TILE_W, gy * TILE_H + TILE_H * 0.55);
+          tileLayer.addChild(cliff);
         }
       }
 
-      // ---- Build zone ring ----
-      // Skipped entirely when the build zone covers the whole map — a ring
-      // around everything is meaningless.
+      // ---- Water foam along coast cells (south coasts only — a foam ring
+      // around every tile would be ~800 animated sprites which is too much)
+      const foamSheet = terrain.waterFoam;
+      let foamCount = 0;
+      const MAX_FOAM = 90;
+      for (let gy = 0; gy < GRID_SIZE && foamCount < MAX_FOAM; gy++) {
+        for (let gx = 0; gx < GRID_SIZE && foamCount < MAX_FOAM; gx++) {
+          if (!worldMask.isSouthCoast(gx, gy)) continue;
+          // only every ~2nd cell to sparse out foam
+          if ((gx + gy) % 2 !== 0) continue;
+          const foam = new AnimatedSprite(foamSheet.frames);
+          foam.animationSpeed = 0.15 + Math.random() * 0.05;
+          foam.loop = true;
+          foam.play();
+          foam.anchor.set(0.5, 0.5);
+          foam.position.set(gx * TILE_W + TILE_W * 0.5, (gy + 1) * TILE_H + TILE_H * 0.25);
+          foam.scale.set((TILE_W * 2.2) / foamSheet.frameW);
+          foam.alpha = 0.55;
+          tileLayer.addChild(foam);
+          foamCount++;
+        }
+      }
+
+      // ---- Build zone ring: skipped when it covers the whole map
       if (showBuildZone && BUILD_ZONE_RADIUS * 2 + 1 < GRID_SIZE) {
         const ring = new Graphics();
         const r = BUILD_ZONE_RADIUS;
@@ -353,13 +356,25 @@ export default function CityCanvas({
         tileLayer.addChild(ring);
       }
 
-      // Elevation intentionally skipped — see comment at top of file.
-      // Proper autotiling of Tiny Swords cliff edges is a separate refactor.
+      // ---- Decor scatter per island theme ----
+      type ThemeDensity = {
+        treeChance: number;
+        bushChance: number;
+        rockChance: number;
+        stumpCount: number;
+        goldClusters: number;
+        sheepCount: number;
+        woodIcons: number;
+      };
+      const DENSITIES: Record<IslandTheme, ThemeDensity> = {
+        main:   { treeChance: 0.10, bushChance: 0.06, rockChance: 0.03, stumpCount: 18, goldClusters: 3, sheepCount: 5, woodIcons: 8 },
+        forest: { treeChance: 0.40, bushChance: 0.15, rockChance: 0.02, stumpCount: 8,  goldClusters: 0, sheepCount: 0, woodIcons: 4 },
+        gold:   { treeChance: 0.02, bushChance: 0.03, rockChance: 0.08, stumpCount: 5,  goldClusters: 3, sheepCount: 0, woodIcons: 6 },
+        meat:   { treeChance: 0.05, bushChance: 0.08, rockChance: 0.02, stumpCount: 2,  goldClusters: 0, sheepCount: 10, woodIcons: 0 },
+        rocks:  { treeChance: 0.00, bushChance: 0.01, rockChance: 0.20, stumpCount: 12, goldClusters: 1, sheepCount: 0, woodIcons: 0 },
+        duck:   { treeChance: 0.15, bushChance: 0.10, rockChance: 0.02, stumpCount: 2,  goldClusters: 0, sheepCount: 1, woodIcons: 0 },
+      };
 
-      // ---- Tiny Swords decor scatter ----
-      // Uniform sparse scatter over the whole grass island outside the build
-      // zone + away from streams. No edge ring — the map should feel open,
-      // not framed by dense forest.
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
         let h = (x * 374761393 + y * 668265263 + salt * 2147483647 + seed * 69069) | 0;
@@ -368,17 +383,11 @@ export default function CityCanvas({
         return ((h >>> 0) % 10000) / 10000;
       };
 
-      const onStream = (gy: number): boolean => {
-        for (const s of streamData) {
-          if (gy >= s.row && gy < s.row + s.height) return true;
-        }
-        return false;
-      };
-
       let animatedDecorCount = 0;
-      const MAX_ANIMATED_DECOR = 350;
+      const MAX_ANIMATED_DECOR = 320;
 
       const placeAnimated = (gx: number, gy: number, sheet: typeof terrain.trees[number], targetTiles: number, jitter: number, salt: number) => {
+        if (!sheet.frames.length) return;
         let sprite: Sprite | AnimatedSprite;
         if (animatedDecorCount < MAX_ANIMATED_DECOR && hash(gx, gy, salt + 10) < 0.4) {
           const anim = new AnimatedSprite(sheet.frames);
@@ -402,6 +411,7 @@ export default function CityCanvas({
       };
 
       const placeStatic = (gx: number, gy: number, tex: Texture, targetTiles: number, jitter: number, salt: number) => {
+        if (!tex || tex === Texture.EMPTY) return;
         const s = new Sprite(tex);
         s.anchor.set(0.5, 0.95);
         const { sx, sy } = gridToScreen(gx, gy, 0, 0);
@@ -414,35 +424,178 @@ export default function CityCanvas({
         decorLayer.addChild(s);
       };
 
-      // Step across the grid in 2-tile strides to cut iteration count without
-      // losing visible density. Decor placed everywhere — buildings render
-      // in a higher layer so they cover trees that land on the same tile.
+      // Main scatter loop — per-cell density comes from the island theme
       for (let gy = 0; gy < GRID_SIZE; gy += 2) {
         for (let gx = 0; gx < GRID_SIZE; gx += 2) {
-          if (onStream(gy)) continue;
+          const island = worldMask.islandAt(gx, gy);
+          if (!island) continue;
+          const d = DENSITIES[island.theme];
           const r = hash(gx, gy, 0);
-          if (r < 0.08) {
+          if (r < d.treeChance) {
             const sheet = terrain.trees[Math.floor(hash(gx, gy, 2) * terrain.trees.length)];
             placeAnimated(gx, gy, sheet, 1.6, 0.6, 2);
             continue;
           }
-          if (r < 0.12) {
+          if (r < d.treeChance + d.bushChance) {
             const sheet = terrain.bushes[Math.floor(hash(gx, gy, 3) * terrain.bushes.length)];
             placeAnimated(gx, gy, sheet, 0.85, 0.5, 3);
             continue;
           }
-          if (r < 0.14) {
+          if (r < d.treeChance + d.bushChance + d.rockChance) {
             const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
             placeStatic(gx, gy, tex, 0.7, 0.4, 5);
           }
         }
       }
 
-      // ---- Animated water — slow tilePosition drift ----
+      // Per-island cluster / spawn loops — sheep, gold, stumps, wood icons
+      for (const island of worldMask.islands) {
+        const cells = worldMask.cellsOfIsland(island);
+        if (cells.length === 0) continue;
+        const d = DENSITIES[island.theme];
+
+        const pickCell = (salt: number) => cells[Math.floor(hash(island.idx, salt, 99) * cells.length)];
+
+        // Stumps
+        for (let i = 0; i < d.stumpCount && terrain.stumps.length; i++) {
+          const c = pickCell(i * 3 + 7);
+          const tex = terrain.stumps[i % terrain.stumps.length];
+          placeStatic(c.gx, c.gy, tex, 1.0, 0.4, 600 + i);
+        }
+        // Gold clusters (4-5 stones each)
+        for (let i = 0; i < d.goldClusters && terrain.goldStones.length; i++) {
+          const center = pickCell(i * 5 + 17);
+          for (let k = 0; k < 4; k++) {
+            const gx = center.gx + Math.floor((hash(island.idx, i * 10 + k, 1) - 0.5) * 4);
+            const gy = center.gy + Math.floor((hash(island.idx, i * 10 + k, 2) - 0.5) * 4);
+            if (!worldMask.isLand(gx, gy)) continue;
+            const tex = terrain.goldStones[Math.floor(hash(gx, gy, 7) * terrain.goldStones.length)];
+            placeStatic(gx, gy, tex, 1.2, 0.3, 700 + i * 10 + k);
+          }
+        }
+        // Sheep
+        for (let i = 0; i < d.sheepCount && terrain.sheepGrass.frames.length; i++) {
+          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
+          const c = pickCell(i * 11 + 31);
+          const sheep = new AnimatedSprite(terrain.sheepGrass.frames);
+          sheep.animationSpeed = 0.08;
+          sheep.loop = true;
+          sheep.play();
+          sheep.anchor.set(0.5, 0.95);
+          const { sx, sy } = gridToScreen(c.gx, c.gy, 0, 0);
+          sheep.position.set(sx, sy + TILE_H * 0.3);
+          sheep.scale.set((TILE_W * 1.1) / terrain.sheepGrass.frameW);
+          (sheep as unknown as { zIndex: number }).zIndex = c.gy * 1000 + c.gx + 55;
+          decorLayer.addChild(sheep);
+          animatedDecorCount++;
+        }
+        // Wood icons
+        for (let i = 0; i < d.woodIcons && terrain.wood !== Texture.EMPTY; i++) {
+          const c = pickCell(i * 7 + 41);
+          placeStatic(c.gx, c.gy, terrain.wood, 0.5, 0.3, 800 + i);
+        }
+      }
+
+      // ---- Water decorations (rocks in water + rubber duck) near main island
+      const mainIsland = worldMask.islands[0];
+      if (terrain.waterRocks.length) {
+        for (let i = 0; i < 14; i++) {
+          const angle = hash(i, 0, 33) * Math.PI * 2;
+          const dist = mainIsland.baseRadius + 10 + hash(i, 1, 33) * 10;
+          const gx = Math.round(mainIsland.cx + Math.cos(angle) * dist);
+          const gy = Math.round(mainIsland.cy + Math.sin(angle) * dist);
+          if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) continue;
+          if (worldMask.isLand(gx, gy)) continue;
+          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
+          const sheet = terrain.waterRocks[i % terrain.waterRocks.length];
+          const rock = new AnimatedSprite(sheet.frames);
+          rock.animationSpeed = 0.08;
+          rock.loop = true;
+          rock.play();
+          rock.anchor.set(0.5, 0.5);
+          const { sx, sy } = gridToScreen(gx, gy, 0, 0);
+          rock.position.set(sx, sy);
+          rock.scale.set((TILE_W * 0.9) / sheet.frameW);
+          rock.alpha = 0.95;
+          tileLayer.addChild(rock);
+          animatedDecorCount++;
+        }
+      }
+      if (terrain.duck !== Texture.EMPTY) {
+        for (let i = 0; i < 3; i++) {
+          const angle = Math.PI * (0.5 + i * 0.4);
+          const dist = mainIsland.baseRadius + 6 + i * 4;
+          const gx = Math.round(mainIsland.cx + Math.cos(angle) * dist);
+          const gy = Math.round(mainIsland.cy + Math.sin(angle) * dist);
+          if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) continue;
+          if (worldMask.isLand(gx, gy)) continue;
+          const duck = new Sprite(terrain.duck);
+          duck.anchor.set(0.5, 0.5);
+          const { sx, sy } = gridToScreen(gx, gy, 0, 0);
+          duck.position.set(sx, sy);
+          duck.scale.set((TILE_W * 0.7) / terrain.duck.width);
+          tileLayer.addChild(duck);
+        }
+      }
+
+      // ---- Mini island shrouds + lock icons ----
+      for (const island of worldMask.islands) {
+        if (!island.locked) continue;
+        const cells = worldMask.cellsOfIsland(island);
+        if (cells.length === 0) continue;
+        const shroud = new Graphics();
+        for (const c of cells) {
+          shroud.rect(c.gx * TILE_W, c.gy * TILE_H, TILE_W, TILE_H);
+        }
+        shroud.fill({ color: 0x0a0604, alpha: 0.55 });
+        overlayLayer.addChild(shroud);
+
+        // Lock icon — reuse chest texture as a stand-in lock glyph
+        const lockTex = getTopdownTexture(atlas, 'chest');
+        if (lockTex && lockTex !== Texture.EMPTY) {
+          const lock = new Sprite(lockTex);
+          lock.anchor.set(0.5, 0.5);
+          const { sx, sy } = gridToScreen(island.cx, island.cy, 0, 0);
+          lock.position.set(sx, sy);
+          lock.scale.set((TILE_W * 2.2) / Math.max(lockTex.width, lockTex.height));
+          lock.alpha = 0.85;
+          lock.zIndex = 9999;
+          overlayLayer.addChild(lock);
+        }
+      }
+
+      // ---- Clouds layer — drifting above everything ----
+      const cloudLayer = new Container();
+      world.addChild(cloudLayer);
+      const cloudSprites: { sprite: Sprite; speed: number }[] = [];
+      if (terrain.clouds.length) {
+        for (let i = 0; i < 8; i++) {
+          const tex = terrain.clouds[i % terrain.clouds.length];
+          const cloud = new Sprite(tex);
+          cloud.anchor.set(0.5, 0.5);
+          cloud.alpha = 0.85;
+          const x = hash(i, 0, 500) * GRID_SIZE * TILE_W;
+          const y = hash(i, 1, 500) * GRID_SIZE * TILE_H;
+          cloud.position.set(x, y);
+          cloud.scale.set(1.5 + hash(i, 2, 500) * 1.5);
+          cloudLayer.addChild(cloud);
+          cloudSprites.push({ sprite: cloud, speed: 0.15 + hash(i, 3, 500) * 0.25 });
+        }
+      }
+
+      // ---- Animated water + cloud drift ----
       let waterT = 0;
-      app.ticker.add(() => {
-        waterT += 0.25;
+      const cloudWrapX = GRID_SIZE * TILE_W + 400;
+      app.ticker.add((ticker) => {
+        const dt = ticker.deltaTime ?? 1;
+        waterT += 0.25 * dt;
         water.tilePosition.set(waterT, waterT * 0.5);
+        for (const c of cloudSprites) {
+          c.sprite.position.x += c.speed * dt;
+          if (c.sprite.position.x > cloudWrapX) {
+            c.sprite.position.x = -200;
+          }
+        }
       });
 
       // ---- Daily chest ----
@@ -484,8 +637,8 @@ export default function CityCanvas({
       // surrounding water margin (island in the sea). Pinch-in for buildings,
       // pinch-out to see the full map.
       const defaultZoom = Math.min(
-        app.renderer.width / (36 * TILE_W),
-        app.renderer.height / (36 * TILE_H),
+        app.renderer.width / (44 * TILE_W),
+        app.renderer.height / (44 * TILE_H),
       );
       // Preview view: show the explored area + some water so the scale of
       // the map reads at a glance on home.
