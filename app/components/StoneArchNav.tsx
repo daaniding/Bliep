@@ -16,32 +16,13 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: '/',
     label: 'Home',
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none">
-        {/* Scroll */}
-        <rect x="5" y="8" width="22" height="18" rx="2" fill="#fde3a0" stroke="#1a0f05" strokeWidth="2" />
-        <line x1="5" y1="14" x2="27" y2="14" stroke="#7a4f2a" strokeWidth="1.5" />
-        <line x1="5" y1="19" x2="22" y2="19" stroke="#7a4f2a" strokeWidth="1.5" />
-        <circle cx="5" cy="17" r="3" fill="#7a4f2a" stroke="#1a0f05" strokeWidth="2" />
-        <circle cx="27" cy="17" r="3" fill="#7a4f2a" stroke="#1a0f05" strokeWidth="2" />
-      </svg>
-    ),
+    icon: <span className="nav-emoji">🏠</span>,
   },
   {
     href: '/stad',
     label: 'Stad',
     badge: 2,
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none">
-        {/* Castle */}
-        <rect x="6" y="14" width="20" height="14" fill="#7a4f2a" stroke="#1a0f05" strokeWidth="2" />
-        <rect x="4" y="10" width="5" height="18" fill="#9b6838" stroke="#1a0f05" strokeWidth="2" />
-        <rect x="23" y="10" width="5" height="18" fill="#9b6838" stroke="#1a0f05" strokeWidth="2" />
-        <polygon points="4,10 6.5,6 9,10" fill="#c0392b" stroke="#1a0f05" strokeWidth="1.5" />
-        <polygon points="23,10 25.5,6 28,10" fill="#c0392b" stroke="#1a0f05" strokeWidth="1.5" />
-        <rect x="14" y="20" width="4" height="8" fill="#1a0f05" />
-      </svg>
-    ),
+    icon: <span className="nav-emoji">🏰</span>,
   },
   {
     href: '/aanvallen',
@@ -90,36 +71,13 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: '/league',
     label: 'League',
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none">
-        {/* Trophy */}
-        <path d="M10 6 H22 V14 Q22 20 16 20 Q10 20 10 14 Z" fill="#f0b840" stroke="#1a0f05" strokeWidth="2" />
-        <path d="M10 8 Q4 8 4 12 Q4 16 8 17" stroke="#1a0f05" strokeWidth="2" fill="none" />
-        <path d="M22 8 Q28 8 28 12 Q28 16 24 17" stroke="#1a0f05" strokeWidth="2" fill="none" />
-        <rect x="13" y="20" width="6" height="4" fill="#7a4f2a" stroke="#1a0f05" strokeWidth="2" />
-        <rect x="10" y="24" width="12" height="3" fill="#7a4f2a" stroke="#1a0f05" strokeWidth="2" />
-      </svg>
-    ),
+    icon: <span className="nav-emoji">🏆</span>,
   },
   {
     href: '/settings',
     label: 'Meer',
     badge: 1,
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none">
-        {/* Gear */}
-        <circle cx="16" cy="16" r="6" fill="#9b6838" stroke="#1a0f05" strokeWidth="2" />
-        <circle cx="16" cy="16" r="2.5" fill="#1a0f05" />
-        {[...Array(8)].map((_, i) => {
-          const a = (i * 45) * Math.PI / 180;
-          const x1 = 16 + Math.cos(a) * 8;
-          const y1 = 16 + Math.sin(a) * 8;
-          const x2 = 16 + Math.cos(a) * 12;
-          const y2 = 16 + Math.sin(a) * 12;
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1a0f05" strokeWidth="3" strokeLinecap="round" />;
-        })}
-      </svg>
-    ),
+    icon: <span className="nav-emoji">⚙️</span>,
   },
 ];
 
