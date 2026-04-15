@@ -202,8 +202,8 @@ export default function CityCanvas({
       // black). Instead a single brightness knob gives the dusk mood without
       // making sprites unrecognisable.
       const duskFilter = new ColorMatrixFilter();
-      duskFilter.brightness(0.88, false);
-      duskFilter.saturate(-0.08, true);
+      duskFilter.brightness(0.72, false);
+      duskFilter.saturate(-0.18, true);
       world.filters = [duskFilter];
       app.stage.addChild(world);
       worldRef.current = world;
@@ -376,18 +376,19 @@ export default function CityCanvas({
         tileLayer.addChild(ring);
       }
 
-      // ---- Decor scatter over the static map ----
-      const DENSITY = {
-        treeChance: 0.10,
-        bushChance: 0.08,
-        rockChance: 0.04,
-      };
-      const stumpCount = 18;
-      const goldClusters = 5;
-      const sheepCount = 10;
-      const woodIcons = 12;
-      const meatIcons = 8;
-      const toolIcons = 10;
+      // ---- Decor over the static map ----
+      // Grouped forest-grove placement instead of per-cell noise scatter,
+      // so the island reads as "a few wooded patches" rather than "random
+      // objects plopped everywhere". Loose ground items (tools/meat/wood)
+      // removed — they were the worst offenders for the scattered look.
+      const FOREST_GROVES = 5;      // number of tree/bush clusters
+      const TREES_PER_GROVE = 10;
+      const BUSHES_PER_GROVE = 6;
+      const GROVE_RADIUS = 4;       // tile radius around grove center
+      const rockChance = 0.025;     // loose stones still sparse-sprinkled
+      const stumpCount = 10;
+      const goldClusters = 4;
+      const sheepCount = 8;
 
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
@@ -450,24 +451,41 @@ export default function CityCanvas({
       const pickLand = (salt: number) =>
         landCells[Math.floor(hash(salt, 0, 42) * landCells.length)];
 
-      // Trees/bushes/rocks scattered via noise over every other land cell.
+      // Sparse rocks over the island (the only "ambient" ground item)
       for (let i = 0; i < landCells.length; i += 1) {
         const { gx, gy } = landCells[i];
         if ((gx + gy) % 2 !== 0) continue;
-        const r = hash(gx, gy, 0);
-        if (r < DENSITY.treeChance) {
-          const sheet = terrain.trees[Math.floor(hash(gx, gy, 2) * terrain.trees.length)];
-          placeAnimated(gx, gy, sheet, 1.6, 0.6, 2);
-          continue;
+        if (hash(gx, gy, 0) >= rockChance) continue;
+        const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
+        placeStatic(gx, gy, tex, 0.7, 0.4, 5);
+      }
+
+      // Forest groves — tree + bush clusters around a few hand-picked
+      // grove centers. Each grove occupies a radius of GROVE_RADIUS tiles.
+      for (let g = 0; g < FOREST_GROVES; g++) {
+        const center = landCells[Math.floor(hash(g, 0, 202) * landCells.length)];
+        if (!center) break;
+
+        for (let i = 0; i < TREES_PER_GROVE; i++) {
+          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
+          const dx = Math.round((hash(g, i, 301) - 0.5) * GROVE_RADIUS * 2);
+          const dy = Math.round((hash(g, i, 302) - 0.5) * GROVE_RADIUS * 2);
+          const gx = center.gx + dx;
+          const gy = center.gy + dy;
+          if (!landAtWorld(gx, gy)) continue;
+          const sheet = terrain.trees[Math.floor(hash(g, i, 303) * terrain.trees.length)];
+          placeAnimated(gx, gy, sheet, 1.6, 0.3, 303);
         }
-        if (r < DENSITY.treeChance + DENSITY.bushChance) {
-          const sheet = terrain.bushes[Math.floor(hash(gx, gy, 3) * terrain.bushes.length)];
-          placeAnimated(gx, gy, sheet, 0.85, 0.5, 3);
-          continue;
-        }
-        if (r < DENSITY.treeChance + DENSITY.bushChance + DENSITY.rockChance) {
-          const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
-          placeStatic(gx, gy, tex, 0.7, 0.4, 5);
+
+        for (let i = 0; i < BUSHES_PER_GROVE; i++) {
+          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
+          const dx = Math.round((hash(g, i, 401) - 0.5) * GROVE_RADIUS * 2);
+          const dy = Math.round((hash(g, i, 402) - 0.5) * GROVE_RADIUS * 2);
+          const gx = center.gx + dx;
+          const gy = center.gy + dy;
+          if (!landAtWorld(gx, gy)) continue;
+          const sheet = terrain.bushes[Math.floor(hash(g, i, 403) * terrain.bushes.length)];
+          placeAnimated(gx, gy, sheet, 0.85, 0.3, 403);
         }
       }
 
@@ -512,23 +530,8 @@ export default function CityCanvas({
         animatedDecorCount++;
       }
 
-      // Wood/meat/tool icons — small detail drops on grass
-      for (let i = 0; i < woodIcons && terrain.wood !== Texture.EMPTY; i++) {
-        const c = pickLand(i * 7 + 41);
-        if (!c) break;
-        placeStatic(c.gx, c.gy, terrain.wood, 0.5, 0.3, 800 + i);
-      }
-      for (let i = 0; i < meatIcons && terrain.meat !== Texture.EMPTY; i++) {
-        const c = pickLand(i * 13 + 91);
-        if (!c) break;
-        placeStatic(c.gx, c.gy, terrain.meat, 0.5, 0.3, 850 + i);
-      }
-      for (let i = 0; i < toolIcons && terrain.tools.length; i++) {
-        const c = pickLand(i * 17 + 131);
-        if (!c) break;
-        const tex = terrain.tools[i % terrain.tools.length];
-        placeStatic(c.gx, c.gy, tex, 0.45, 0.35, 900 + i);
-      }
+      // Loose ground-items (tools, meat, wood drops) removed — they read
+      // as "random stuff plopped on grass" rather than coherent landscape.
 
       // ---- Water decorations around the island edge ----
       // Find the bounding box of the island in world coords, then scatter
