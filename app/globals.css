@@ -926,3 +926,97 @@ body {
   text-shadow: 0 1px 0 #0d0a06;
   margin-bottom: 4px;
 }
+
+/* "Start opdracht" tap button centered over the city (replaces sword CTA) */
+.cr-city-tap {
+  position: absolute;
+  left: 50%;
+  bottom: 150px;
+  transform: translateX(-50%);
+  z-index: 4;
+  background: linear-gradient(180deg, #fdd069 0%, #d19225 55%, #6e4c10 100%);
+  color: #2a1508;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 12px 28px;
+  border: 3px solid #1a0f05;
+  border-radius: 14px;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.6),
+    inset 0 -4px 8px rgba(130, 70, 10, 0.45),
+    0 5px 0 #1a0f05,
+    0 10px 24px rgba(255, 190, 80, 0.35),
+    0 10px 22px rgba(0,0,0,0.55);
+  cursor: pointer;
+  animation: cr-pulse 2.4s ease-in-out infinite;
+}
+.cr-city-tap:active { transform: translate(-50%, 2px) scale(0.98); }
+.cr-city-tap-label { text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
+.cr-city-done {
+  position: absolute;
+  left: 50%;
+  bottom: 160px;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 13px;
+  color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 10px rgba(0,0,0,0.7);
+  letter-spacing: 0.08em;
+}
+@keyframes cr-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255,210,110,0)); }
+  50%      { filter: drop-shadow(0 0 14px rgba(255,210,110,0.75)); }
+}
+
+/* === Walking villagers on top of the bottom nav === */
+.nav-walkers {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 34px;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+.walker {
+  position: absolute;
+  bottom: 0;
+  width: 34px;
+  height: 34px;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  background-repeat: no-repeat;
+  background-size: 204px 34px; /* 6 frames × 34px */
+  animation:
+    walker-frames 0.7s steps(6) infinite,
+    walker-move 22s linear infinite;
+}
+.walker.walker-reverse {
+  transform: scaleX(-1);
+  animation:
+    walker-frames 0.7s steps(6) infinite,
+    walker-move-rev 26s linear infinite;
+}
+.walker-man      { background-image: url('/assets/walkers/man-walk.png'); }
+.walker-woman    { background-image: url('/assets/walkers/woman-walk.png'); }
+.walker-boy      { background-image: url('/assets/walkers/boy-walk.png'); }
+.walker-girl     { background-image: url('/assets/walkers/girl-walk.png'); }
+.walker-old-man  { background-image: url('/assets/walkers/old-man-walk.png'); }
+
+@keyframes walker-frames {
+  from { background-position: 0 0; }
+  to   { background-position: -204px 0; }
+}
+@keyframes walker-move {
+  0%   { left: -40px; }
+  100% { left: 100%; }
+}
+@keyframes walker-move-rev {
+  0%   { left: 100%; }
+  100% { left: -40px; }
+}

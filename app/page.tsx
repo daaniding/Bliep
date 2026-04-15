@@ -4,9 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import CityPreview from './components/CityPreview';
-import SwordCTA from './components/SwordCTA';
 import KnightIntro from './components/KnightIntro';
-import { getDailyTasks, loadDailyPick, saveDailyPick, TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
+import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
 import { loadCity, saveCity, addSpeedTokens } from '@/lib/cityStore';
 import { useTrophies } from '@/lib/useTrophies';
@@ -163,39 +162,32 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Stad ruimte */}
-        <div className="cr-spacer" />
-
-        {/* VOORTGANG */}
-        <div className="cr-progress-wrap">
-          <div className="cr-progress-labels">
-            <span>Dagvoortgang</span>
-            <span style={{ color: pick.completed ? '#5ea05c' : chosenTask ? '#fdd069' : '#a08060' }}>
-              {pick.completed ? 'Klaar ✓' : chosenTask ? 'In gang' : 'Kies taak'}
-            </span>
+        {/* Tap anywhere on stad to start the task (replaces sword CTA) */}
+        {chosenTask && !pick.completed && (
+          <button
+            type="button"
+            className="cr-city-tap"
+            onClick={() => setShowTimerModal(true)}
+            aria-label={`Start: ${chosenTask.text}`}
+          >
+            <span className="cr-city-tap-label">Start opdracht</span>
+          </button>
+        )}
+        {pick.completed && (
+          <div className="cr-city-done">
+            {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
+            {pick.outcome === 'gave-up' && '💤 Dag is voorbij'}
+            {pick.outcome === 'failed-locked' && '⚔️ Dag is voorbij'}
           </div>
-          <div className="tc-bar">
-            <div className="fill" style={{ width: pick.completed ? '100%' : chosenTask ? '50%' : '12%' }} />
-          </div>
-        </div>
+        )}
 
-        {/* OPDRACHT */}
-        <div className="cr-opdracht-wrap">
-          <div className="cr-opdracht-label">⚔ Dagelijkse opdracht</div>
-          <SwordCTA
-            taskText={chosenTask && !pick.completed ? chosenTask.text : null}
-            durationMin={chosenTask?.durationMin}
-            tierLabel={chosenTask ? TIER_CONFIG[chosenTask.tier].label.toUpperCase() : undefined}
-            disabled={!chosenTask || pick.completed}
-            onTap={() => { if (!chosenTask || pick.completed) return; setShowTimerModal(true); }}
-          />
-          {pick.completed && (
-            <p className="font-display text-[11px] text-center text-[var(--color-gold-100)] text-stroke-dark mt-1">
-              {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
-              {pick.outcome === 'gave-up' && '💤 Dag is voorbij'}
-              {pick.outcome === 'failed-locked' && '⚔️ Dag is voorbij'}
-            </p>
-          )}
+        {/* Walking villagers along the bottom of the stad, right above the nav */}
+        <div className="nav-walkers" aria-hidden>
+          <div className="walker walker-man" style={{ animationDelay: '0s' }} />
+          <div className="walker walker-woman" style={{ animationDelay: '-7s' }} />
+          <div className="walker walker-boy" style={{ animationDelay: '-14s' }} />
+          <div className="walker walker-girl walker-reverse" style={{ animationDelay: '-3s' }} />
+          <div className="walker walker-old-man walker-reverse" style={{ animationDelay: '-11s' }} />
         </div>
 
       </div>
