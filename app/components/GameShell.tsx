@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import BannerChip from './BannerChip';
+import Link from 'next/link';
 import StoneArchNav from './StoneArchNav';
 import KingdomLevelBar from './KingdomLevelBar';
 import { useCoins } from '@/lib/useCoins';
@@ -21,24 +21,46 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
 
   return (
     <div className="app-shell">
+
+      {/* ── CLASH ROYALE TOP BAR ── */}
       {!hideTopBar && (
-        <div className="hanging-banner-container">
-          <div className="hanging-banner-row">
-            <BannerChip variant="gold" value={coins} label="Coins" />
-            <div className="banner-group">
-              {streak.current > 0 && (
-                <BannerChip variant="blood" value={streak.current} label="Streak" />
-              )}
-              <BannerChip variant="magic" value={trophies} label="Trofee" href="/league" />
+        <div className="cr-topbar">
+
+          {/* Profiel links */}
+          <Link href="/settings" className="cr-profile">
+            <div className="cr-avatar">🧑</div>
+            <div className="cr-profile-info">
+              <span className="cr-profile-name">Daan</span>
+              <span className="cr-profile-lvl">LVL 1</span>
             </div>
-          </div>
-          {/* Kingdom level bar spans the middle under the banners */}
-          <div
-            className="max-w-[380px] mx-auto px-4 pt-1 pointer-events-none"
-            style={{ marginTop: -4 }}
-          >
+          </Link>
+
+          {/* XP balk midden */}
+          <div className="cr-xp-center">
             <KingdomLevelBar />
           </div>
+
+          {/* Resources + settings rechts */}
+          <div className="cr-top-right">
+            <div className="cr-resources">
+              <div className="cr-res-pill cr-res-gold">
+                <span className="cr-res-icon">🪙</span>
+                <span className="cr-res-val">{coins}</span>
+              </div>
+              <a href="/league" className="cr-res-pill cr-res-trophy">
+                <span className="cr-res-icon">🏆</span>
+                <span className="cr-res-val">{trophies}</span>
+              </a>
+              {streak.current > 0 && (
+                <div className="cr-res-pill cr-res-streak">
+                  <span className="cr-res-icon">🔥</span>
+                  <span className="cr-res-val">{streak.current}</span>
+                </div>
+              )}
+            </div>
+            <Link href="/settings" className="cr-settings-btn">⚙️</Link>
+          </div>
+
         </div>
       )}
 

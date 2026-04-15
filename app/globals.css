@@ -689,3 +689,240 @@ body {
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 12px;
 }
+
+/* ===========================================================
+   CLASH-ROYALE-STYLE DASHBOARD (cr-*)
+   Full-bleed city bg, 4 banner buttons on top, progress + CTA below.
+   =========================================================== */
+
+/* Top bar: profile / xp / resources — sits above content stack */
+.cr-topbar {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 8px) 10px 8px;
+  background:
+    linear-gradient(180deg, rgba(10,6,4,0.92) 0%, rgba(10,6,4,0.78) 70%, rgba(10,6,4,0) 100%);
+  pointer-events: auto;
+}
+.cr-profile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  background: linear-gradient(180deg, #3a2718 0%, #1c0f06 100%);
+  border: 2px solid #0d0a06;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 3px 0 #0d0a06, 0 5px 10px rgba(0,0,0,0.45);
+  border-radius: 999px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.cr-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fdd069 0%, #b8791f 70%, #5c3a10 100%);
+  border: 2px solid #0d0a06;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.cr-profile-info { display: flex; flex-direction: column; line-height: 1; }
+.cr-profile-name {
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 11px; color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06;
+  letter-spacing: 0.04em;
+}
+.cr-profile-lvl {
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 8px; color: #a08060;
+  letter-spacing: 0.12em;
+  margin-top: 1px;
+}
+
+.cr-xp-center { flex: 1; min-width: 0; padding: 0 4px; pointer-events: none; }
+
+.cr-top-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.cr-resources { display: flex; gap: 4px; }
+.cr-res-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px 2px 3px;
+  background: linear-gradient(180deg, #3a2718 0%, #1c0f06 100%);
+  border: 2px solid #0d0a06;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 0 #0d0a06;
+  text-decoration: none;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 11px;
+  color: #fff3c6;
+  line-height: 1;
+}
+.cr-res-icon { font-size: 12px; }
+.cr-res-gold { border-color: #5a3a10; color: #fdd069; }
+.cr-res-trophy { border-color: #4a2c5a; color: #e0c8ff; }
+.cr-res-streak { border-color: #7a2b10; color: #ffb868; }
+.cr-settings-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: linear-gradient(180deg, #3a2718 0%, #1c0f06 100%);
+  border: 2px solid #0d0a06;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 3px 0 #0d0a06;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+/* Game layout fills the rest of the viewport (content-stack is flex:1) */
+.cr-game-layout {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Full-bleed city background — live CityPreview */
+.cr-city-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.cr-city-bg > a,
+.cr-city-bg > div {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+/* Bottom overlay to fade into the UI strip */
+.cr-bottom-overlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 46%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(10,6,4,0) 0%, rgba(10,6,4,0.55) 30%, rgba(10,6,4,0.92) 78%, rgba(10,6,4,0.98) 100%);
+}
+
+/* Row of 4 medieval banner buttons over the city */
+.cr-banner-row {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  padding: 8px 10px 0;
+  pointer-events: auto;
+}
+.cr-banner-btn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+.cr-banner-btn:active { transform: translateY(2px) scale(0.97); }
+.cr-banner-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 58px;
+  padding: 10px 4px 8px;
+  background:
+    linear-gradient(180deg, #2a1a0a 0%, #1a0f05 100%);
+  border: 3px solid #0d0a06;
+  border-top: 4px solid #fdd069;
+  border-radius: 10px 10px 14px 14px / 10px 10px 28px 28px;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.15),
+    inset 0 -10px 14px rgba(0,0,0,0.5),
+    0 4px 0 #0d0a06,
+    0 8px 14px rgba(0,0,0,0.5);
+}
+/* Banner notch at bottom — classic flag tail */
+.cr-banner-inner::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 29px solid transparent;
+  border-right: 29px solid transparent;
+  border-top: 10px solid #0d0a06;
+}
+.cr-banner-label {
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 9px;
+  color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.cr-banner-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px; height: 18px;
+  padding: 0 4px;
+  background: linear-gradient(180deg, #ff5e4a 0%, #c41f1a 100%);
+  border: 2px solid #0d0a06;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 10px;
+  color: #fff3c6;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Spacer pushes the bottom UI group down */
+.cr-spacer { flex: 1; min-height: 12px; }
+
+/* Day progress bar wrapper */
+.cr-progress-wrap {
+  position: relative;
+  z-index: 3;
+  padding: 0 14px;
+  margin-bottom: 8px;
+}
+.cr-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #a08060;
+}
+
+/* Dagelijkse opdracht wrapper: title + sword CTA */
+.cr-opdracht-wrap {
+  position: relative;
+  z-index: 3;
+  padding: 4px 14px 10px;
+}
+.cr-opdracht-label {
+  text-align: center;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06;
+  margin-bottom: 4px;
+}
