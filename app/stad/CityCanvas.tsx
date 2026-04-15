@@ -246,19 +246,12 @@ export default function CityCanvas({
         return t;
       };
 
-      // 2×2 grass mosaic. Instead of composing 4 cells into a container
-      // (generateTexture had artifacts doing that), we frame a 128×128
-      // sub-region directly from the source — cells (1,1) through (2,2) are
-      // all interior grass and happen to be neighbours on the sheet, so one
-      // frame gives four different grass cells for free.
-      const grassFramed = new Texture({
-        source: terrain.tilemap.source,
-        frame: new Rectangle(TILEMAP_CELL, TILEMAP_CELL, TILEMAP_CELL * 2, TILEMAP_CELL * 2),
-      });
-      const grassSprite = new Sprite(grassFramed);
-      const grassTex = app.renderer.generateTexture({ target: grassSprite, resolution: 1 });
-      if (grassTex.source) grassTex.source.scaleMode = 'nearest';
-      grassSprite.destroy();
+      // Single interior grass cell. A 2×2 mosaic includes leafy edge-tiles
+      // from the surrounding autotile border which have transparent pixels —
+      // when TilingSprite repeats them you see water through the holes.
+      // Cell (1,1) is deep enough inside the big top-left grass block to be
+      // fully opaque interior grass.
+      const grassTex = bakeCell(1, 1);
 
       const cliffTex = bakeCell(CLIFF_TILE_CELLS[0][0], CLIFF_TILE_CELLS[0][1]);
       const waterTex = terrain.water;
