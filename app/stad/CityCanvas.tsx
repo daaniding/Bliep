@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import {
   AnimatedSprite,
   Application,
+  ColorMatrixFilter,
   Container,
   Graphics,
   Sprite,
@@ -20,7 +21,7 @@ import {
   TILEMAP_CELL,
 } from '@/lib/game/tinyswordsTerrain';
 import { parseElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { autotileGrassSlot, shouldPaintCliffWall, CLIFF_WALL_CELL } from '@/lib/game/autotile';
+import { autotileGrassSlot } from '@/lib/game/autotile';
 import {
   TILE_W,
   TILE_H,
@@ -196,6 +197,14 @@ export default function CityCanvas({
       app.stage.addChild(stageBg);
 
       const world = new Container();
+      // Dusk color grade — subtly darker + slightly desaturated. We do NOT
+      // use ColorMatrixFilter.night() here (it crushes everything to near
+      // black). Instead a single brightness knob gives the dusk mood without
+      // making sprites unrecognisable.
+      const duskFilter = new ColorMatrixFilter();
+      duskFilter.brightness(0.88, false);
+      duskFilter.saturate(-0.08, true);
+      world.filters = [duskFilter];
       app.stage.addChild(world);
       worldRef.current = world;
 
@@ -294,10 +303,25 @@ export default function CityCanvas({
       tileLayer.addChild(water);
 
       // ---- Grass rendering from the elevation grid ----
-      // Two passes: first all grass tiles, then all cliff walls, so that
-      // a cliff-wall sprite at (gy+1) ends up ABOVE the grass sprite that
-      // was drawn for that same cell in the first pass.
-      const cliffWallPositions: Array<{ gx: number; gy: number }> = [];
+      // Flat only — elevation/plateau system removed per user feedback
+      // ("hoogteverschillen werken niet"). Grass cells get a per-tile tint
+      // variation from a small dusk-green palette so the ground reads
+      // alive instead of a flat repeating texture.
+      const GRASS_TINTS = [
+        0x8cbc60,
+        0x7ea854,
+        0x6f984a,
+        0x87b25c,
+        0x78a450,
+        0x6a9044,
+      ];
+      const hashForTint = (gx: number, gy: number): number => {
+        let h = (gx * 374761393 + gy * 668265263) | 0;
+        h = (h ^ (h >>> 13)) * 1274126177;
+        h = h ^ (h >>> 16);
+        return (h >>> 0) % GRASS_TINTS.length;
+      };
+
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
           const slot = autotileGrassSlot(elevation, rx, ry);
@@ -306,19 +330,9 @@ export default function CityCanvas({
           const sprite = new Sprite(tex);
           sprite.anchor.set(0, 0);
           sprite.position.set(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H);
+          sprite.tint = GRASS_TINTS[hashForTint(rx, ry)];
           tileLayer.addChild(sprite);
-
-          if (shouldPaintCliffWall(elevation, rx, ry)) {
-            cliffWallPositions.push({ gx: worldGx(rx), gy: worldGy(ry + 1) });
-          }
         }
-      }
-      const wallTex = bakedOf(CLIFF_WALL_CELL.col, CLIFF_WALL_CELL.row);
-      for (const pos of cliffWallPositions) {
-        const wall = new Sprite(wallTex);
-        wall.anchor.set(0, 0);
-        wall.position.set(pos.gx * TILE_W, pos.gy * TILE_H);
-        tileLayer.addChild(wall);
       }
 
       // ---- Water foam: sparse ring along the south coast only ----
