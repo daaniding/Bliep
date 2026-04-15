@@ -20,6 +20,7 @@ import {
   TILE_H,
   GRID_SIZE,
   CITY_CENTER,
+  BUILD_ZONE_RADIUS,
   gridToScreen,
   screenToGrid,
   inBounds,
@@ -223,15 +224,28 @@ export default function CityCanvas({
       originRef.current = { originX: 0, originY: 0 };
 
       // ---- Tiny Swords terrain: water backdrop + grass island + cliff edge ----
-      // Water extends WATER_MARGIN tiles beyond the grid on all sides so the
-      // map feels bigger than the playable area.
+      // TilingSprite in Pixi tiles on the full source texture, ignoring any
+      // frame crop — so tiles sliced from a spritesheet repeat the whole sheet
+      // instead of the single cell. Fix: bake each cropped source into a
+      // standalone Texture via renderer.generateTexture(Sprite).
+      const bake = (tex: Texture): Texture => {
+        const s = new Sprite(tex);
+        const t = app.renderer.generateTexture({ target: s, resolution: 1 });
+        if (t.source) t.source.scaleMode = 'nearest';
+        s.destroy();
+        return t;
+      };
+      const grassTex = bake(terrain.grass);
+      const cliffTex = bake(terrain.cliff);
+      const waterTex = terrain.water; // already a standalone texture
+
       const waterLeft = -WATER_MARGIN * TILE_W;
       const waterTop = -WATER_MARGIN * TILE_H;
       const waterW = (GRID_SIZE + WATER_MARGIN * 2) * TILE_W;
       const waterH = (GRID_SIZE + WATER_MARGIN * 2) * TILE_H;
 
       const water = new TilingSprite({
-        texture: terrain.water,
+        texture: waterTex,
         width: waterW,
         height: waterH,
       });
@@ -240,7 +254,7 @@ export default function CityCanvas({
 
       // Grass island covers the full playable grid.
       const grass = new TilingSprite({
-        texture: terrain.grass,
+        texture: grassTex,
         width: GRID_SIZE * TILE_W,
         height: GRID_SIZE * TILE_H,
       });
@@ -250,7 +264,7 @@ export default function CityCanvas({
       // Cliff front strip along the south edge of the grass — adds depth so
       // the grass reads as a raised island above the water.
       const cliffRow = new TilingSprite({
-        texture: terrain.cliff,
+        texture: cliffTex,
         width: GRID_SIZE * TILE_W,
         height: TILE_H,
       });
@@ -270,7 +284,7 @@ export default function CityCanvas({
       // ---- Build zone ring ----
       if (showBuildZone) {
         const ring = new Graphics();
-        const r = 12;
+        const r = BUILD_ZONE_RADIUS;
         const left = (CITY_CENTER.gx - r) * TILE_W;
         const top = (CITY_CENTER.gy - r) * TILE_H;
         const w = (r * 2 + 1) * TILE_W;
@@ -280,22 +294,66 @@ export default function CityCanvas({
         tileLayer.addChild(ring);
       }
 
-      // ---- Decor ----
-      const decor: DecorTile[] = seedDecor(state.npcSeed || 1);
-      for (const d of decor) {
-        const tex = getTopdownTexture(atlas, d.slug);
-        if (!tex || tex === Texture.EMPTY) continue;
+      // ---- Tiny Swords decor scatter — forest clusters, bushes, rocks ----
+      // Only place outside the build zone so gameplay stays clean. Uses a
+      // simple hash so placement is deterministic across reloads.
+      const seed = state.npcSeed || 1;
+      const hash = (x: number, y: number, salt: number): number => {
+        let h = (x * 374761393 + y * 668265263 + salt * 2147483647 + seed * 69069) | 0;
+        h = (h ^ (h >>> 13)) * 1274126177;
+        h = h ^ (h >>> 16);
+        return ((h >>> 0) % 10000) / 10000;
+      };
+
+      const placeTsDecor = (gx: number, gy: number, tex: Texture, targetTiles: number, jitter: number, salt: number) => {
         const s = new Sprite(tex);
         s.anchor.set(0.5, 0.95);
-        const { sx, sy } = gridToScreen(d.gx, d.gy, 0, 0);
-        s.position.set(sx, sy + TILE_H * 0.4);
-        // Source sprites range from ~16px (rocks) to ~80px (oak tree). Scale so
-        // they all fit roughly inside one tile, with mountains slightly larger.
-        const baseScale = (TILE_W * 0.85) / Math.max(tex.width, tex.height);
-        s.scale.set(baseScale * d.scale);
-        s.zIndex = d.gy * 1000 + d.gx;
+        const { sx, sy } = gridToScreen(gx, gy, 0, 0);
+        const jx = (hash(gx, gy, salt) - 0.5) * TILE_W * jitter;
+        const jy = (hash(gx, gy, salt + 1) - 0.5) * TILE_H * jitter;
+        s.position.set(sx + jx, sy + TILE_H * 0.35 + jy);
+        const base = (TILE_W * targetTiles) / Math.max(tex.width, tex.height);
+        s.scale.set(base);
+        s.zIndex = gy * 1000 + gx + 50;
         decorLayer.addChild(s);
+      };
+
+      for (let gy = 0; gy < GRID_SIZE; gy++) {
+        for (let gx = 0; gx < GRID_SIZE; gx++) {
+          if (inBuildZone(gx, gy)) continue;
+          const r = hash(gx, gy, 0);
+          // Forest cluster: more trees near map edges, sparse near build zone
+          const distFromCenter = Math.max(
+            Math.abs(gx - CITY_CENTER.gx),
+            Math.abs(gy - CITY_CENTER.gy),
+          );
+          const edgeBoost = Math.min(1, (distFromCenter - BUILD_ZONE_RADIUS) / 12);
+          const treeChance = 0.05 + edgeBoost * 0.18;
+          if (r < treeChance) {
+            const tex = terrain.trees[Math.floor(hash(gx, gy, 2) * terrain.trees.length)];
+            placeTsDecor(gx, gy, tex, 1.8, 0.4, 2);
+            continue;
+          }
+          const rb = hash(gx, gy, 1);
+          if (rb < 0.08) {
+            const tex = terrain.bushes[Math.floor(hash(gx, gy, 3) * terrain.bushes.length)];
+            placeTsDecor(gx, gy, tex, 0.9, 0.3, 3);
+            continue;
+          }
+          const rr = hash(gx, gy, 4);
+          if (rr < 0.035) {
+            const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
+            placeTsDecor(gx, gy, tex, 0.8, 0.25, 5);
+          }
+        }
       }
+
+      // ---- Animated water — slow tilePosition drift ----
+      let waterT = 0;
+      app.ticker.add(() => {
+        waterT += 0.25;
+        water.tilePosition.set(waterT, waterT * 0.5);
+      });
 
       // ---- Daily chest ----
       const chestTex = getTopdownTexture(atlas, 'chest');
@@ -336,14 +394,14 @@ export default function CityCanvas({
       // surrounding water margin (island in the sea). Pinch-in for buildings,
       // pinch-out to see the full map.
       const defaultZoom = Math.min(
-        app.renderer.width / (20 * TILE_W),
-        app.renderer.height / (20 * TILE_H),
+        app.renderer.width / (44 * TILE_W),
+        app.renderer.height / (44 * TILE_H),
       );
-      // Preview view: ~22 tiles wide so the grass-island-on-water effect reads
-      // at a glance on home.
+      // Preview view: show almost the whole island + water so the scale of
+      // the map reads at a glance on home.
       const previewZoom = Math.min(
-        app.renderer.width / (22 * TILE_W),
-        app.renderer.height / (22 * TILE_H),
+        app.renderer.width / (72 * TILE_W),
+        app.renderer.height / (72 * TILE_H),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);

@@ -3,7 +3,7 @@
 
 export const TILE_W = 64;
 export const TILE_H = 64;
-export const GRID_SIZE = 32;
+export const GRID_SIZE = 64;
 
 export interface GridCoord { gx: number; gy: number }
 export interface ScreenCoord { sx: number; sy: number }
@@ -31,7 +31,7 @@ export function centerOrigin(viewW: number, viewH: number): { originX: number; o
 }
 
 export const CITY_CENTER = { gx: Math.floor(GRID_SIZE / 2), gy: Math.floor(GRID_SIZE / 2) };
-export const BUILD_ZONE_RADIUS = 12;
+export const BUILD_ZONE_RADIUS = 18;
 
 export function inBuildZone(gx: number, gy: number): boolean {
   const dx = gx - CITY_CENTER.gx;
