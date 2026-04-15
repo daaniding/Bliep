@@ -228,17 +228,23 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 16px 12px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 6px calc(8px + env(safe-area-inset-bottom));
   pointer-events: none;
-  image-rendering: pixelated;
-  /* Craftpix wood beam as stretched border (pixel-art stretched) */
-  border-style: solid;
-  border-width: 14px 24px 14px 24px;
-  border-image-source: url('/assets/craftpix/wood-beam.png');
-  border-image-slice: 10 20 10 20 fill;
-  border-image-width: 14px 24px 14px 24px;
-  border-image-repeat: stretch;
-  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.5);
+  background:
+    linear-gradient(180deg,
+      rgba(40, 24, 8, 0.85) 0%,
+      rgba(90, 58, 24, 0.72) 35%,
+      rgba(110, 72, 30, 0.68) 50%,
+      rgba(90, 58, 24, 0.72) 65%,
+      rgba(40, 24, 8, 0.85) 100%
+    );
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-top: 3px solid #f0b840;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 160, 0.4),
+    inset 0 -3px 0 rgba(20, 10, 4, 0.6),
+    0 -4px 14px rgba(0, 0, 0, 0.55);
 }
 
 /* Legacy SVG arch background hidden */
@@ -258,29 +264,34 @@ body {
 .stone-arch-nav .arch-tab {
   flex: 1;
   min-width: 0;
-  padding: 10px 4px 8px;
-  display: flex;
+  padding: 8px 4px 6px;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(140, 90, 40, 0.42) 0%, rgba(50, 30, 10, 0.55) 100%);
+  border: 2px solid #0d0a06;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 160, 0.4),
+    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
+    inset 0 0 0 1px rgba(240, 184, 64, 0.3),
+    0 2px 0 rgba(13, 10, 6, 0.6);
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  image-rendering: pixelated;
-  border-style: solid;
-  border-width: 8px 10px 12px 10px;
-  border-image-source: url('/assets/craftpix/btn-green-single.png');
-  border-image-slice: 8 10 12 10 fill;
-  border-image-width: 8px 10px 12px 10px;
-  border-image-repeat: stretch;
-  transition: transform 100ms ease, filter 120ms ease;
-  color: #0d2e0a;
-  font-size: 9px;
+  gap: 3px;
+  transition: transform 100ms ease, background 120ms ease, border-color 120ms ease;
+  color: #fdd069;
+  font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.8);
 }
 .stone-arch-nav .arch-tab:active { transform: translateY(2px) scale(0.97); }
 .stone-arch-nav .arch-tab.active {
-  filter: drop-shadow(0 0 10px rgba(255, 210, 110, 0.85)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+  background: linear-gradient(180deg, rgba(255, 236, 140, 0.35) 0%, rgba(209, 146, 37, 0.45) 55%, rgba(110, 76, 16, 0.55) 100%);
+  border-color: #fff3c6;
+  color: #fff6dc;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 0 rgba(110, 76, 16, 0.6),
+    0 0 18px rgba(255, 210, 110, 0.6);
 }
 
 /* Walkers layer — on the top edge of the menu bar, city visible behind them.
@@ -775,25 +786,32 @@ body {
 }
 .cr-header > .cr-header-row-right:first-of-type { gap: 5px; }
 
-/* --- Generic pill: craftpix parchment panel via border-image --- */
+/* --- Generic pill: warm medieval brown with brass inset highlight --- */
 .cr-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px 7px 8px;
-  min-height: 38px;
-  image-rendering: pixelated;
-  border-style: solid;
-  border-width: 10px 12px 14px 12px;
-  border-image-source: url('/assets/craftpix/parchment.png');
-  border-image-slice: 18 14 24 14 fill;
-  border-image-width: 10px 12px 14px 12px;
-  border-image-repeat: stretch;
-  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+  padding: 3px 10px 4px 4px;
+  min-height: 34px;
+  background:
+    linear-gradient(180deg,
+      rgba(58, 36, 16, 0.62) 0%,
+      rgba(92, 58, 24, 0.46) 50%,
+      rgba(40, 22, 8, 0.62) 100%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 2px solid #0d0a06;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 160, 0.55),
+    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
+    inset 0 0 0 1px rgba(240, 184, 64, 0.35),
+    0 2px 0 rgba(13, 10, 6, 0.65),
+    0 3px 6px rgba(0, 0, 0, 0.35);
   font-family: var(--font-display), 'Lilita One', sans-serif;
   font-size: 12px;
-  color: #3a1e08;
-  text-shadow: 0 1px 0 rgba(255, 240, 190, 0.65);
+  color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.8);
   line-height: 1;
   text-decoration: none;
 }
@@ -904,21 +922,27 @@ body {
 .cr-profile-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
-  padding: 6px 18px 8px 8px;
-  min-height: 50px;
-  image-rendering: pixelated;
-  border-style: solid;
-  border-width: 12px 14px 16px 14px;
-  border-image-source: url('/assets/craftpix/parchment.png');
-  border-image-slice: 18 14 24 14 fill;
-  border-image-width: 12px 14px 16px 14px;
-  border-image-repeat: stretch;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
+  padding: 4px 14px 4px 4px;
+  min-height: 44px;
+  border: 2px solid #0d0a06;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg,
+      rgba(58, 36, 16, 0.62) 0%,
+      rgba(92, 58, 24, 0.46) 50%,
+      rgba(40, 22, 8, 0.62) 100%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 160, 0.55),
+    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
+    inset 0 0 0 1px rgba(240, 184, 64, 0.35),
+    0 2px 0 rgba(13, 10, 6, 0.65),
+    0 3px 6px rgba(0, 0, 0, 0.35);
   text-decoration: none;
-  color: #3a1e08;
 }
 .cr-avatar-sm {
   width: 34px;
@@ -938,8 +962,8 @@ body {
 }
 .cr-name-label {
   font-size: 13px;
-  color: #3a1e08;
-  text-shadow: 0 1px 0 rgba(255, 240, 190, 0.5);
+  color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.8);
   letter-spacing: 0.05em;
   white-space: nowrap;
   overflow: hidden;
@@ -950,7 +974,8 @@ body {
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: #5a3a10;
+  color: #fff3c6;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.8);
 }
 .cr-inline-icon {
   width: 14px;
@@ -984,24 +1009,30 @@ body {
 }
 .cr-icon-btn {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  image-rendering: pixelated;
-  border-style: solid;
-  border-width: 10px 12px 14px 12px;
-  border-image-source: url('/assets/craftpix/parchment.png');
-  border-image-slice: 18 14 24 14 fill;
-  border-image-width: 10px 12px 14px 12px;
-  border-image-repeat: stretch;
-  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+  font-size: 20px;
+  border: 2px solid #0d0a06;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg,
+      rgba(58, 36, 16, 0.62) 0%,
+      rgba(92, 58, 24, 0.46) 50%,
+      rgba(40, 22, 8, 0.62) 100%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 160, 0.55),
+    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
+    inset 0 0 0 1px rgba(240, 184, 64, 0.35),
+    0 2px 0 rgba(13, 10, 6, 0.65),
+    0 3px 6px rgba(0, 0, 0, 0.35);
   text-decoration: none;
   cursor: pointer;
   padding: 0;
-  background: transparent;
 }
 .cr-icon-btn:active { transform: translateY(1px) scale(0.97); }
 .cr-icon-badge {
@@ -1490,23 +1521,15 @@ body {
 }
 .cr-cta:active { transform: translateY(2px) scale(0.98); }
 .cr-cta-gold {
-  image-rendering: pixelated;
-  border-style: solid;
-  border-width: 12px 16px 18px 16px;
-  border-image-source: url('/assets/craftpix/btn-green-single.png');
-  border-image-slice: 8 10 12 10 fill;
-  border-image-width: 12px 16px 18px 16px;
-  border-image-repeat: stretch;
-  background: none;
-  color: #0d2e0a;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-  filter: drop-shadow(0 0 18px rgba(140, 220, 110, 0.55)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
-  box-shadow: none;
-  animation: cr-pulse-green 2.4s ease-in-out infinite;
-}
-@keyframes cr-pulse-green {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(140, 220, 110, 0.4)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); }
-  50%      { filter: drop-shadow(0 0 20px rgba(140, 220, 110, 0.8)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); }
+  background: linear-gradient(180deg, #ffec8c 0%, #fdd069 40%, #d19225 75%, #6e4c10 100%);
+  color: #3a1e08;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -4px 0 rgba(110, 76, 16, 0.8),
+    0 5px 0 #1a0f05,
+    0 10px 22px rgba(255, 190, 80, 0.35),
+    0 10px 22px rgba(0, 0, 0, 0.55);
+  animation: cr-pulse 2.4s ease-in-out infinite;
 }
 .cr-cta-pink {
   background: linear-gradient(180deg, #ffd4ef 0%, #ff80c8 40%, #d03a92 75%, #5a1148 100%);
