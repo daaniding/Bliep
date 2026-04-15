@@ -50,9 +50,9 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
             </div>
           </div>
 
-          {/* ROW 2 — Name+trophies LEFT, Pass Royale RIGHT */}
+          {/* ROW 2 — wide profile banner + 3 icon-only mini buttons */}
           <div className="cr-header-row">
-            <div className="cr-pill cr-pill-name">
+            <div className="cr-profile-banner">
               <div className="cr-avatar-sm">🧑</div>
               <div className="cr-name-col">
                 <span className="cr-name-label">DAAN</span>
@@ -62,7 +62,22 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
                 </div>
               </div>
             </div>
-            <div className="cr-pill cr-pill-pass">
+            <div className="cr-icon-row">
+              <Link href="/settings" className="cr-icon-btn" aria-label="Instellingen">⚙️</Link>
+              <button type="button" className="cr-icon-btn" aria-label="Streak">
+                🔥
+                {streak.current > 0 && <span className="cr-icon-badge">{streak.current}</span>}
+              </button>
+              <button type="button" className="cr-icon-btn" aria-label="Gratis kist">
+                🎁
+                <span className="cr-icon-badge cr-badge-red">1</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ROW 3 — Pass Royale (half) + League (half) */}
+          <div className="cr-header-row">
+            <div className="cr-pill cr-pill-pass cr-half">
               <div className="cr-pill-badge cr-pill-badge-gold">{passProgress}</div>
               <span className="cr-pass-label">Pass</span>
               <div className="cr-bar">
@@ -70,27 +85,10 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
                 <span className="cr-bar-text">{passProgress}/{passMax}</span>
               </div>
             </div>
-          </div>
-
-          {/* ROW 3 — 4 quick action rectangles: settings, streak, gratis kist, league */}
-          <div className="cr-header-row cr-header-row-right">
-            <Link href="/settings" className="cr-action">
-              <div className="cr-action-icon">⚙️</div>
-              <span>Instel</span>
-            </Link>
-            <button type="button" className="cr-action">
-              <div className="cr-action-icon">🔥</div>
-              {streak.current > 0 && <span className="cr-action-badge">{streak.current}</span>}
-              <span>Streak</span>
-            </button>
-            <button type="button" className="cr-action">
-              <div className="cr-action-icon">🎁</div>
-              <span className="cr-action-badge cr-badge-red">1</span>
-              <span>Kist</span>
-            </button>
-            <Link href="/league" className="cr-action">
-              <div className="cr-action-icon">🏆</div>
+            <Link href="/league" className="cr-pill cr-pill-league cr-half">
+              <img src="/assets/icons/trophy.png" alt="" />
               <span>League</span>
+              <span className="cr-mini-badge">1</span>
             </Link>
           </div>
 
