@@ -64,7 +64,7 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
             </div>
             <div className="cr-icon-row">
               <Link href="/settings" className="cr-icon-btn" aria-label="Instellingen">
-                <img src="/assets/icons-rpg/settings.png" alt="" className="cr-icon-pix" />
+                <span className="cr-icon-emoji">⚙️</span>
               </Link>
               <button type="button" className="cr-icon-btn" aria-label="Streak">
                 <img src="/assets/icons-rpg/streak.png" alt="" className="cr-icon-pix" />
