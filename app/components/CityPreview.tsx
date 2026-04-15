@@ -48,7 +48,7 @@ export default function CityPreview({ bare = false }: Props) {
       >
         {state && (
           <div className="absolute inset-0 pointer-events-none">
-            <CityCanvas state={state} mode="interactive" showBuildZone={false} contained />
+            <CityCanvas state={state} mode="preview" showBuildZone={false} contained />
           </div>
         )}
       </div>
@@ -64,7 +64,7 @@ export default function CityPreview({ bare = false }: Props) {
     >
       {state && (
         <div className="absolute inset-0 pointer-events-none">
-          <CityCanvas state={state} mode="interactive" showBuildZone={false} contained />
+          <CityCanvas state={state} mode="preview" showBuildZone={false} contained />
         </div>
       )}
 

@@ -202,8 +202,7 @@ export default function CityCanvas({
       // black). Instead a single brightness knob gives the dusk mood without
       // making sprites unrecognisable.
       const duskFilter = new ColorMatrixFilter();
-      duskFilter.brightness(0.72, false);
-      duskFilter.saturate(-0.18, true);
+      duskFilter.brightness(0.82, false);
       world.filters = [duskFilter];
       app.stage.addChild(world);
       worldRef.current = world;
@@ -335,29 +334,35 @@ export default function CityCanvas({
         }
       }
 
-      // ---- Water foam: sparse ring along the south coast only ----
-      // Ringing the whole island with foam looked like pixel noise, so we
-      // only place foam on water cells that border a grass cell on the
-      // north (= south coast of the island), and only every 3rd cell.
+      // ---- Water foam: big soft foam patches around the WHOLE coast ----
+      // Place one animated foam sprite on every water cell that has a
+      // grass neighbour. Each foam is 3+ tiles wide with very low alpha
+      // so overlapping sprites blend into a soft sea-foam ring instead of
+      // a dotted outline.
       const foamSheet = terrain.waterFoam;
       let foamCount = 0;
-      const MAX_FOAM = 40;
+      const MAX_FOAM = 120;
       for (let ry = 0; ry < MAP_ROWS && foamCount < MAX_FOAM; ry++) {
         for (let rx = 0; rx < MAP_COLS && foamCount < MAX_FOAM; rx++) {
           if (elevation[ry][rx] !== 0) continue;
-          if ((elevation[ry - 1]?.[rx] ?? 0) <= 0) continue;
-          if (rx % 3 !== 0) continue;
+          const hasGrass =
+            (elevation[ry - 1]?.[rx] ?? 0) > 0 ||
+            (elevation[ry + 1]?.[rx] ?? 0) > 0 ||
+            (elevation[ry]?.[rx - 1] ?? 0) > 0 ||
+            (elevation[ry]?.[rx + 1] ?? 0) > 0;
+          if (!hasGrass) continue;
+
           const foam = new AnimatedSprite(foamSheet.frames);
-          foam.animationSpeed = 0.12 + Math.random() * 0.04;
+          foam.animationSpeed = 0.10 + Math.random() * 0.04;
           foam.loop = true;
-          foam.play();
+          foam.gotoAndPlay(Math.floor(Math.random() * foamSheet.frames.length));
           foam.anchor.set(0.5, 0.5);
           foam.position.set(
             worldGx(rx) * TILE_W + TILE_W * 0.5,
-            worldGy(ry) * TILE_H + TILE_H * 0.25,
+            worldGy(ry) * TILE_H + TILE_H * 0.5,
           );
-          foam.scale.set((TILE_W * 2.4) / foamSheet.frameW);
-          foam.alpha = 0.38;
+          foam.scale.set((TILE_W * 3.2) / foamSheet.frameW);
+          foam.alpha = 0.22;
           tileLayer.addChild(foam);
           foamCount++;
         }
@@ -460,6 +465,20 @@ export default function CityCanvas({
         placeStatic(gx, gy, tex, 0.7, 0.4, 5);
       }
 
+      // Helper for dropping a soft shadow directly under a decor sprite.
+      // Uses the Tiny Swords Shadow.png if available — otherwise skips.
+      const placeShadow = (gx: number, gy: number, sizeTiles: number) => {
+        if (terrain.shadow === Texture.EMPTY) return;
+        const s = new Sprite(terrain.shadow);
+        s.anchor.set(0.5, 0.5);
+        const { sx, sy } = gridToScreen(gx, gy, 0, 0);
+        s.position.set(sx, sy + TILE_H * 0.25);
+        s.scale.set((TILE_W * sizeTiles) / terrain.shadow.width);
+        s.alpha = 0.38;
+        (s as Sprite).zIndex = gy * 1000 + gx + 40;
+        decorLayer.addChild(s);
+      };
+
       // Forest groves — tree + bush clusters around a few hand-picked
       // grove centers. Each grove occupies a radius of GROVE_RADIUS tiles.
       for (let g = 0; g < FOREST_GROVES; g++) {
@@ -474,6 +493,7 @@ export default function CityCanvas({
           const gy = center.gy + dy;
           if (!landAtWorld(gx, gy)) continue;
           const sheet = terrain.trees[Math.floor(hash(g, i, 303) * terrain.trees.length)];
+          placeShadow(gx, gy, 1.3);
           placeAnimated(gx, gy, sheet, 1.6, 0.3, 303);
         }
 
@@ -662,11 +682,11 @@ export default function CityCanvas({
         app.renderer.width / (52 * TILE_W),
         app.renderer.height / (52 * TILE_H),
       );
-      // Preview (used by home CityPreview): same scale so home teaser shows
-      // the full island.
+      // Preview (used by home CityPreview): tighter crop so the island
+      // fills the hero area instead of floating in a big water ring.
       const previewZoom = Math.min(
-        app.renderer.width / (50 * TILE_W),
-        app.renderer.height / (50 * TILE_H),
+        app.renderer.width / (32 * TILE_W),
+        app.renderer.height / (32 * TILE_H),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);
