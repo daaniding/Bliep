@@ -245,10 +245,19 @@ export default function CityCanvas({
         return t;
       };
 
-      // Single interior grass cell. Mosaic variation attempted but Pixi v8's
-      // generateTexture produced cliff artifacts from the composed container
-      // — not worth chasing, the uniform grass reads fine in-game.
-      const grassTex = bakeCell(GRASS_TILE_CELLS[0][0], GRASS_TILE_CELLS[0][1]);
+      // 2×2 grass mosaic. Instead of composing 4 cells into a container
+      // (generateTexture had artifacts doing that), we frame a 128×128
+      // sub-region directly from the source — cells (1,1) through (2,2) are
+      // all interior grass and happen to be neighbours on the sheet, so one
+      // frame gives four different grass cells for free.
+      const grassFramed = new Texture({
+        source: terrain.tilemap.source,
+        frame: new Rectangle(TILEMAP_CELL, TILEMAP_CELL, TILEMAP_CELL * 2, TILEMAP_CELL * 2),
+      });
+      const grassSprite = new Sprite(grassFramed);
+      const grassTex = app.renderer.generateTexture({ target: grassSprite, resolution: 1 });
+      if (grassTex.source) grassTex.source.scaleMode = 'nearest';
+      grassSprite.destroy();
 
       const cliffTex = bakeCell(CLIFF_TILE_CELLS[0][0], CLIFF_TILE_CELLS[0][1]);
       const waterTex = terrain.water;
@@ -330,7 +339,9 @@ export default function CityCanvas({
       }
 
       // ---- Build zone ring ----
-      if (showBuildZone) {
+      // Skipped entirely when the build zone covers the whole map — a ring
+      // around everything is meaningless.
+      if (showBuildZone && BUILD_ZONE_RADIUS * 2 + 1 < GRID_SIZE) {
         const ring = new Graphics();
         const r = BUILD_ZONE_RADIUS;
         const left = (CITY_CENTER.gx - r) * TILE_W;
@@ -342,20 +353,8 @@ export default function CityCanvas({
         tileLayer.addChild(ring);
       }
 
-      // ---- Unlock zones — dark overlay on tiles beyond the explored radius.
-      // Visual only for now; game logic (unlocking via trophies) is future work.
-      const EXPLORED_RADIUS = BUILD_ZONE_RADIUS + 28;
-      const shroud = new Graphics();
-      const shroudLeft = (CITY_CENTER.gx - EXPLORED_RADIUS) * TILE_W;
-      const shroudTop = (CITY_CENTER.gy - EXPLORED_RADIUS) * TILE_H;
-      const shroudW = (EXPLORED_RADIUS * 2 + 1) * TILE_W;
-      const shroudH = (EXPLORED_RADIUS * 2 + 1) * TILE_H;
-      // Cover everything, then punch out the explored square.
-      shroud.rect(waterLeft, waterTop, waterW, waterH);
-      shroud.rect(shroudLeft, shroudTop, shroudW, shroudH);
-      shroud.cut();
-      shroud.fill({ color: 0x0a0604, alpha: 0.55 });
-      tileLayer.addChild(shroud);
+      // Elevation intentionally skipped — see comment at top of file.
+      // Proper autotiling of Tiny Swords cliff edges is a separate refactor.
 
       // ---- Tiny Swords decor scatter ----
       // Uniform sparse scatter over the whole grass island outside the build
@@ -416,10 +415,10 @@ export default function CityCanvas({
       };
 
       // Step across the grid in 2-tile strides to cut iteration count without
-      // losing visible density. 192×192 / 4 ≈ 9200 cells evaluated.
+      // losing visible density. Decor placed everywhere — buildings render
+      // in a higher layer so they cover trees that land on the same tile.
       for (let gy = 0; gy < GRID_SIZE; gy += 2) {
         for (let gx = 0; gx < GRID_SIZE; gx += 2) {
-          if (inBuildZone(gx, gy)) continue;
           if (onStream(gy)) continue;
           const r = hash(gx, gy, 0);
           if (r < 0.08) {
