@@ -181,13 +181,13 @@ export default function Home() {
           </div>
         )}
 
-        {/* Walking villagers right above the menu bar */}
+        {/* Tiny Swords warriors walking left → right, above the menu bar */}
         {([
-          { src: 'man', dir: 1, delay: '0s' },
-          { src: 'woman', dir: 1, delay: '-7s' },
-          { src: 'boy', dir: 1, delay: '-14s' },
-          { src: 'girl', dir: -1, delay: '-3s' },
-          { src: 'old-man', dir: -1, delay: '-11s' },
+          { src: 'warrior-blue',   delay:  '0s'  },
+          { src: 'pawn-blue',      delay: '-5s'  },
+          { src: 'warrior-purple', delay: '-10s' },
+          { src: 'warrior-yellow', delay: '-15s' },
+          { src: 'warrior-red',    delay: '-20s' },
         ] as const).map((v) => (
           <div
             key={v.src}
@@ -195,32 +195,31 @@ export default function Home() {
             style={{
               position: 'fixed',
               bottom: `calc(200px + env(safe-area-inset-bottom))`,
-              width: 96,
-              height: 96,
+              left: 0,
+              width: 160,
+              height: 160,
               overflow: 'hidden',
               zIndex: 53,
               pointerEvents: 'none',
-              animation: `${v.dir < 0 ? 'walker-move-rev 28s' : 'walker-move 24s'} linear infinite`,
+              animation: 'walker-move 25s linear infinite',
               animationDelay: v.delay,
             }}
           >
             <img
-              src={`/assets/walkers/${v.src}-walk.png`}
+              src={`/assets/walkers2/${v.src}.png`}
               alt=""
               draggable={false}
               style={{
                 position: 'absolute',
                 left: 0,
                 top: 0,
-                width: 576,
-                height: 96,
+                width: 960,   /* 6 frames × 160px */
+                height: 160,  /* 192 native × 0.833 */
                 maxWidth: 'none',
-                minWidth: 576,
+                minWidth: 960,
                 imageRendering: 'pixelated',
-                animation: 'walker-strip 0.7s steps(6) infinite',
-                transform: v.dir < 0 ? 'scaleX(-1)' : undefined,
-                transformOrigin: 'center',
-                filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.55))',
+                animation: 'walker-strip-tiny 0.7s steps(6) infinite',
+                filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.55))',
               }}
             />
           </div>

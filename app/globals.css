@@ -229,30 +229,30 @@ body {
   left: 10px;
   right: 10px;
   z-index: 50;
-  padding: 0 0 env(safe-area-inset-bottom) 0;
+  padding: 8px calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
   pointer-events: none;
-  border-style: solid;
-  border-width: 34px 44px 44px 44px;
-  border-image-source: url('/assets/icons/wood-frame.png');
-  border-image-slice: 110 140 140 140 fill;
-  border-image-width: 34px 44px 44px 44px;
-  border-image-repeat: stretch;
-  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.55));
+  background: linear-gradient(180deg, #2a1a0a 0%, #1a0f05 100%);
+  border: 3px solid #0d0a06;
+  border-radius: 18px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 160, 0.25),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
+    0 6px 14px rgba(0, 0, 0, 0.55);
 }
 
-/* Hide the legacy SVG arch background — replaced by wooden border-image */
+/* Legacy SVG arch background hidden */
 .stone-arch-nav .arch-bg { display: none !important; }
 
 .stone-arch-nav .arch-row {
   position: relative;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
   max-width: 480px;
   margin: 0 auto;
-  padding: 4px 2px 4px;
+  padding: 0 6px;
   pointer-events: auto;
-  gap: 2px;
+  gap: 4px;
 }
 
 .arch-tab {
@@ -705,8 +705,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: calc(env(safe-area-inset-top) + 8px) 10px 8px;
-  background:
-    linear-gradient(180deg, rgba(10,6,4,0.92) 0%, rgba(10,6,4,0.78) 70%, rgba(10,6,4,0) 100%);
+  background: transparent;
   pointer-events: auto;
 }
 .cr-profile {
@@ -1028,11 +1027,11 @@ body {
   from { transform: translateX(0); }
   to   { transform: translateX(-576px); }
 }
-@keyframes walker-move {
-  0%   { left: -40px; }
-  100% { left: 100%; }
+@keyframes walker-strip-tiny {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-960px); }
 }
-@keyframes walker-move-rev {
-  0%   { left: 100%; }
-  100% { left: -40px; }
+@keyframes walker-move {
+  0%   { left: -200px; }
+  100% { left: 100%; }
 }
