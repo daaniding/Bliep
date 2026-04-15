@@ -228,23 +228,17 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 10px 6px calc(8px + env(safe-area-inset-bottom));
+  padding: 14px 10px calc(10px + env(safe-area-inset-bottom));
   pointer-events: none;
-  background:
-    linear-gradient(180deg,
-      rgba(40, 24, 8, 0.85) 0%,
-      rgba(90, 58, 24, 0.72) 35%,
-      rgba(110, 72, 30, 0.68) 50%,
-      rgba(90, 58, 24, 0.72) 65%,
-      rgba(40, 24, 8, 0.85) 100%
-    );
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border-top: 3px solid #f0b840;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 230, 160, 0.4),
-    inset 0 -3px 0 rgba(20, 10, 4, 0.6),
-    0 -4px 14px rgba(0, 0, 0, 0.55);
+  background: transparent;
+  border-style: solid;
+  border-width: 14px 18px 16px 18px;
+  border-image-source: url('/assets/kenney-rpg/buttonLong_brown.png');
+  border-image-slice: 16 16 16 16 fill;
+  border-image-width: 14px 18px 16px 18px;
+  border-image-repeat: stretch;
+  border-radius: 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.55);
 }
 
 /* Legacy SVG arch background hidden */
@@ -264,34 +258,28 @@ body {
 .stone-arch-nav .arch-tab {
   flex: 1;
   min-width: 0;
-  padding: 8px 4px 6px;
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(140, 90, 40, 0.42) 0%, rgba(50, 30, 10, 0.55) 100%);
-  border: 2px solid #0d0a06;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 230, 160, 0.4),
-    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
-    inset 0 0 0 1px rgba(240, 184, 64, 0.3),
-    0 2px 0 rgba(13, 10, 6, 0.6);
+  padding: 8px 4px 10px;
+  background: transparent;
+  border-style: solid;
+  border-width: 10px 10px 14px 10px;
+  border-image-source: url('/assets/kenney-rpg/buttonSquare_brown.png');
+  border-image-slice: 16 16 16 16 fill;
+  border-image-width: 10px 10px 14px 10px;
+  border-image-repeat: stretch;
+  border-radius: 0;
   flex-direction: column;
-  gap: 3px;
-  transition: transform 100ms ease, background 120ms ease, border-color 120ms ease;
-  color: #fdd069;
+  align-items: center;
+  gap: 4px;
+  transition: transform 100ms ease, filter 120ms ease;
+  color: #fff6dc;
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.85);
 }
 .stone-arch-nav .arch-tab:active { transform: translateY(2px) scale(0.97); }
 .stone-arch-nav .arch-tab.active {
-  background: linear-gradient(180deg, rgba(255, 236, 140, 0.35) 0%, rgba(209, 146, 37, 0.45) 55%, rgba(110, 76, 16, 0.55) 100%);
-  border-color: #fff3c6;
-  color: #fff6dc;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 0 rgba(110, 76, 16, 0.6),
-    0 0 18px rgba(255, 210, 110, 0.6);
+  filter: drop-shadow(0 0 14px rgba(255, 210, 110, 0.85));
 }
 
 /* Walkers layer — on the top edge of the menu bar, city visible behind them.
@@ -786,32 +774,26 @@ body {
 }
 .cr-header > .cr-header-row-right:first-of-type { gap: 5px; }
 
-/* --- Generic pill: warm medieval brown with brass inset highlight --- */
+/* --- Generic pill: Kenney RPG buttonLong_brown 9-slice --- */
 .cr-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px 4px 4px;
-  min-height: 34px;
-  background:
-    linear-gradient(180deg,
-      rgba(58, 36, 16, 0.62) 0%,
-      rgba(92, 58, 24, 0.46) 50%,
-      rgba(40, 22, 8, 0.62) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border: 2px solid #0d0a06;
-  border-radius: 999px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 230, 160, 0.55),
-    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
-    inset 0 0 0 1px rgba(240, 184, 64, 0.35),
-    0 2px 0 rgba(13, 10, 6, 0.65),
-    0 3px 6px rgba(0, 0, 0, 0.35);
+  padding: 6px 14px 8px 8px;
+  min-height: 40px;
+  background: transparent;
+  border-style: solid;
+  border-width: 12px 14px 14px 14px;
+  border-image-source: url('/assets/kenney-rpg/buttonLong_brown.png');
+  border-image-slice: 16 16 16 16 fill;
+  border-image-width: 12px 14px 14px 14px;
+  border-image-repeat: stretch;
+  border-radius: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
   font-family: var(--font-display), 'Lilita One', sans-serif;
   font-size: 12px;
-  color: #fdd069;
-  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.8);
+  color: #fff6dc;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.85);
   line-height: 1;
   text-decoration: none;
 }
@@ -922,27 +904,22 @@ body {
 .cr-profile-banner {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
   min-width: 0;
-  padding: 4px 14px 4px 4px;
-  min-height: 44px;
-  border: 2px solid #0d0a06;
-  border-radius: 999px;
-  background:
-    linear-gradient(180deg,
-      rgba(58, 36, 16, 0.62) 0%,
-      rgba(92, 58, 24, 0.46) 50%,
-      rgba(40, 22, 8, 0.62) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 230, 160, 0.55),
-    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
-    inset 0 0 0 1px rgba(240, 184, 64, 0.35),
-    0 2px 0 rgba(13, 10, 6, 0.65),
-    0 3px 6px rgba(0, 0, 0, 0.35);
+  padding: 8px 18px 10px 8px;
+  min-height: 50px;
+  background: transparent;
+  border-style: solid;
+  border-width: 14px 16px 16px 16px;
+  border-image-source: url('/assets/kenney-rpg/buttonLong_brown.png');
+  border-image-slice: 16 16 16 16 fill;
+  border-image-width: 14px 16px 16px 16px;
+  border-image-repeat: stretch;
+  border-radius: 0;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.4);
   text-decoration: none;
+  color: #fff6dc;
 }
 .cr-avatar-sm {
   width: 34px;
@@ -1009,27 +986,21 @@ body {
 }
 .cr-icon-btn {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  border: 2px solid #0d0a06;
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg,
-      rgba(58, 36, 16, 0.62) 0%,
-      rgba(92, 58, 24, 0.46) 50%,
-      rgba(40, 22, 8, 0.62) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 230, 160, 0.55),
-    inset 0 -2px 0 rgba(20, 10, 4, 0.55),
-    inset 0 0 0 1px rgba(240, 184, 64, 0.35),
-    0 2px 0 rgba(13, 10, 6, 0.65),
-    0 3px 6px rgba(0, 0, 0, 0.35);
+  font-size: 22px;
+  background: transparent;
+  border-style: solid;
+  border-width: 12px 12px 14px 12px;
+  border-image-source: url('/assets/kenney-rpg/buttonSquare_beige.png');
+  border-image-slice: 16 16 16 16 fill;
+  border-image-width: 12px 12px 14px 12px;
+  border-image-repeat: stretch;
+  border-radius: 0;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.4);
   text-decoration: none;
   cursor: pointer;
   padding: 0;
@@ -1229,23 +1200,23 @@ body {
 .cr-level-badge {
   position: relative;
   z-index: 2;
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #9fd8ff 0%, #4fa3d9 45%, #1e6fa8 100%);
-  border: 4px solid #0d0a06;
+  background: radial-gradient(circle at 35% 28%, #b8791f 0%, #6e4c10 55%, #3a1e08 100%);
+  border: 3px solid #0d0a06;
   box-shadow:
-    inset 0 3px 0 rgba(255,255,255,0.6),
-    inset 0 -4px 0 rgba(0,0,0,0.45),
-    0 4px 0 #0d0a06,
-    0 6px 12px rgba(0,0,0,0.55);
+    inset 0 2px 0 rgba(255, 230, 160, 0.55),
+    inset 0 -3px 0 rgba(20, 10, 4, 0.6),
+    0 3px 0 #0d0a06,
+    0 5px 10px rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display), 'Lilita One', sans-serif;
-  font-size: 24px;
-  color: #fff;
-  text-shadow: 0 2px 0 #0d3a60, 0 0 4px rgba(0,0,0,0.6);
+  font-size: 22px;
+  color: #fdd069;
+  text-shadow: 0 2px 0 #1a0f05, 0 0 4px rgba(0, 0, 0, 0.6);
   flex-shrink: 0;
 }
 .cr-name-block {
@@ -1521,14 +1492,19 @@ body {
 }
 .cr-cta:active { transform: translateY(2px) scale(0.98); }
 .cr-cta-gold {
-  background: linear-gradient(180deg, #ffec8c 0%, #fdd069 40%, #d19225 75%, #6e4c10 100%);
-  color: #3a1e08;
+  background: transparent;
+  color: #fff6dc;
+  text-shadow: 0 2px 0 #0d0a06, 0 0 5px rgba(0, 0, 0, 0.8);
+  border-style: solid;
+  border-width: 18px 24px 22px 24px;
+  border-image-source: url('/assets/kenney-rpg/buttonLong_brown.png');
+  border-image-slice: 16 16 16 16 fill;
+  border-image-width: 18px 24px 22px 24px;
+  border-image-repeat: stretch;
+  border-radius: 0;
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -4px 0 rgba(110, 76, 16, 0.8),
-    0 5px 0 #1a0f05,
-    0 10px 22px rgba(255, 190, 80, 0.35),
-    0 10px 22px rgba(0, 0, 0, 0.55);
+    0 0 20px rgba(255, 190, 80, 0.45),
+    0 8px 18px rgba(0, 0, 0, 0.55);
   animation: cr-pulse 2.4s ease-in-out infinite;
 }
 .cr-cta-pink {
