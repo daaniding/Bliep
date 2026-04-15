@@ -6,7 +6,7 @@ import Link from 'next/link';
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import CityPreview from './components/CityPreview';
-import KnightIntro from './components/KnightIntro';
+import BookPicker from './components/BookPicker';
 import { vibrate } from '@/lib/juice';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
@@ -122,7 +122,7 @@ export default function Home() {
   return (
     <GameShell>
       <div ref={confettiRef} className="fixed inset-0 pointer-events-none z-[9999]" />
-      {showPickerModal && <KnightIntro tasks={tasks} onPick={handlePick} />}
+      {showPickerModal && <BookPicker tasks={tasks} onPick={handlePick} />}
 
       <div className="cr-game-layout">
 
