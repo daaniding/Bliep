@@ -63,13 +63,15 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
               </div>
             </div>
             <div className="cr-icon-row">
-              <Link href="/settings" className="cr-icon-btn" aria-label="Instellingen">⚙️</Link>
+              <Link href="/settings" className="cr-icon-btn" aria-label="Instellingen">
+                <img src="/assets/icons-rpg/settings.png" alt="" className="cr-icon-pix" />
+              </Link>
               <button type="button" className="cr-icon-btn" aria-label="Streak">
-                🔥
+                <img src="/assets/icons-rpg/streak.png" alt="" className="cr-icon-pix" />
                 {streak.current > 0 && <span className="cr-icon-badge">{streak.current}</span>}
               </button>
               <button type="button" className="cr-icon-btn" aria-label="Gratis kist">
-                🎁
+                <img src="/assets/icons-rpg/kist.png" alt="" className="cr-icon-pix" />
                 <span className="cr-icon-badge cr-badge-red">1</span>
               </button>
             </div>

@@ -16,68 +16,30 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: '/',
     label: 'Home',
-    icon: <span className="nav-emoji">🏠</span>,
+    icon: <img src="/assets/icons-rpg/home.png" alt="" className="nav-pix" />,
   },
   {
     href: '/stad',
     label: 'Stad',
     badge: 2,
-    icon: <span className="nav-emoji">🏰</span>,
+    icon: <img src="/assets/icons-rpg/stad.png" alt="" className="nav-pix" />,
   },
   {
     href: '/aanvallen',
     label: 'Battle',
     center: true,
-    icon: (
-      <svg viewBox="0 0 60 60" fill="none">
-        {/* Big shield with crossed swords */}
-        <defs>
-          <linearGradient id="shieldG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#f0b840" />
-            <stop offset="0.5" stopColor="#d19225" />
-            <stop offset="1" stopColor="#6e4c10" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M30 4 L52 10 L52 32 Q52 48 30 56 Q8 48 8 32 L8 10 Z"
-          fill="url(#shieldG)"
-          stroke="#1a0f05"
-          strokeWidth="3"
-          strokeLinejoin="round"
-        />
-        {/* Inner shield field */}
-        <path
-          d="M30 10 L46 14 L46 32 Q46 44 30 50 Q14 44 14 32 L14 14 Z"
-          fill="#7a1e0a"
-          stroke="#1a0f05"
-          strokeWidth="2"
-        />
-        {/* Crossed swords */}
-        <g transform="translate(30 32)">
-          <g transform="rotate(-45)">
-            <rect x="-1.2" y="-16" width="2.4" height="22" fill="#d7d7d7" stroke="#1a0f05" strokeWidth="0.8" />
-            <rect x="-3" y="6" width="6" height="2" fill="#f0b840" stroke="#1a0f05" strokeWidth="0.8" />
-            <rect x="-1" y="8" width="2" height="5" fill="#f0b840" stroke="#1a0f05" strokeWidth="0.8" />
-          </g>
-          <g transform="rotate(45)">
-            <rect x="-1.2" y="-16" width="2.4" height="22" fill="#d7d7d7" stroke="#1a0f05" strokeWidth="0.8" />
-            <rect x="-3" y="6" width="6" height="2" fill="#f0b840" stroke="#1a0f05" strokeWidth="0.8" />
-            <rect x="-1" y="8" width="2" height="5" fill="#f0b840" stroke="#1a0f05" strokeWidth="0.8" />
-          </g>
-        </g>
-      </svg>
-    ),
+    icon: <img src="/assets/icons-rpg/battle.png" alt="" className="nav-pix" />,
   },
   {
     href: '/league',
     label: 'League',
-    icon: <span className="nav-emoji">🏆</span>,
+    icon: <img src="/assets/icons-rpg/league.png" alt="" className="nav-pix" />,
   },
   {
     href: '/settings',
     label: 'Meer',
     badge: 1,
-    icon: <span className="nav-emoji">⚙️</span>,
+    icon: <img src="/assets/icons-rpg/meer.png" alt="" className="nav-pix" />,
   },
 ];
 
