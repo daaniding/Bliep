@@ -233,7 +233,7 @@ body {
   background: url('/assets/kenney-rpg/buttonLong_brown.png') no-repeat;
   background-size: 100% 100%;
   border: 0;
-  opacity: 0.9;
+  opacity: 0.8;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
 }
 
@@ -270,9 +270,7 @@ body {
   text-shadow: 0 1px 0 #0d0a06, 0 0 3px rgba(0, 0, 0, 0.85);
 }
 .stone-arch-nav .arch-tab:active { transform: translateY(2px) scale(0.97); }
-.stone-arch-nav .arch-tab.active {
-  filter: drop-shadow(0 0 14px rgba(255, 210, 110, 0.85));
-}
+/* Active tab = same bg as others, only icon glows via .nav-pix/.nav-emoji rules */
 
 /* Walkers layer — on the top edge of the menu bar, city visible behind them.
    Strip straddles the gold border: half above (in city), half below (on bar). */
@@ -331,7 +329,7 @@ body {
 }
 .arch-tab.active .arch-tab-icon .nav-emoji,
 .arch-tab.active .arch-tab-icon .nav-pix {
-  filter: drop-shadow(0 0 10px rgba(255, 210, 110, 0.85)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  /* Subtle only — same bg + icon as inactive */
   animation: nav-bounce 1.6s ease-in-out infinite;
 }
 @keyframes nav-bounce {
@@ -783,7 +781,7 @@ body {
   border: 0;
   border-radius: 8px;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
-  opacity: 0.88;
+  opacity: 0.76;
   font-family: var(--font-display), 'Lilita One', sans-serif;
   font-size: 12px;
   color: #fff6dc;
@@ -908,7 +906,7 @@ body {
   border: 0;
   border-radius: 8px;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
-  opacity: 0.88;
+  opacity: 0.76;
   text-decoration: none;
   color: #fff6dc;
 }
@@ -998,7 +996,7 @@ body {
   border: 0;
   border-radius: 8px;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
-  opacity: 0.88;
+  opacity: 0.76;
   text-decoration: none;
   cursor: pointer;
   padding: 0;
