@@ -119,6 +119,8 @@ export default function CityCanvas({
   const chestSpriteRef = useRef<Sprite | null>(null);
   const npcsRef = useRef<NPC[]>([]);
   const atlasRef = useRef<TopdownAtlas | null>(null);
+  const occupiedCellsRef = useRef<Set<string>>(new Set());
+  const terrainCacheRef = useRef<Awaited<ReturnType<typeof loadTinyswordsTerrain>> | null>(null);
   const originRef = useRef<{ originX: number; originY: number }>({ originX: 0, originY: 0 });
   const stateRef = useRef<CityState>(state);
   const placingRef = useRef<BuildingType | null>(placingType);
@@ -186,6 +188,7 @@ export default function CityCanvas({
       ]);
       if (cancelled) return;
       atlasRef.current = atlas;
+      terrainCacheRef.current = terrain;
 
       // Water-blue stage background so the dark page bg never bleeds through
       // at the edges before the map tiles finish placing.
@@ -384,18 +387,9 @@ export default function CityCanvas({
       }
 
       // ---- Decor over the static map ----
-      // Grouped forest-grove placement instead of per-cell noise scatter,
-      // so the island reads as "a few wooded patches" rather than "random
-      // objects plopped everywhere". Loose ground items (tools/meat/wood)
-      // removed — they were the worst offenders for the scattered look.
-      const FOREST_GROVES = 5;      // number of tree/bush clusters
-      const TREES_PER_GROVE = 10;
-      const BUSHES_PER_GROVE = 6;
-      const GROVE_RADIUS = 4;       // tile radius around grove center
-      const rockChance = 0.025;     // loose stones still sparse-sprinkled
-      const stumpCount = 10;
-      const goldClusters = 4;
-      const sheepCount = 8;
+      // Everything removed — the player paints decor/buildings/paths on
+      // the grid themselves. Only grass + coast + animals + clouds remain
+      // as the natural baseline.
 
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
@@ -408,45 +402,7 @@ export default function CityCanvas({
       let animatedDecorCount = 0;
       const MAX_ANIMATED_DECOR = 320;
 
-      const placeAnimated = (gx: number, gy: number, sheet: typeof terrain.trees[number], targetTiles: number, jitter: number, salt: number) => {
-        if (!sheet.frames.length) return;
-        let sprite: Sprite | AnimatedSprite;
-        if (animatedDecorCount < MAX_ANIMATED_DECOR && hash(gx, gy, salt + 10) < 0.4) {
-          const anim = new AnimatedSprite(sheet.frames);
-          anim.animationSpeed = 0.08 + hash(gx, gy, salt + 11) * 0.04;
-          anim.loop = true;
-          anim.play();
-          sprite = anim;
-          animatedDecorCount++;
-        } else {
-          sprite = new Sprite(sheet.frames[0]);
-        }
-        sprite.anchor.set(0.5, 0.95);
-        const { sx, sy } = gridToScreen(gx, gy, 0, 0);
-        const jx = (hash(gx, gy, salt) - 0.5) * TILE_W * jitter;
-        const jy = (hash(gx, gy, salt + 1) - 0.5) * TILE_H * jitter;
-        sprite.position.set(sx + jx, sy + TILE_H * 0.35 + jy);
-        const base = (TILE_W * targetTiles) / Math.max(sheet.frameW, sheet.frameH);
-        sprite.scale.set(base);
-        (sprite as Sprite).zIndex = gy * 1000 + gx + 50;
-        decorLayer.addChild(sprite as Sprite);
-      };
-
-      const placeStatic = (gx: number, gy: number, tex: Texture, targetTiles: number, jitter: number, salt: number) => {
-        if (!tex || tex === Texture.EMPTY) return;
-        const s = new Sprite(tex);
-        s.anchor.set(0.5, 0.95);
-        const { sx, sy } = gridToScreen(gx, gy, 0, 0);
-        const jx = (hash(gx, gy, salt) - 0.5) * TILE_W * jitter;
-        const jy = (hash(gx, gy, salt + 1) - 0.5) * TILE_H * jitter;
-        s.position.set(sx + jx, sy + TILE_H * 0.35 + jy);
-        const base = (TILE_W * targetTiles) / Math.max(tex.width, tex.height);
-        s.scale.set(base);
-        s.zIndex = gy * 1000 + gx + 50;
-        decorLayer.addChild(s);
-      };
-
-      // Collect land cells once so per-type loops can pick from them.
+      // Collect land cells once — used for wander spawning + preview bbox.
       const landCells: Array<{ gx: number; gy: number }> = [];
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
@@ -455,82 +411,11 @@ export default function CityCanvas({
           }
         }
       }
-      const pickLand = (salt: number) =>
-        landCells[Math.floor(hash(salt, 0, 42) * landCells.length)];
 
-      // Sparse rocks over the island (the only "ambient" ground item)
-      for (let i = 0; i < landCells.length; i += 1) {
-        const { gx, gy } = landCells[i];
-        if ((gx + gy) % 2 !== 0) continue;
-        if (hash(gx, gy, 0) >= rockChance) continue;
-        const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
-        placeStatic(gx, gy, tex, 0.7, 0.4, 5);
-      }
-
-      // Helper for dropping a soft shadow directly under a decor sprite.
-      // Uses the Tiny Swords Shadow.png if available — otherwise skips.
-      const placeShadow = (gx: number, gy: number, sizeTiles: number) => {
-        if (terrain.shadow === Texture.EMPTY) return;
-        const s = new Sprite(terrain.shadow);
-        s.anchor.set(0.5, 0.5);
-        const { sx, sy } = gridToScreen(gx, gy, 0, 0);
-        s.position.set(sx, sy + TILE_H * 0.25);
-        s.scale.set((TILE_W * sizeTiles) / terrain.shadow.width);
-        s.alpha = 0.38;
-        (s as Sprite).zIndex = gy * 1000 + gx + 40;
-        decorLayer.addChild(s);
-      };
-
-      // Forest groves — tree + bush clusters around a few hand-picked
-      // grove centers. Each grove occupies a radius of GROVE_RADIUS tiles.
-      for (let g = 0; g < FOREST_GROVES; g++) {
-        const center = landCells[Math.floor(hash(g, 0, 202) * landCells.length)];
-        if (!center) break;
-
-        for (let i = 0; i < TREES_PER_GROVE; i++) {
-          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
-          const dx = Math.round((hash(g, i, 301) - 0.5) * GROVE_RADIUS * 2);
-          const dy = Math.round((hash(g, i, 302) - 0.5) * GROVE_RADIUS * 2);
-          const gx = center.gx + dx;
-          const gy = center.gy + dy;
-          if (!landAtWorld(gx, gy)) continue;
-          const sheet = terrain.trees[Math.floor(hash(g, i, 303) * terrain.trees.length)];
-          placeShadow(gx, gy, 1.3);
-          placeAnimated(gx, gy, sheet, 1.6, 0.3, 303);
-        }
-
-        for (let i = 0; i < BUSHES_PER_GROVE; i++) {
-          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
-          const dx = Math.round((hash(g, i, 401) - 0.5) * GROVE_RADIUS * 2);
-          const dy = Math.round((hash(g, i, 402) - 0.5) * GROVE_RADIUS * 2);
-          const gx = center.gx + dx;
-          const gy = center.gy + dy;
-          if (!landAtWorld(gx, gy)) continue;
-          const sheet = terrain.bushes[Math.floor(hash(g, i, 403) * terrain.bushes.length)];
-          placeAnimated(gx, gy, sheet, 0.85, 0.3, 403);
-        }
-      }
-
-      // Stumps
-      for (let i = 0; i < stumpCount && terrain.stumps.length; i++) {
-        const c = pickLand(i * 3 + 7);
-        if (!c) break;
-        const tex = terrain.stumps[i % terrain.stumps.length];
-        placeStatic(c.gx, c.gy, tex, 1.0, 0.4, 600 + i);
-      }
-
-      // Gold clusters (4 stones each, close together)
-      for (let i = 0; i < goldClusters && terrain.goldStones.length; i++) {
-        const center = pickLand(i * 5 + 17);
-        if (!center) break;
-        for (let k = 0; k < 4; k++) {
-          const gx = center.gx + Math.floor((hash(i, k, 1) - 0.5) * 3);
-          const gy = center.gy + Math.floor((hash(i, k, 2) - 0.5) * 3);
-          if (!landAtWorld(gx, gy)) continue;
-          const tex = terrain.goldStones[Math.floor(hash(gx, gy, 7) * terrain.goldStones.length)];
-          placeStatic(gx, gy, tex, 1.2, 0.3, 700 + i * 10 + k);
-        }
-      }
+      // All ambient decor (trees/bushes/rocks/stumps/gold/etc) removed —
+      // the player now PLACES these things as buildings, so a grass-tile
+      // is either empty or has a single buildable block on it. No more
+      // procedural scatter.
 
       // Tiny Swords sheep removed — replaced by Minifolks forest animals
       // (bunny/deer/fox/boar/wolf/bear/bird) that actually wander around
@@ -595,14 +480,28 @@ export default function CityCanvas({
       }
 
       // Wander update — each animal steps toward its target, stops briefly,
-      // then picks a new nearby land target. Horizontal flip by movement.
+      // then picks a new nearby land target. Collision with buildings is
+      // checked via a live Set keyed by "gx,gy" which is rebuilt each tick
+      // from state.buildings so newly placed buildings immediately block
+      // movement.
       const wanderLandCheck = (px: number, py: number): boolean => {
         const gx = Math.floor(px / TILE_W);
         const gy = Math.floor(py / TILE_H);
-        return landAtWorld(gx, gy);
+        if (!landAtWorld(gx, gy)) return false;
+        const occupied = occupiedCellsRef.current;
+        if (occupied.has(`${gx},${gy}`)) return false;
+        return true;
       };
+      let occupiedRebuildT = 0;
       app.ticker.add((ticker) => {
         const dt = ticker.deltaTime ?? 1;
+        occupiedRebuildT -= dt;
+        if (occupiedRebuildT <= 0) {
+          const set = new Set<string>();
+          for (const b of stateRef.current.buildings) set.add(`${b.gx},${b.gy}`);
+          occupiedCellsRef.current = set;
+          occupiedRebuildT = 30;
+        }
         for (const w of wanderers) {
           if (w.restT > 0) {
             w.restT -= dt;
@@ -645,57 +544,7 @@ export default function CityCanvas({
       // Loose ground-items (tools, meat, wood drops) removed — they read
       // as "random stuff plopped on grass" rather than coherent landscape.
 
-      // ---- Water decorations around the island edge ----
-      // Find the bounding box of the island in world coords, then scatter
-      // water rocks + rubber ducks in the water margin around it.
-      let islandMinGx = Infinity, islandMaxGx = -Infinity, islandMinGy = Infinity, islandMaxGy = -Infinity;
-      for (const c of landCells) {
-        if (c.gx < islandMinGx) islandMinGx = c.gx;
-        if (c.gx > islandMaxGx) islandMaxGx = c.gx;
-        if (c.gy < islandMinGy) islandMinGy = c.gy;
-        if (c.gy > islandMaxGy) islandMaxGy = c.gy;
-      }
-      const islandCx = (islandMinGx + islandMaxGx) / 2;
-      const islandCy = (islandMinGy + islandMaxGy) / 2;
-      const islandRadius = Math.max(islandMaxGx - islandMinGx, islandMaxGy - islandMinGy) / 2;
-
-      if (terrain.waterRocks.length) {
-        for (let i = 0; i < 14; i++) {
-          const angle = hash(i, 0, 33) * Math.PI * 2;
-          const dist = islandRadius + 4 + hash(i, 1, 33) * 8;
-          const gx = Math.round(islandCx + Math.cos(angle) * dist);
-          const gy = Math.round(islandCy + Math.sin(angle) * dist);
-          if (landAtWorld(gx, gy)) continue;
-          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
-          const sheet = terrain.waterRocks[i % terrain.waterRocks.length];
-          const rock = new AnimatedSprite(sheet.frames);
-          rock.animationSpeed = 0.08;
-          rock.loop = true;
-          rock.play();
-          rock.anchor.set(0.5, 0.5);
-          const { sx, sy } = gridToScreen(gx, gy, 0, 0);
-          rock.position.set(sx, sy);
-          rock.scale.set((TILE_W * 0.9) / sheet.frameW);
-          rock.alpha = 0.95;
-          tileLayer.addChild(rock);
-          animatedDecorCount++;
-        }
-      }
-      if (terrain.duck !== Texture.EMPTY) {
-        for (let i = 0; i < 3; i++) {
-          const angle = Math.PI * (0.5 + i * 0.4);
-          const dist = islandRadius + 3 + i * 3;
-          const gx = Math.round(islandCx + Math.cos(angle) * dist);
-          const gy = Math.round(islandCy + Math.sin(angle) * dist);
-          if (landAtWorld(gx, gy)) continue;
-          const duck = new Sprite(terrain.duck);
-          duck.anchor.set(0.5, 0.5);
-          const { sx, sy } = gridToScreen(gx, gy, 0, 0);
-          duck.position.set(sx, sy);
-          duck.scale.set((TILE_W * 0.7) / terrain.duck.width);
-          tileLayer.addChild(duck);
-        }
-      }
+      // Water rocks + ducks removed too — water is clean now.
 
       // ---- Clouds layer — drifting above everything ----
       const cloudLayer = new Container();
@@ -752,6 +601,22 @@ export default function CityCanvas({
       }
 
       // ---- Centering and zoom ----
+      // Compute the actual grass bounding box in world pixels so the preview
+      // can frame the real island instead of the whole 192×192 grid.
+      let islandMinX = Infinity, islandMaxX = -Infinity, islandMinY = Infinity, islandMaxY = -Infinity;
+      for (const c of landCells) {
+        const x = c.gx * TILE_W;
+        const y = c.gy * TILE_H;
+        if (x < islandMinX) islandMinX = x;
+        if (x > islandMaxX) islandMaxX = x;
+        if (y < islandMinY) islandMinY = y;
+        if (y > islandMaxY) islandMaxY = y;
+      }
+      const islandW = (islandMaxX - islandMinX) + TILE_W;
+      const islandH = (islandMaxY - islandMinY) + TILE_H;
+      const islandCenterPxX = islandMinX + islandW / 2;
+      const islandCenterPxY = islandMinY + islandH / 2;
+
       const centerWorld = () => {
         const { originX, originY } = centerOrigin(app.renderer.width, app.renderer.height);
         world.position.set(originX, originY);
@@ -774,21 +639,23 @@ export default function CityCanvas({
         app.renderer.width / (52 * TILE_W),
         app.renderer.height / (52 * TILE_H),
       );
-      // Preview (used by home CityPreview): auto-fits the actual static
-      // map bounding box (44×30 tiles) plus a thin water ring, so the
-      // whole island is visible on home regardless of viewport size.
-      const previewMapW = (MAP_COLS + 6) * TILE_W;
-      const previewMapH = (MAP_ROWS + 6) * TILE_H;
+      // Preview (used by home CityPreview): auto-fits the ACTUAL grass
+      // bounding box + small water ring, centered on the grass — not on
+      // the grid center. The old approach centered on CITY_CENTER which
+      // didn't line up with the grass body in the static elevation grid.
+      const previewPadding = 4 * TILE_W;
       const previewZoom = Math.min(
-        app.renderer.width / previewMapW,
-        app.renderer.height / previewMapH,
+        app.renderer.width / (islandW + previewPadding * 2),
+        app.renderer.height / (islandH + previewPadding * 2),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);
       world.scale.set(startZoom);
-      // Center on city center (where build zone is)
-      const ccx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
-      const ccy = CITY_CENTER.gy * TILE_H + TILE_H / 2;
+      // Center on the actual grass body so the island sits in the middle
+      // of the viewport — not on CITY_CENTER which may fall on water if
+      // the static map body is offset within the grid.
+      const ccx = islandCenterPxX;
+      const ccy = islandCenterPxY;
       world.position.set(
         app.renderer.width / 2 - ccx * startZoom,
         app.renderer.height / 2 - ccy * startZoom,
@@ -1165,13 +1032,41 @@ export default function CityCanvas({
     npcsRef.current = [];
 
     const current = stateRef.current;
+    const terrainRef = terrainCacheRef.current;
     for (const b of current.buildings) {
+      const def = BUILDINGS[b.type];
+
+      // Special-case decor blocks (tree, path) — they don't use the
+      // Tiny Swords building atlas, they render directly from terrain
+      // sprites or a Graphics fill.
+      if (b.type === 'tree' && terrainRef?.trees.length) {
+        const sheet = terrainRef.trees[(b.gx + b.gy) % terrainRef.trees.length];
+        const sprite = new Sprite(sheet.frames[0]);
+        sprite.anchor.set(0.5, 0.95);
+        const longSide = Math.max(sheet.frameW, sheet.frameH);
+        const baseScale = (TILE_W * (def.spriteScale ?? 1.4)) / longSide;
+        sprite.scale.set(baseScale);
+        const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
+        sprite.position.set(sx, sy + TILE_H * 0.4);
+        sprite.zIndex = Math.floor(sy + TILE_H * 0.4);
+        layer.addChild(sprite);
+        continue;
+      }
+      if (b.type === 'path') {
+        const g = new Graphics();
+        const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
+        g.rect(sx - TILE_W / 2, sy - TILE_H / 2, TILE_W, TILE_H);
+        g.fill({ color: 0xc8a878 });
+        (g as unknown as { zIndex: number }).zIndex = Math.floor(sy);
+        layer.addChild(g);
+        continue;
+      }
+
       const slug = spriteForLevel(b.type, b.level);
       const tex = getTopdownTexture(atlas, slug);
       if (!tex || tex === Texture.EMPTY) continue;
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.95);
-      const def = BUILDINGS[b.type];
       // Tiny Swords sprites range from 128px (small house) to 320px (castle).
       // Target ~2.5 tile widths for small structures, scaling up for big ones.
       const longSide = Math.max(tex.width, tex.height);

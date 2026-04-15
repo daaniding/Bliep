@@ -1,4 +1,4 @@
-export type BuildingType = 'house' | 'farm' | 'barracks' | 'wall' | 'tower' | 'fountain';
+export type BuildingType = 'house' | 'farm' | 'barracks' | 'wall' | 'tower' | 'fountain' | 'tree' | 'path';
 
 export interface BuildingDef {
   type: BuildingType;
@@ -163,9 +163,37 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     ),
     spriteScale: 1.05,
   },
+  tree: {
+    type: 'tree',
+    name: 'Boom',
+    description: 'Decoratie. Plant een boom op een lege grastegel.',
+    baseCost: 5,
+    costGrowth: 1.2,
+    baseBuildSec: 1,
+    buildTimeGrowth: 1,
+    maxLevel: 1,
+    // Sprite slug handled specially in CityCanvas rendering — uses a
+    // Tiny Swords tree frame instead of a ts:color:kind slug.
+    spritesPerLevel: lvls('decor:tree', 'decor:tree', 'decor:tree', 'decor:tree', 'decor:tree',
+                          'decor:tree', 'decor:tree', 'decor:tree', 'decor:tree', 'decor:tree'),
+    spriteScale: 1.4,
+  },
+  path: {
+    type: 'path',
+    name: 'Pad',
+    description: 'Zandpad tussen tegels. Geen effect, puur cosmetisch.',
+    baseCost: 2,
+    costGrowth: 1.1,
+    baseBuildSec: 1,
+    buildTimeGrowth: 1,
+    maxLevel: 1,
+    spritesPerLevel: lvls('decor:path', 'decor:path', 'decor:path', 'decor:path', 'decor:path',
+                          'decor:path', 'decor:path', 'decor:path', 'decor:path', 'decor:path'),
+    spriteScale: 1.0,
+  },
 };
 
-export const BUILDING_ORDER: BuildingType[] = ['house', 'farm', 'barracks', 'tower', 'wall', 'fountain'];
+export const BUILDING_ORDER: BuildingType[] = ['house', 'farm', 'barracks', 'tower', 'wall', 'fountain', 'tree', 'path'];
 
 export function buildCost(type: BuildingType): number {
   return BUILDINGS[type].baseCost;

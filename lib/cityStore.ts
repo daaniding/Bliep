@@ -179,6 +179,9 @@ export function removeBuilding(state: CityState, buildingId: string): { state: C
 }
 
 export function placeBuilding(state: CityState, type: BuildingType, gx: number, gy: number): CityState {
+  // No overlapping — one block per tile.
+  if (state.buildings.some(b => b.gx === gx && b.gy === gy)) return state;
+
   const id = `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const placed: PlacedBuilding = { id, type, gx, gy, level: 1 };
   const now = Date.now();
