@@ -202,22 +202,26 @@ export default function CityCanvas({
       app.stage.addChild(stageBg);
 
       const world = new Container();
-      // The earlier ColorMatrixFilter dusk grade interacted with
-      // AnimatedSprite updates inside the world and caused per-frame
-      // re-sort / re-filter cycles which showed up as animal flicker.
-      // Removed entirely — dusk mood is done via per-tile grass tints
-      // (GRASS_TINTS palette) which give the same feel without a filter.
+      // Dusk filter only applies in preview mode (home hero card) and
+      // only to the non-animal layers, so /stad itself stays bright and
+      // animals never flicker from per-frame filter re-composite cycles.
+      const duskFilter = mode === 'preview' ? new ColorMatrixFilter() : null;
+      if (duskFilter) {
+        duskFilter.brightness(0.78, false);
+      }
       app.stage.addChild(world);
       worldRef.current = world;
 
       const tileLayer = new Container();
       world.addChild(tileLayer);
       tileLayerRef.current = tileLayer;
+      if (duskFilter) tileLayer.filters = [duskFilter];
 
       const decorLayer = new Container();
       decorLayer.sortableChildren = true;
       world.addChild(decorLayer);
       decorLayerRef.current = decorLayer;
+      if (duskFilter) decorLayer.filters = [duskFilter];
 
       // Dedicated layer for wandering animals. No sortableChildren — the
       // previous flicker was caused by the layer re-sorting its children
@@ -234,6 +238,7 @@ export default function CityCanvas({
       buildingLayer.sortableChildren = true;
       world.addChild(buildingLayer);
       buildingLayerRef.current = buildingLayer;
+      if (duskFilter) buildingLayer.filters = [duskFilter];
       // NPCs share the same layer; we keep the ref for cleanup symmetry.
       npcLayerRef.current = buildingLayer;
 
