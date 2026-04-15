@@ -181,49 +181,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tiny Swords warriors walking left → right, above the menu bar */}
-        {([
-          { src: 'warrior-blue',   delay:  '0s'  },
-          { src: 'pawn-blue',      delay: '-5s'  },
-          { src: 'warrior-purple', delay: '-10s' },
-          { src: 'warrior-yellow', delay: '-15s' },
-          { src: 'warrior-red',    delay: '-20s' },
-        ] as const).map((v) => (
-          <div
-            key={v.src}
-            aria-hidden
-            style={{
-              position: 'fixed',
-              bottom: `calc(200px + env(safe-area-inset-bottom))`,
-              left: 0,
-              width: 160,
-              height: 160,
-              overflow: 'hidden',
-              zIndex: 53,
-              pointerEvents: 'none',
-              animation: 'walker-move 25s linear infinite',
-              animationDelay: v.delay,
-            }}
-          >
-            <img
-              src={`/assets/walkers2/${v.src}.png`}
-              alt=""
-              draggable={false}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: 960,   /* 6 frames × 160px */
-                height: 160,  /* 192 native × 0.833 */
-                maxWidth: 'none',
-                minWidth: 960,
-                imageRendering: 'pixelated',
-                animation: 'walker-strip-tiny 0.7s steps(6) infinite',
-                filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.55))',
-              }}
-            />
-          </div>
-        ))}
+        {/* Walkers now live inside StoneArchNav — rendered on the menu bar surface */}
 
       </div>
 

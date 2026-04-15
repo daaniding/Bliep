@@ -155,14 +155,8 @@ export default function StoneArchNav() {
           strokeWidth="3"
         />
 
-        {/* Top arch highlight */}
-        <path
-          d="M0 40 Q60 20 120 32 Q180 44 220 22 Q260 0 300 22 Q360 44 440 32"
-          fill="none"
-          stroke="#7a4f2a"
-          strokeWidth="2"
-          opacity="0.7"
-        />
+        {/* Top arch highlight (hidden via .arch-bg display:none) */}
+        <path d="M0 0" fill="none" />
 
         {/* Center keystone (bigger) */}
         <polygon
@@ -179,6 +173,55 @@ export default function StoneArchNav() {
           opacity="0.6"
         />
       </svg>
+
+      {/* Walkers strolling along the top edge of the menu bar */}
+      <div className="nav-walk-strip" aria-hidden>
+        {([
+          { src: 'walkers3/hero-knight',    w: 100, h: 55,  frames: 10, size: 112, delay:  '0s'  },
+          { src: 'walkers3/knight-horse',   w: 48,  h: 48,  frames: 8,  size: 96,  delay: '-6s'  },
+          { src: 'walkers2/warrior-blue',   w: 192, h: 192, frames: 6,  size: 96,  delay: '-12s' },
+          { src: 'walkers3/heavy-bandit',   w: 48,  h: 48,  frames: 8,  size: 84,  delay: '-18s' },
+          { src: 'walkers2/warrior-purple', w: 192, h: 192, frames: 6,  size: 96,  delay: '-24s' },
+        ] as const).map((v, i) => {
+          const stripW = v.w * v.frames * (v.size / v.h);
+          const displayW = v.size * (v.w / v.h);
+          return (
+            <div
+              key={v.src}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                width: displayW,
+                height: v.size,
+                overflow: 'hidden',
+                animation: 'nav-walker-move 30s linear infinite',
+                animationDelay: v.delay,
+                zIndex: 3 - (i % 2),
+              }}
+            >
+              <img
+                src={`/assets/${v.src}.png`}
+                alt=""
+                draggable={false}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width: stripW,
+                  height: v.size,
+                  maxWidth: 'none',
+                  minWidth: stripW,
+                  imageRendering: 'pixelated',
+                  animation: `nav-walker-strip-${v.frames} 0.7s steps(${v.frames}) infinite`,
+                  filter: 'drop-shadow(0 4px 5px rgba(0,0,0,0.55))',
+                  /* Per-strip translate end — different for each frame count */
+                  ['--stripW' as string]: `-${stripW}px`,
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
 
       <div className="arch-row">
         {NAV_ITEMS.map(item => {

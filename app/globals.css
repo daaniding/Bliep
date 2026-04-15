@@ -130,10 +130,8 @@ body {
 
 .app-shell {
   min-height: 100dvh;
-  /* Banners hang over the hero scene — no top content padding.
-     Nav is position: fixed so we reserve space via bottom padding. */
   padding-top: 0;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 108px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 156px);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   position: relative;
@@ -223,21 +221,36 @@ body {
    The inner container is absolutely positioned; the arch SVG is a
    background layer. */
 
+/* === NEW FULL-WIDTH MENU BAR — ground texture + 5 equal tabs + walkers on top === */
 .stone-arch-nav {
   position: fixed;
-  bottom: 10px;
-  left: 10px;
-  right: 10px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
-  padding: 8px calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
+  padding: 64px 0 env(safe-area-inset-bottom);  /* top 64 = walker strip, bottom = safe area */
   pointer-events: none;
-  background: linear-gradient(180deg, #2a1a0a 0%, #1a0f05 100%);
-  border: 3px solid #0d0a06;
-  border-radius: 18px;
+  /* Tiled dirt ground as base, with a subtle dark overlay and gold top edge */
+  background:
+    linear-gradient(180deg, rgba(30, 18, 8, 0) 0%, rgba(30, 18, 8, 0.25) 64px, rgba(30, 18, 8, 0.55) 100%),
+    url('/assets/textures/farmland.png') repeat;
+  background-size: auto, 48px 48px;
+  border-top: 4px solid #f0b840;
   box-shadow:
-    inset 0 2px 0 rgba(255, 230, 160, 0.25),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
-    0 6px 14px rgba(0, 0, 0, 0.55);
+    inset 0 5px 0 #1a0f05,
+    inset 0 -3px 0 rgba(0, 0, 0, 0.55),
+    0 -6px 18px rgba(0, 0, 0, 0.55);
+  image-rendering: pixelated;
+}
+/* Dark translucent panel behind the 5 icons to keep them readable */
+.stone-arch-nav::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  height: calc(80px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(10, 6, 4, 0) 0%, rgba(10, 6, 4, 0.62) 45%, rgba(10, 6, 4, 0.85) 100%);
+  pointer-events: none;
 }
 
 /* Legacy SVG arch background hidden */
@@ -245,14 +258,30 @@ body {
 
 .stone-arch-nav .arch-row {
   position: relative;
+  z-index: 2;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 0 6px;
+  width: 100%;
+  padding: 8px 4px 6px;
   pointer-events: auto;
-  gap: 4px;
+  gap: 0;
+}
+.stone-arch-nav .arch-tab {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Walkers layer — actually walking ON the menu bar surface */
+.stone-arch-nav .nav-walk-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 68px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .arch-tab {
@@ -310,30 +339,9 @@ body {
     linear-gradient(180deg, #5a3718 0%, #1a0f05 100%);
 }
 
-/* Center BATTLE tab — bigger, taller frame, raised */
-.arch-tab.center {
-  transform: translateY(-26px);
-  z-index: 2;
-}
-.arch-tab.center .arch-tab-icon {
-  width: 70px;
-  height: 70px;
-  border-radius: 16px;
-  border-width: 3px;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.55),
-    0 4px 0 #a3701a,
-    0 0 28px rgba(240, 184, 64, 0.7),
-    0 8px 16px rgba(0, 0, 0, 0.6);
-}
-.arch-tab.center .arch-tab-icon > svg {
-  width: 50px;
-  height: 50px;
-}
-.arch-tab.center:active {
-  transform: translateY(-23px);
-}
+/* Battle tab: now SAME size as the others — no protrusion */
+.arch-tab.center { transform: none; z-index: 2; }
+.arch-tab.center:active { transform: translateY(2px); }
 
 /* === GEM GLOW — used on sword pommel and ready indicators === */
 
@@ -698,14 +706,27 @@ body {
    =========================================================== */
 
 /* Top bar: profile / xp / resources — sits above content stack */
+/* === NEW TOP BAR: stone tile strip with gold trim === */
 .cr-topbar {
   position: relative;
   z-index: 50;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: calc(env(safe-area-inset-top) + 8px) 10px 8px;
-  background: transparent;
+  padding: calc(env(safe-area-inset-top) + 10px) 12px 12px;
+  /* Stone background tile + top/bottom gold strip */
+  background:
+    linear-gradient(180deg, rgba(255, 230, 160, 0.18) 0%, rgba(0, 0, 0, 0) 12px),
+    linear-gradient(0deg,   rgba(255, 230, 160, 0.12) 0%, rgba(0, 0, 0, 0) 10px),
+    linear-gradient(180deg, rgba(10, 6, 4, 0.25) 0%, rgba(10, 6, 4, 0.55) 100%),
+    url('/assets/textures/stone.png') repeat;
+  background-size: auto, auto, auto, 96px 96px;
+  border-bottom: 4px solid #f0b840;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 230, 160, 0.35),
+    inset 0 -4px 0 #1a0f05,
+    0 6px 14px rgba(0, 0, 0, 0.45);
+  image-rendering: pixelated;
   pointer-events: auto;
 }
 .cr-profile {
@@ -1030,6 +1051,16 @@ body {
 @keyframes walker-strip-tiny {
   from { transform: translateX(0); }
   to   { transform: translateX(-960px); }
+}
+
+/* Strip-frame animations for menu-bar walkers, using CSS var --stripW */
+@keyframes nav-walker-strip-6  { from { transform: translateX(0); } to { transform: translateX(var(--stripW)); } }
+@keyframes nav-walker-strip-8  { from { transform: translateX(0); } to { transform: translateX(var(--stripW)); } }
+@keyframes nav-walker-strip-10 { from { transform: translateX(0); } to { transform: translateX(var(--stripW)); } }
+
+@keyframes nav-walker-move {
+  0%   { left: -120px; }
+  100% { left: 100%; }
 }
 @keyframes walker-move {
   0%   { left: -200px; }
