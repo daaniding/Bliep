@@ -230,19 +230,21 @@ body {
   z-index: 50;
   padding: 8px 6px calc(6px + env(safe-area-inset-bottom));
   pointer-events: none;
-  /* Darker brown at top + bottom, lighter middle — like the CR nav strip */
+  /* Semi-transparent, darker at top and bottom, lighter middle */
   background:
     linear-gradient(180deg,
-      rgba(10, 6, 4, 0.98) 0%,
-      rgba(30, 18, 8, 0.92) 30%,
-      rgba(45, 28, 12, 0.9) 50%,
-      rgba(30, 18, 8, 0.92) 70%,
-      rgba(10, 6, 4, 0.98) 100%
+      rgba(10, 6, 4, 0.8) 0%,
+      rgba(30, 18, 8, 0.55) 35%,
+      rgba(45, 28, 12, 0.5) 50%,
+      rgba(30, 18, 8, 0.55) 65%,
+      rgba(10, 6, 4, 0.8) 100%
     );
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border-top: 3px solid rgba(240, 184, 64, 0.75);
   box-shadow:
     inset 0 2px 0 rgba(255, 230, 160, 0.2),
-    0 -4px 14px rgba(0, 0, 0, 0.55);
+    0 -4px 14px rgba(0, 0, 0, 0.45);
 }
 
 /* Legacy SVG arch background hidden */
@@ -264,9 +266,9 @@ body {
   min-width: 0;
   padding: 8px 4px 6px;
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(80, 50, 20, 0.55) 0%, rgba(20, 12, 4, 0.7) 100%);
-  border: 2px solid rgba(13, 10, 6, 0.9);
-  box-shadow: inset 0 1px 0 rgba(255, 230, 160, 0.25), inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, rgba(80, 50, 20, 0.3) 0%, rgba(20, 12, 4, 0.4) 100%);
+  border: 2px solid rgba(13, 10, 6, 0.75);
+  box-shadow: inset 0 1px 0 rgba(255, 230, 160, 0.2), inset 0 -2px 0 rgba(0, 0, 0, 0.3);
   flex-direction: column;
   gap: 4px;
   transition: transform 100ms ease, background 120ms ease;
@@ -759,7 +761,7 @@ body {
   justify-content: flex-end;
 }
 
-/* --- Generic pill rectangle --- */
+/* --- Generic pill rectangle (semi-transparent, city shows through) --- */
 .cr-pill {
   display: inline-flex;
   align-items: center;
@@ -767,18 +769,20 @@ body {
   padding: 4px 12px 5px 6px;
   min-height: 38px;
   background:
-    linear-gradient(180deg, rgba(20, 12, 6, 0.9) 0%, rgba(10, 6, 4, 0.82) 50%, rgba(20, 12, 6, 0.9) 100%);
-  border: 3px solid #0d0a06;
+    linear-gradient(180deg, rgba(10, 6, 4, 0.62) 0%, rgba(20, 12, 6, 0.48) 50%, rgba(10, 6, 4, 0.62) 100%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  border: 3px solid rgba(13, 10, 6, 0.9);
   border-radius: 10px;
   box-shadow:
-    inset 0 2px 0 rgba(255, 230, 160, 0.35),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.45),
-    0 4px 0 rgba(13, 10, 6, 0.85),
-    0 6px 12px rgba(0, 0, 0, 0.4);
+    inset 0 2px 0 rgba(255, 230, 160, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(13, 10, 6, 0.7),
+    0 5px 10px rgba(0, 0, 0, 0.4);
   font-family: var(--font-display), 'Lilita One', sans-serif;
   font-size: 13px;
   color: #fdd069;
-  text-shadow: 0 1px 0 #0d0a06;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 4px rgba(0, 0, 0, 0.8);
   line-height: 1;
   text-decoration: none;
 }
@@ -912,7 +916,7 @@ body {
   padding: 4px 10px 5px 4px;
   min-height: 46px;
   background:
-    linear-gradient(180deg, rgba(45, 28, 8, 0.92) 0%, rgba(20, 12, 4, 0.88) 50%, rgba(45, 28, 8, 0.92) 100%);
+    linear-gradient(180deg, rgba(45, 28, 8, 0.65) 0%, rgba(20, 12, 4, 0.5) 50%, rgba(45, 28, 8, 0.65) 100%);
 }
 .cr-pass-label {
   font-size: 11px;
@@ -927,21 +931,23 @@ body {
   min-width: 60px;
 }
 
-/* Row 3 — 4 quick action rectangles */
+/* Row 3 — 4 quick action rectangles (semi-transparent) */
 .cr-action {
   position: relative;
   flex: 1;
   max-width: 84px;
   min-height: 58px;
   background:
-    linear-gradient(180deg, rgba(20, 12, 6, 0.92) 0%, rgba(10, 6, 4, 0.85) 50%, rgba(20, 12, 6, 0.92) 100%);
-  border: 3px solid #0d0a06;
+    linear-gradient(180deg, rgba(10, 6, 4, 0.62) 0%, rgba(20, 12, 6, 0.48) 50%, rgba(10, 6, 4, 0.62) 100%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  border: 3px solid rgba(13, 10, 6, 0.9);
   border-radius: 10px;
   box-shadow:
-    inset 0 2px 0 rgba(255, 230, 160, 0.35),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
-    0 4px 0 #0d0a06,
-    0 6px 12px rgba(0, 0, 0, 0.4);
+    inset 0 2px 0 rgba(255, 230, 160, 0.3),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(13, 10, 6, 0.7),
+    0 5px 10px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
   align-items: center;
