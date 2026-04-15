@@ -53,7 +53,9 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
           {/* ROW 2 — wide profile banner + 3 icon-only mini buttons */}
           <div className="cr-header-row">
             <div className="cr-profile-banner">
-              <div className="cr-avatar-sm">🧑</div>
+              <div className="cr-avatar-sm">
+                <img src="/assets/icons-rpg/avatar.png" alt="" />
+              </div>
               <div className="cr-name-col">
                 <span className="cr-name-label">DAAN</span>
                 <div className="cr-name-row">
