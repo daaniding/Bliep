@@ -9,10 +9,12 @@ import {
   Text,
   TextStyle,
   Texture,
+  TilingSprite,
   Rectangle,
   FederatedPointerEvent,
   Point,
 } from 'pixi.js';
+import { loadTinyswordsTerrain } from '@/lib/game/tinyswordsTerrain';
 import {
   TILE_W,
   TILE_H,
@@ -27,7 +29,6 @@ import {
 import {
   loadTopdownAtlas,
   getTopdownTexture,
-  GROUND_GRASS_SLUGS,
   villagerFrame,
   VILLAGER_TYPES,
   VILLAGER_FRAME_SIZE,
@@ -60,13 +61,13 @@ interface Props {
   onReady?: () => void;
 }
 
-const MIN_ZOOM_INTERACTIVE = 0.35;
+const MIN_ZOOM_INTERACTIVE = 0.2;
 const MAX_ZOOM_INTERACTIVE = 2.4;
 const TAP_THRESHOLD_PX = 6;
 const COIN_BADGE_THRESHOLD = 1;
 
-// 16px source tiles → render at 64px on screen = 4× scale
-const GROUND_SCALE = TILE_W / 16;
+/** Tiles of open water drawn around the grass island on each side. */
+const WATER_MARGIN = 16;
 
 interface NPC {
   buildingId: string;
@@ -169,17 +170,20 @@ export default function CityCanvas({
       }
       host.appendChild(app.canvas);
 
-      const atlas = await loadTopdownAtlas();
+      const [atlas, terrain] = await Promise.all([
+        loadTopdownAtlas(),
+        loadTinyswordsTerrain(),
+      ]);
       if (cancelled) return;
       atlasRef.current = atlas;
 
-      // Forever-green stage background so the dark page bg never bleeds
-      // through when the map doesn't fill the viewport edge to edge.
+      // Water-blue stage background so the dark page bg never bleeds through
+      // at the edges before the map tiles finish placing.
       const stageBg = new Graphics();
       const drawBg = () => {
         stageBg.clear();
         stageBg.rect(0, 0, app.renderer.width, app.renderer.height);
-        stageBg.fill({ color: 0x6b9c52 });
+        stageBg.fill({ color: 0x4a9bb8 });
       };
       drawBg();
       app.stage.addChild(stageBg);
@@ -218,46 +222,40 @@ export default function CityCanvas({
       // Origin: world local (0,0) is top-left of grid
       originRef.current = { originX: 0, originY: 0 };
 
-      // ---- Solid green ground base (autotile sprites have transparent bg) ----
-      const baseGround = new Graphics();
-      baseGround.rect(0, 0, GRID_SIZE * TILE_W, GRID_SIZE * TILE_H);
-      baseGround.fill({ color: 0x86b96a });
-      tileLayer.addChild(baseGround);
+      // ---- Tiny Swords terrain: water backdrop + grass island + cliff edge ----
+      // Water extends WATER_MARGIN tiles beyond the grid on all sides so the
+      // map feels bigger than the playable area.
+      const waterLeft = -WATER_MARGIN * TILE_W;
+      const waterTop = -WATER_MARGIN * TILE_H;
+      const waterW = (GRID_SIZE + WATER_MARGIN * 2) * TILE_W;
+      const waterH = (GRID_SIZE + WATER_MARGIN * 2) * TILE_H;
 
-      // Ring of darker grass outside the build zone (decor strip)
-      const outer = new Graphics();
-      const r = 12;
-      const innerLeft = (CITY_CENTER.gx - r) * TILE_W;
-      const innerTop = (CITY_CENTER.gy - r) * TILE_H;
-      const innerW = (r * 2 + 1) * TILE_W;
-      const innerH = (r * 2 + 1) * TILE_H;
-      // Top
-      outer.rect(0, 0, GRID_SIZE * TILE_W, innerTop);
-      // Bottom
-      outer.rect(0, innerTop + innerH, GRID_SIZE * TILE_W, GRID_SIZE * TILE_H - (innerTop + innerH));
-      // Left
-      outer.rect(0, innerTop, innerLeft, innerH);
-      // Right
-      outer.rect(innerLeft + innerW, innerTop, GRID_SIZE * TILE_W - (innerLeft + innerW), innerH);
-      outer.fill({ color: 0x6b9c52 });
-      tileLayer.addChild(outer);
+      const water = new TilingSprite({
+        texture: terrain.water,
+        width: waterW,
+        height: waterH,
+      });
+      water.position.set(waterLeft, waterTop);
+      tileLayer.addChild(water);
 
-      // ---- Ground decoration tiles (grass tufts on top) ----
-      // Sprinkle grass tuft sprites for variety (every ~3rd tile, not all)
-      for (let gy = 0; gy < GRID_SIZE; gy++) {
-        for (let gx = 0; gx < GRID_SIZE; gx++) {
-          if (tileVariant(gx, gy, 3) !== 0) continue; // only ~33% of tiles
-          const slug = GROUND_GRASS_SLUGS[tileVariant(gx + 1, gy + 7, GROUND_GRASS_SLUGS.length)];
-          const tex = getTopdownTexture(atlas, slug);
-          if (!tex || tex === Texture.EMPTY) continue;
-          const sprite = new Sprite(tex);
-          sprite.anchor.set(0);
-          sprite.scale.set(GROUND_SCALE);
-          sprite.position.set(gx * TILE_W, gy * TILE_H);
-          sprite.alpha = 0.8;
-          tileLayer.addChild(sprite);
-        }
-      }
+      // Grass island covers the full playable grid.
+      const grass = new TilingSprite({
+        texture: terrain.grass,
+        width: GRID_SIZE * TILE_W,
+        height: GRID_SIZE * TILE_H,
+      });
+      grass.position.set(0, 0);
+      tileLayer.addChild(grass);
+
+      // Cliff front strip along the south edge of the grass — adds depth so
+      // the grass reads as a raised island above the water.
+      const cliffRow = new TilingSprite({
+        texture: terrain.cliff,
+        width: GRID_SIZE * TILE_W,
+        height: TILE_H,
+      });
+      cliffRow.position.set(0, GRID_SIZE * TILE_H);
+      tileLayer.addChild(cliffRow);
       // Road overlay tiles
       for (let gy = 0; gy < GRID_SIZE; gy++) {
         for (let gx = 0; gx < GRID_SIZE; gx++) {
@@ -325,21 +323,27 @@ export default function CityCanvas({
         world.position.set(originX, originY);
       };
       centerWorld();
-      // Minimum zoom = "fit whole map in view" (no off-map background visible)
+      // Extended map dims (grass island + water margin on all sides). Used
+      // for zoom/pan bounds so the water margin is visible and pannable.
+      const extMapW = (GRID_SIZE + WATER_MARGIN * 2) * TILE_W;
+      const extMapH = (GRID_SIZE + WATER_MARGIN * 2) * TILE_H;
+      // Minimum zoom = "fit whole extended map in view" (includes water)
       const minZoomFit = Math.max(
-        app.renderer.width / (GRID_SIZE * TILE_W),
-        app.renderer.height / (GRID_SIZE * TILE_H),
+        app.renderer.width / extMapW,
+        app.renderer.height / extMapH,
       );
-      // Default interactive view: ~12 tiles wide so buildings are big and
-      // recognizable. User can pinch-out to see more.
+      // Default interactive view: ~20 tiles wide so users see part of the
+      // surrounding water margin (island in the sea). Pinch-in for buildings,
+      // pinch-out to see the full map.
       const defaultZoom = Math.min(
-        app.renderer.width / (12 * TILE_W),
-        app.renderer.height / (12 * TILE_H),
+        app.renderer.width / (20 * TILE_W),
+        app.renderer.height / (20 * TILE_H),
       );
-      // Preview view: ~14 tiles wide centered on city center so buildings + nearby decor read at a glance
+      // Preview view: ~22 tiles wide so the grass-island-on-water effect reads
+      // at a glance on home.
       const previewZoom = Math.min(
-        app.renderer.width / (14 * TILE_W),
-        app.renderer.height / (14 * TILE_H),
+        app.renderer.width / (22 * TILE_W),
+        app.renderer.height / (22 * TILE_H),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);
@@ -412,16 +416,28 @@ export default function CityCanvas({
         };
 
         const clampWorld = () => {
-          const mapW = GRID_SIZE * TILE_W * world.scale.x;
-          const mapH = GRID_SIZE * TILE_H * world.scale.y;
+          // Allow panning into the water margin around the grass island.
+          const mapW = extMapW * world.scale.x;
+          const mapH = extMapH * world.scale.y;
           const viewW = app.renderer.width;
           const viewH = app.renderer.height;
-          // If the map is smaller than the viewport on an axis, center it.
-          // Otherwise clamp so the map edge stays at or beyond the view edge.
-          if (mapW <= viewW) world.position.x = (viewW - mapW) / 2;
-          else world.position.x = Math.min(0, Math.max(viewW - mapW, world.position.x));
-          if (mapH <= viewH) world.position.y = (viewH - mapH) / 2;
-          else world.position.y = Math.min(0, Math.max(viewH - mapH, world.position.y));
+          // World-space left edge of the extended map is -WATER_MARGIN*TILE_W.
+          const leftEdge = -WATER_MARGIN * TILE_W * world.scale.x;
+          const topEdge = -WATER_MARGIN * TILE_H * world.scale.y;
+          if (mapW <= viewW) {
+            world.position.x = (viewW - mapW) / 2 + leftEdge * -1;
+          } else {
+            const minX = viewW - (leftEdge + mapW);
+            const maxX = -leftEdge;
+            world.position.x = Math.min(maxX, Math.max(minX, world.position.x));
+          }
+          if (mapH <= viewH) {
+            world.position.y = (viewH - mapH) / 2 + topEdge * -1;
+          } else {
+            const minY = viewH - (topEdge + mapH);
+            const maxY = -topEdge;
+            world.position.y = Math.min(maxY, Math.max(minY, world.position.y));
+          }
         };
 
         const zoomAround = (px: number, py: number, target: number) => {
@@ -808,13 +824,6 @@ function stringHash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
   return Math.abs(h);
-}
-
-function tileVariant(gx: number, gy: number, n: number): number {
-  let h = (gx * 73856093) ^ (gy * 19349663);
-  h = (h ^ (h >>> 13)) * 1274126177;
-  h = h ^ (h >>> 16);
-  return Math.abs(h) % n;
 }
 
 function makeCoinBadge(amount: number): Container {
