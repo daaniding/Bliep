@@ -560,3 +560,132 @@ body {
 }
 
 ::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ===========================================================
+   TOFFEECRAFT MEDIEVAL UI — pixel-art wood assets
+   Source: toffeecraft.itch.io/ui-user-interface-medieval
+   Sprite at /assets/toffeecraft/sheet.png (256x128, pixel art)
+   All elements rendered with nearest-neighbor scaling.
+   =========================================================== */
+
+.tc-pixel {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Full hanging wood sign with chain (85x92 px → scaled up) */
+.tc-sign {
+  display: block;
+  image-rendering: pixelated;
+  width: 100%;
+  height: auto;
+}
+
+/* Wooden panel frame — 9-slice of wood-board.png (71x65) for any box */
+.tc-panel {
+  position: relative;
+  image-rendering: pixelated;
+  border-style: solid;
+  border-width: 24px 20px 28px 20px;
+  border-image-source: url('/assets/toffeecraft/wood-board.png');
+  border-image-slice: 18 16 22 16 fill;
+  border-image-width: 24px 20px 28px 20px;
+  border-image-repeat: round;
+  padding: 6px 10px 10px;
+  color: #fff3c6;
+  text-align: center;
+}
+.tc-panel > * { position: relative; z-index: 1; }
+
+/* Red progress-bar frame — empty fill lives inside */
+.tc-bar {
+  position: relative;
+  image-rendering: pixelated;
+  border-style: solid;
+  border-width: 4px 10px 4px 10px;
+  border-image-source: url('/assets/toffeecraft/bar-red.png');
+  border-image-slice: 4 10 4 10 fill;
+  border-image-width: 4px 10px 4px 10px;
+  border-image-repeat: stretch;
+  height: 18px;
+  overflow: hidden;
+}
+.tc-bar > .fill {
+  position: absolute; inset: 0 auto 0 0;
+  background: linear-gradient(180deg, #ff5e4a 0%, #c41f1a 55%, #7a0c0a 100%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.35);
+  transition: width 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Round wooden button from sheet — 16x16 tile, scaled via CSS */
+.tc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: url('/assets/toffeecraft/sheet.png') no-repeat;
+  background-size: 704px 352px; /* 256*2.75=704 — match 16px tiles to 44px */
+  image-rendering: pixelated;
+  border: 0;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+  padding: 0;
+}
+.tc-btn:hover { filter: brightness(1.08); }
+.tc-btn:active { transform: translateY(1px) scale(0.96); }
+
+/* Hero header row: chain banner hanging from top of screen, painted text */
+.tc-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 54px auto 2px;
+  width: 172px;
+}
+.tc-header-art {
+  width: 100%;
+  image-rendering: pixelated;
+  display: block;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.55));
+}
+.tc-header-text {
+  position: absolute;
+  left: 0; right: 0;
+  top: 44%;
+  text-align: center;
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  color: #3a1e08;
+  text-shadow: 0 1px 0 rgba(255, 240, 190, 0.55);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+/* Small stat chip built on a round button tile */
+.tc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  background: #2a170a;
+  border: 3px solid #0d0a06;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 3px 0 #0d0a06, 0 6px 12px rgba(0,0,0,0.45);
+  font-family: var(--font-display), 'Lilita One', sans-serif;
+  color: #fdd069;
+  font-size: 13px;
+  -webkit-text-stroke: 0.5px #1a0f05;
+}
+.tc-chip .dot {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3c6 0%, #fdd069 30%, #b8791f 80%);
+  border: 2px solid #0d0a06;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
