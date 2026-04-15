@@ -360,7 +360,9 @@ export default function CityCanvas({
         woodIcons: number;
       };
       const DENSITIES: Record<IslandTheme, ThemeDensity> = {
-        main:   { treeChance: 0.10, bushChance: 0.06, rockChance: 0.03, stumpCount: 18, goldClusters: 3, sheepCount: 5, woodIcons: 8 },
+        // Main island is packed with ALL Tiny Swords decor types — this is
+        // where the player spends time so it needs maximum variety.
+        main:   { treeChance: 0.18, bushChance: 0.12, rockChance: 0.05, stumpCount: 28, goldClusters: 6, sheepCount: 12, woodIcons: 16 },
         forest: { treeChance: 0.40, bushChance: 0.15, rockChance: 0.02, stumpCount: 8,  goldClusters: 0, sheepCount: 0, woodIcons: 4 },
         gold:   { treeChance: 0.02, bushChance: 0.03, rockChance: 0.08, stumpCount: 5,  goldClusters: 3, sheepCount: 0, woodIcons: 6 },
         meat:   { treeChance: 0.05, bushChance: 0.08, rockChance: 0.02, stumpCount: 2,  goldClusters: 0, sheepCount: 10, woodIcons: 0 },
@@ -466,26 +468,43 @@ export default function CityCanvas({
             placeStatic(gx, gy, tex, 1.2, 0.3, 700 + i * 10 + k);
           }
         }
-        // Sheep
-        for (let i = 0; i < d.sheepCount && terrain.sheepGrass.frames.length; i++) {
+        // Sheep — mix the 3 animations (grass/idle/move) for variety
+        const sheepSheets = [terrain.sheepGrass, terrain.sheepIdle, terrain.sheepMove].filter((s) => s.frames.length);
+        for (let i = 0; i < d.sheepCount && sheepSheets.length; i++) {
           if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
           const c = pickCell(i * 11 + 31);
-          const sheep = new AnimatedSprite(terrain.sheepGrass.frames);
-          sheep.animationSpeed = 0.08;
+          const sheet = sheepSheets[Math.floor(hash(island.idx, i, 77) * sheepSheets.length)];
+          const sheep = new AnimatedSprite(sheet.frames);
+          sheep.animationSpeed = 0.07 + hash(island.idx, i, 78) * 0.04;
           sheep.loop = true;
           sheep.play();
           sheep.anchor.set(0.5, 0.95);
           const { sx, sy } = gridToScreen(c.gx, c.gy, 0, 0);
-          sheep.position.set(sx, sy + TILE_H * 0.3);
-          sheep.scale.set((TILE_W * 1.1) / terrain.sheepGrass.frameW);
+          sheep.position.set(sx + (hash(island.idx, i, 79) - 0.5) * TILE_W * 0.4, sy + TILE_H * 0.3);
+          sheep.scale.set((TILE_W * 1.0) / sheet.frameW);
           (sheep as unknown as { zIndex: number }).zIndex = c.gy * 1000 + c.gx + 55;
           decorLayer.addChild(sheep);
           animatedDecorCount++;
         }
-        // Wood icons
+        // Wood icons (wood resource drops)
         for (let i = 0; i < d.woodIcons && terrain.wood !== Texture.EMPTY; i++) {
           const c = pickCell(i * 7 + 41);
           placeStatic(c.gx, c.gy, terrain.wood, 0.5, 0.3, 800 + i);
+        }
+        // Meat resource drops — same density as wood on main island
+        if (island.theme === 'main' && terrain.meat !== Texture.EMPTY) {
+          for (let i = 0; i < 8; i++) {
+            const c = pickCell(i * 13 + 91);
+            placeStatic(c.gx, c.gy, terrain.meat, 0.5, 0.3, 850 + i);
+          }
+        }
+        // Tools scattered (axe/pickaxe) — only main island
+        if (island.theme === 'main' && terrain.tools.length) {
+          for (let i = 0; i < 10; i++) {
+            const c = pickCell(i * 17 + 131);
+            const tex = terrain.tools[i % terrain.tools.length];
+            placeStatic(c.gx, c.gy, tex, 0.45, 0.35, 900 + i);
+          }
         }
       }
 
@@ -807,13 +826,22 @@ export default function CityCanvas({
 
         const onWheel = (ev: WheelEvent) => {
           ev.preventDefault();
-          const rect = host.getBoundingClientRect();
-          const localX = ev.clientX - rect.left;
-          const localY = ev.clientY - rect.top;
-          const factor = Math.exp(-ev.deltaY * 0.0015);
-          const minZ = (app as Application & { __minZoom?: number }).__minZoom ?? MIN_ZOOM_INTERACTIVE;
-          const target = Math.max(minZ, Math.min(MAX_ZOOM_INTERACTIVE, world.scale.x * factor));
-          zoomAround(localX, localY, target);
+          // Ctrl/Cmd+wheel zooms (matches browser "pinch-zoom" convention),
+          // plain wheel pans. Fixes the old behaviour where trying to scroll
+          // around the map would zoom you out instead.
+          if (ev.ctrlKey || ev.metaKey) {
+            const rect = host.getBoundingClientRect();
+            const localX = ev.clientX - rect.left;
+            const localY = ev.clientY - rect.top;
+            const factor = Math.exp(-ev.deltaY * 0.0015);
+            const minZ = (app as Application & { __minZoom?: number }).__minZoom ?? MIN_ZOOM_INTERACTIVE;
+            const target = Math.max(minZ, Math.min(MAX_ZOOM_INTERACTIVE, world.scale.x * factor));
+            zoomAround(localX, localY, target);
+          } else {
+            world.position.x -= ev.deltaX;
+            world.position.y -= ev.deltaY;
+            clampWorld();
+          }
         };
 
         app.stage.on('pointerdown', onDown);

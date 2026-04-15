@@ -45,10 +45,15 @@ export interface TinyswordsTerrain {
   stumps: Texture[];
   clouds: Texture[];
   sheepGrass: AnimatedSheet;
+  sheepIdle: AnimatedSheet;
+  sheepMove: AnimatedSheet;
   duck: Texture;
   waterRocks: AnimatedSheet[];
   goldStones: Texture[];
   wood: Texture;
+  meat: Texture;
+  tools: Texture[];
+  shadow: Texture;
 }
 
 let cached: TinyswordsTerrain | null = null;
@@ -111,7 +116,15 @@ export async function loadTinyswordsTerrain(): Promise<TinyswordsTerrain> {
   const clouds = cloudLoads.filter((t): t is Texture => !!t);
 
   const sheepGrassTex = await safeLoad(`${BASE}/sheep/sheep_grass.png`);
+  const sheepIdleTex = await safeLoad(`${BASE}/sheep/sheep_idle.png`);
+  const sheepMoveTex = await safeLoad(`${BASE}/sheep/sheep_move.png`);
   const duckTex = await safeLoad(`${BASE}/water/duck.png`);
+  const meatTex = await safeLoad(`${BASE}/wood/meat.png`);
+  const shadowTex = await safeLoad(`${BASE}/shadow.png`);
+  const toolLoads = await Promise.all(
+    [1, 2, 3, 4].map((n) => safeLoad(`${BASE}/wood/tool${n}.png`)),
+  );
+  const tools = toolLoads.filter((t): t is Texture => !!t);
 
   const waterRockLoads = await Promise.all([
     safeLoad(`${BASE}/water/water_rock1.png`),
@@ -130,7 +143,7 @@ export async function loadTinyswordsTerrain(): Promise<TinyswordsTerrain> {
   const setNearest = (t: Texture | null) => {
     if (t?.source) t.source.scaleMode = 'nearest';
   };
-  for (const t of [tilemapTex, waterTex, waterFoamTex, sheepGrassTex, duckTex, woodTex, ...treeLoads, ...stumpLoads, ...bushLoads, ...rockLoads, ...clouds, ...gold]) setNearest(t);
+  for (const t of [tilemapTex, waterTex, waterFoamTex, sheepGrassTex, sheepIdleTex, sheepMoveTex, duckTex, woodTex, meatTex, shadowTex, ...treeLoads, ...stumpLoads, ...bushLoads, ...rockLoads, ...clouds, ...gold, ...tools]) setNearest(t);
   for (const t of waterRockLoads) setNearest(t);
 
   cached = {
@@ -155,12 +168,21 @@ export async function loadTinyswordsTerrain(): Promise<TinyswordsTerrain> {
     sheepGrass: sheepGrassTex
       ? { frames: sliceFrames(sheepGrassTex, 128, 128, 12), frameW: 128, frameH: 128 }
       : { frames: [], frameW: 128, frameH: 128 },
+    sheepIdle: sheepIdleTex
+      ? { frames: sliceFrames(sheepIdleTex, 128, 128, 6), frameW: 128, frameH: 128 }
+      : { frames: [], frameW: 128, frameH: 128 },
+    sheepMove: sheepMoveTex
+      ? { frames: sliceFrames(sheepMoveTex, 128, 128, 4), frameW: 128, frameH: 128 }
+      : { frames: [], frameW: 128, frameH: 128 },
     duck: duckTex ?? Texture.EMPTY,
     waterRocks: waterRockLoads
       .filter((t): t is Texture => !!t)
       .map((t) => ({ frames: sliceFrames(t, 64, 64, 16), frameW: 64, frameH: 64 })),
     goldStones: gold,
     wood: woodTex ?? Texture.EMPTY,
+    meat: meatTex ?? Texture.EMPTY,
+    tools,
+    shadow: shadowTex ?? Texture.EMPTY,
   };
   return cached;
 }
