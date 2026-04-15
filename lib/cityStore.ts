@@ -1,4 +1,4 @@
-import { BUILDINGS, buildTimeSec, farmRateFor, type BuildingType } from './game/buildings';
+import { BUILDINGS, buildTimeSec, farmRateFor, footprintOf, footprintsOverlap, type BuildingType } from './game/buildings';
 
 const STORAGE_KEY = 'bliep:city:v2';
 const LEGACY_KEY = 'bliep:city:v1';
@@ -179,8 +179,17 @@ export function removeBuilding(state: CityState, buildingId: string): { state: C
 }
 
 export function placeBuilding(state: CityState, type: BuildingType, gx: number, gy: number): CityState {
-  // No overlapping — one block per tile.
-  if (state.buildings.some(b => b.gx === gx && b.gy === gy)) return state;
+  // No overlapping — check the proposed footprint against every placed
+  // building's own footprint rect.
+  const { w, h } = footprintOf(type);
+  if (
+    state.buildings.some(b => {
+      const bf = footprintOf(b.type);
+      return footprintsOverlap(gx, gy, w, h, b.gx, b.gy, bf.w, bf.h);
+    })
+  ) {
+    return state;
+  }
 
   const id = `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const placed: PlacedBuilding = { id, type, gx, gy, level: 1 };

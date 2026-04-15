@@ -23,6 +23,10 @@ export interface BuildingDef {
   spriteYOffset?: number;
   /** Sprite scale factor on canvas. */
   spriteScale?: number;
+  /** Grid footprint in tiles (default 1×1). Buildings with a bigger
+   *  footprint occupy multiple adjacent cells; their (gx,gy) is the
+   *  top-left corner of the rectangle. */
+  footprint?: { w: number; h: number };
 }
 
 export const MAX_LEVEL = 10;
@@ -74,6 +78,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
       ts('black', 'castle'),
     ),
     spriteScale: 1.0,
+    footprint: { w: 2, h: 2 },
   },
   farm: {
     type: 'farm',
@@ -92,6 +97,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     ),
     productionPerMin: [1, 2, 4, 7, 11, 16, 23, 32, 44, 60],
     spriteScale: 1.0,
+    footprint: { w: 2, h: 2 },
   },
   barracks: {
     type: 'barracks',
@@ -110,6 +116,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     ),
     troopsPerLevel: [2, 4, 7, 11, 16, 22, 30, 40, 52, 70],
     spriteScale: 1.1,
+    footprint: { w: 3, h: 3 },
   },
   wall: {
     type: 'wall',
@@ -144,6 +151,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
       ts('black', 'archery'),
     ),
     spriteScale: 1.1,
+    footprint: { w: 2, h: 2 },
   },
   fountain: {
     type: 'fountain',
@@ -162,6 +170,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
       ts('black', 'monastery'),  ts('black', 'monastery'),
     ),
     spriteScale: 1.05,
+    footprint: { w: 2, h: 2 },
   },
   tree: {
     type: 'tree',
@@ -224,4 +233,25 @@ export function farmRateFor(level: number): number {
 
 export function troopsFor(level: number): number {
   return BUILDINGS.barracks.troopsPerLevel?.[level - 1] ?? 0;
+}
+
+/** Footprint dimensions for a building type, defaulting to 1×1. */
+export function footprintOf(type: BuildingType): { w: number; h: number } {
+  return BUILDINGS[type].footprint ?? { w: 1, h: 1 };
+}
+
+/** Returns true if (gx, gy) falls inside the rectangle owned by a building
+ *  whose top-left is at (b.gx, b.gy) and size comes from its def. */
+export function coverCell(type: BuildingType, bgx: number, bgy: number, gx: number, gy: number): boolean {
+  const { w, h } = footprintOf(type);
+  return gx >= bgx && gx < bgx + w && gy >= bgy && gy < bgy + h;
+}
+
+/** Returns true if a proposed footprint at (gx, gy) with (w, h) would
+ *  overlap the footprint of any existing placed building. */
+export function footprintsOverlap(
+  aGx: number, aGy: number, aW: number, aH: number,
+  bGx: number, bGy: number, bW: number, bH: number,
+): boolean {
+  return aGx < bGx + bW && aGx + aW > bGx && aGy < bGy + bH && aGy + aH > bGy;
 }

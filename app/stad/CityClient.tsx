@@ -159,8 +159,14 @@ export default function CityClient() {
       playSfx('fail');
       return;
     }
-    const occupied = state.buildings.some(b => b.gx === gx && b.gy === gy);
-    if (occupied) {
+    // Footprint overlap check — any existing building whose rectangle
+    // intersects the proposed footprint blocks placement.
+    const newFp = BUILDINGS[type].footprint ?? { w: 1, h: 1 };
+    const overlap = state.buildings.some(b => {
+      const bFp = BUILDINGS[b.type].footprint ?? { w: 1, h: 1 };
+      return gx < b.gx + bFp.w && gx + newFp.w > b.gx && gy < b.gy + bFp.h && gy + newFp.h > b.gy;
+    });
+    if (overlap) {
       showFlash('Al bezet');
       playSfx('fail');
       return;

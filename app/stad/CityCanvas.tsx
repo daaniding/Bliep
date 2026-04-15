@@ -46,7 +46,7 @@ import {
   type TopdownAtlas,
 } from '@/lib/game/topdown';
 import { seedDecor, isRoadTile, type DecorTile } from '@/lib/game/decor';
-import { spriteForLevel, BUILDINGS, type BuildingType } from '@/lib/game/buildings';
+import { spriteForLevel, BUILDINGS, footprintOf, coverCell, type BuildingType } from '@/lib/game/buildings';
 import {
   isChestReady,
   farmPendingCoins,
@@ -220,6 +220,14 @@ export default function CityCanvas({
       decorLayer.sortableChildren = true;
       world.addChild(decorLayer);
       decorLayerRef.current = decorLayer;
+
+      // Dedicated layer for wandering animals. No sortableChildren — the
+      // previous flicker was caused by the layer re-sorting its children
+      // on every tick as sprite positions changed inside a sortable
+      // parent. Keep animals isolated with a fixed child order.
+      const animalLayer = new Container();
+      animalLayer.sortableChildren = false;
+      world.addChild(animalLayer);
 
       // Single y-sorted entity layer for buildings + NPCs so they correctly
       // overlap based on screen Y (a villager walking south of a house should
@@ -464,12 +472,9 @@ export default function CityCanvas({
         sprite.position.set(pxX, pxY);
         const baseScaleX = (TILE_W * KIND_SIZE[kind]) / sheet.frameW;
         sprite.scale.set(baseScaleX, baseScaleX);
-        // Static zIndex based on spawn cell — reassigning zIndex every
-        // frame caused the sprite to re-sort inside the layer each tick,
-        // which showed up as flicker. Fine that animals walking south
-        // don't go behind further-south sprites on the same layer.
-        sprite.zIndex = 60 + i;
-        decorLayer.addChild(sprite);
+        // Animals live in the dedicated animalLayer (sortableChildren
+        // disabled) so position updates don't retrigger parent sorts.
+        animalLayer.addChild(sprite);
         animatedDecorCount++;
         wanderers.push({
           sprite,
@@ -502,7 +507,14 @@ export default function CityCanvas({
         occupiedRebuildT -= dt;
         if (occupiedRebuildT <= 0) {
           const set = new Set<string>();
-          for (const b of stateRef.current.buildings) set.add(`${b.gx},${b.gy}`);
+          for (const b of stateRef.current.buildings) {
+            const fp = footprintOf(b.type);
+            for (let dy = 0; dy < fp.h; dy++) {
+              for (let dx = 0; dx < fp.w; dx++) {
+                set.add(`${b.gx + dx},${b.gy + dy}`);
+              }
+            }
+          }
           occupiedCellsRef.current = set;
           occupiedRebuildT = 30;
         }
@@ -808,7 +820,7 @@ export default function CityCanvas({
           if (!wasTap) return;
           const { gx, gy } = globalToGrid(e.global.x, e.global.y);
           if (!inBounds(gx, gy)) return;
-          const existing = stateRef.current.buildings.find(b => b.gx === gx && b.gy === gy);
+          const existing = stateRef.current.buildings.find(b => coverCell(b.type, b.gx, b.gy, gx, gy));
           if (existing) {
             if (existing.type === 'farm' && farmPendingCoins(stateRef.current, existing) >= COIN_BADGE_THRESHOLD) {
               callbacksRef.current.onCollectFarm?.(existing);
@@ -1054,6 +1066,12 @@ export default function CityCanvas({
       // Special-case decor blocks (tree, path) — they don't use the
       // Tiny Swords building atlas, they render directly from terrain
       // sprites or a Graphics fill.
+      const fp = footprintOf(b.type);
+      // Center of the building's footprint rectangle (in grid coords).
+      // A 2×2 at (gx, gy) centers at (gx+0.5, gy+0.5); 1×1 centers at (gx, gy).
+      const centerGx = b.gx + (fp.w - 1) / 2;
+      const centerGy = b.gy + (fp.h - 1) / 2;
+
       if (b.type === 'tree' && terrainRef?.trees.length) {
         const sheet = terrainRef.trees[(b.gx + b.gy) % terrainRef.trees.length];
         const sprite = new Sprite(sheet.frames[0]);
@@ -1061,23 +1079,20 @@ export default function CityCanvas({
         const longSide = Math.max(sheet.frameW, sheet.frameH);
         const baseScale = (TILE_W * 1.2) / longSide;
         sprite.scale.set(baseScale);
-        const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
+        const { sx, sy } = gridToScreen(centerGx, centerGy, 0, 0);
         sprite.position.set(sx, sy + TILE_H * 0.4);
         sprite.zIndex = Math.floor(sy + TILE_H * 0.4);
         layer.addChild(sprite);
         continue;
       }
       if (b.type === 'path') {
-        // Path is painted as a solid sand-colored tile. A Graphics fill
-        // works but can clash with layer sortableChildren — a Sprite of
-        // a baked 1×1 white tex with tint renders predictably.
+        // Path is a solid sand-colored tile spanning its footprint.
         const sprite = new Sprite(Texture.WHITE);
         sprite.tint = 0xc8a878;
-        sprite.width = TILE_W;
-        sprite.height = TILE_H;
-        const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
-        sprite.position.set(sx - TILE_W / 2, sy - TILE_H / 2);
-        sprite.zIndex = -1; // under everything else in the layer
+        sprite.width = TILE_W * fp.w;
+        sprite.height = TILE_H * fp.h;
+        sprite.position.set(b.gx * TILE_W, b.gy * TILE_H);
+        sprite.zIndex = -1;
         layer.addChild(sprite);
         continue;
       }
@@ -1087,16 +1102,16 @@ export default function CityCanvas({
       if (!tex || tex === Texture.EMPTY) continue;
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.95);
-      // Buildings must fit within 1 tile so the '1 block = 1 tile' rule
-      // is visually enforced. Small sprites scale up to ~1.3 tiles, large
-      // ones stay at 1.3 — everyone's the same footprint.
+      // Scale to fill the footprint — a 2×2 building covers 2 tiles wide
+      // with a small overshoot (1.15×) so the sprite sits nicely above
+      // its grass base.
       const longSide = Math.max(tex.width, tex.height);
-      const targetTiles = 1.3;
+      const footprintSpan = Math.max(fp.w, fp.h);
+      const targetTiles = footprintSpan * 1.15;
       const baseScale = (TILE_W * targetTiles * (def.spriteScale ?? 1)) / longSide;
       sprite.scale.set(baseScale);
-      const { sx, sy } = gridToScreen(b.gx, b.gy, 0, 0);
+      const { sx, sy } = gridToScreen(centerGx, centerGy, 0, 0);
       sprite.position.set(sx, sy + TILE_H * 0.4);
-      // Y-sort: bottom of building anchor = sy + TILE_H * 0.4
       sprite.zIndex = Math.floor(sy + TILE_H * 0.4);
       layer.addChild(sprite);
 
