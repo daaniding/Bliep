@@ -129,50 +129,45 @@ export default function Home() {
         </div>
         {/* bottom overlay removed — city fills full viewport */}
 
-        {/* 4 MEDIEVAL BANNERS */}
-        <div className="cr-banner-row">
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className="cr-banner-btn">
-              <div className="cr-banner-inner" style={{ borderTopColor: '#f5c518' }}>
-                <img src="/assets/icons/chest.png" alt="" className="cr-banner-icon" />
-                <span className="cr-banner-label">Kist</span>
-              </div>
-            </button>
-            <button className="cr-banner-btn">
-              <div className="cr-banner-inner" style={{ borderTopColor: '#e05050', position: 'relative' }}>
-                <div className="cr-banner-badge">2</div>
-                <img src="/assets/icons/shield.png" alt="" className="cr-banner-icon" />
-                <span className="cr-banner-label">Mail</span>
-              </div>
-            </button>
-            <button className="cr-banner-btn">
-              <div className="cr-banner-inner" style={{ borderTopColor: '#60a0f0', position: 'relative' }}>
-                <div className="cr-banner-badge">1</div>
-                <img src="/assets/icons/star.png" alt="" className="cr-banner-icon" />
-                <span className="cr-banner-label">Events</span>
-              </div>
-            </button>
-            <button className="cr-banner-btn">
-              <div className="cr-banner-inner" style={{ borderTopColor: '#50b060', position: 'relative' }}>
-                <div className="cr-banner-badge">1</div>
-                <img src="/assets/icons/medal.png" alt="" className="cr-banner-icon" />
-                <span className="cr-banner-label">Stad</span>
-              </div>
-            </button>
+        {/* === DAILY ROYALE banner === */}
+        <div className="cr-pass-banner">
+          <img src="/assets/ui2/warrior-mascot.png" alt="" className="cr-pass-mascot" />
+          <div className="cr-pass-mid">
+            <div className="cr-pass-title">⚔ Daily Royale · Dag {new Date().getDate()}</div>
+            <div className="cr-pass-track">
+              <div
+                className="cr-pass-fill"
+                style={{ width: pick.completed ? '100%' : chosenTask ? '50%' : '12%' }}
+              />
+              <span className="cr-pass-text">
+                {pick.completed ? '✓ Voltooid' : chosenTask ? 'In gang' : 'Kies opdracht'}
+              </span>
+            </div>
+          </div>
+          <div className="cr-pass-reward">
+            <img src="/assets/icons/coins.png" alt="" />
+            <span>{chosenTask ? chosenTask.coins : '?'}</span>
           </div>
         </div>
 
-        {/* Tap anywhere on stad to start the task (replaces sword CTA) */}
-        {chosenTask && !pick.completed && (
+        {/* === Dual CTA buttons (Battle + Party) === */}
+        <div className="cr-cta-row">
           <button
             type="button"
-            className="cr-city-tap"
-            onClick={() => setShowTimerModal(true)}
-            aria-label={`Start: ${chosenTask.text}`}
+            className="cr-cta cr-cta-gold"
+            disabled={!chosenTask || pick.completed}
+            onClick={() => chosenTask && !pick.completed && setShowTimerModal(true)}
           >
-            <span className="cr-city-tap-label">Start opdracht</span>
+            Battle
           </button>
-        )}
+          <button
+            type="button"
+            className="cr-cta cr-cta-pink"
+            onClick={() => sfxTap()}
+          >
+            Party!
+          </button>
+        </div>
         {pick.completed && (
           <div className="cr-city-done">
             {pick.outcome === 'won' && '🏆 De dag is gewonnen'}
@@ -181,8 +176,27 @@ export default function Home() {
           </div>
         )}
 
-        {/* Walkers now live inside StoneArchNav — rendered on the menu bar surface */}
+      </div>
 
+      {/* === Reward cards row above menu bar === */}
+      <div className="cr-reward-row" aria-hidden>
+        {(['easy','medium','hard','daily'] as const).map((tier) => {
+          const cfg: Record<string, { icon: string; label: string; min: string }> = {
+            easy:   { icon: '/assets/icons/chest.png',  label: 'Arena 1', min: '15 MIN' },
+            medium: { icon: '/assets/icons/shield.png', label: 'Arena 2', min: '30 MIN' },
+            hard:   { icon: '/assets/icons/star.png',   label: 'Arena 3', min: '60 MIN' },
+            daily:  { icon: '/assets/icons/medal.png',  label: 'Daily',   min: '24 H'   },
+          };
+          const c = cfg[tier];
+          const cls = tier === 'daily' ? '' : tier;
+          return (
+            <button key={tier} type="button" className={`cr-reward-card ${cls} ${pick.completed ? 'done' : ''}`}>
+              <span className="cr-reward-timer">{c.min}</span>
+              <img src={c.icon} alt="" className="cr-reward-icon" />
+              <span className="cr-reward-label">{c.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Timer modal */}
