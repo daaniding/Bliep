@@ -228,14 +228,14 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 10px 0 env(safe-area-inset-bottom);
+  padding: 16px 0 calc(8px + env(safe-area-inset-bottom));
   pointer-events: none;
   /* One flat color, single gold top edge */
   background: #1a0f05;
-  border-top: 4px solid #f0b840;
+  border-top: 5px solid #f0b840;
   box-shadow:
-    inset 0 3px 0 rgba(255, 230, 160, 0.12),
-    0 -4px 14px rgba(0, 0, 0, 0.55);
+    inset 0 4px 0 rgba(255, 230, 160, 0.14),
+    0 -6px 18px rgba(0, 0, 0, 0.6);
 }
 
 /* Legacy SVG arch background hidden */
@@ -293,8 +293,8 @@ body {
 
 /* Gold frame around every icon — 3D bevel + border */
 .arch-tab-icon {
-  width: 44px;
-  height: 44px;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -311,9 +311,10 @@ body {
   position: relative;
 }
 .arch-tab-icon > svg {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
 }
+.arch-tab { font-size: 11px; }
 .arch-tab.active .arch-tab-icon {
   border-color: #fff6dc;
   box-shadow:
@@ -739,13 +740,15 @@ body {
   flex-shrink: 0;
 }
 .cr-name-block {
-  background: linear-gradient(180deg, #1a0f05 0%, #0a0604 100%);
-  border: 2px solid #0d0a06;
+  background: rgba(10, 6, 4, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 2px solid rgba(13, 10, 6, 0.9);
   border-left: 0;
   border-radius: 0 10px 10px 0;
   padding: 3px 10px 3px 14px;
   margin-left: -6px;
-  box-shadow: inset 0 1px 0 rgba(255, 230, 160, 0.25), 0 3px 0 #0d0a06;
+  box-shadow: inset 0 1px 0 rgba(255, 230, 160, 0.25), 0 3px 0 rgba(13,10,6,0.7);
   min-width: 0;
 }
 .cr-name-row {
@@ -818,17 +821,19 @@ body {
   align-items: center;
   gap: 4px;
   padding: 3px 4px 3px 3px;
-  background: linear-gradient(180deg, #2a1a0a 0%, #120905 100%);
-  border: 2px solid #0d0a06;
+  background: rgba(10, 6, 4, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 2px solid rgba(13, 10, 6, 0.9);
   border-radius: 999px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 230, 160, 0.2),
-    0 3px 0 #0d0a06;
+    inset 0 1px 0 rgba(255, 230, 160, 0.25),
+    0 3px 0 rgba(13,10,6,0.7);
   font-family: var(--font-display), 'Lilita One', sans-serif;
   font-size: 12px;
   color: #fdd069;
   line-height: 1;
-  text-shadow: 0 1px 0 #0d0a06;
+  text-shadow: 0 1px 0 #0d0a06, 0 0 4px rgba(0,0,0,0.6);
 }
 .cr-chip img {
   width: 20px;
@@ -861,10 +866,12 @@ body {
   gap: 3px;
   width: 36px;
   height: 36px;
-  background: linear-gradient(180deg, #2a1a0a 0%, #120905 100%);
-  border: 2px solid #0d0a06;
+  background: rgba(10, 6, 4, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 2px solid rgba(13, 10, 6, 0.9);
   border-radius: 8px;
-  box-shadow: inset 0 1px 0 rgba(255,230,160,0.2), 0 3px 0 #0d0a06;
+  box-shadow: inset 0 1px 0 rgba(255, 230, 160, 0.25), 0 3px 0 rgba(13,10,6,0.7);
   text-decoration: none;
   cursor: pointer;
 }
@@ -886,14 +893,16 @@ body {
   margin: 8px 10px 0;
   padding: 6px 12px 6px 8px;
   background:
-    linear-gradient(180deg, #fdd069 0%, #d19225 60%, #6e4c10 100%);
-  border: 3px solid #0d0a06;
+    linear-gradient(180deg, rgba(253, 208, 105, 0.72) 0%, rgba(209, 146, 37, 0.62) 60%, rgba(110, 76, 16, 0.55) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 3px solid rgba(13, 10, 6, 0.9);
   border-radius: 10px;
   box-shadow:
-    inset 0 2px 0 rgba(255,255,255,0.55),
-    inset 0 -3px 0 rgba(90, 50, 8, 0.6),
-    0 4px 0 #0d0a06,
-    0 6px 14px rgba(0,0,0,0.5);
+    inset 0 2px 0 rgba(255,255,255,0.4),
+    inset 0 -3px 0 rgba(90, 50, 8, 0.55),
+    0 4px 0 rgba(13,10,6,0.8),
+    0 6px 14px rgba(0,0,0,0.45);
   pointer-events: auto;
 }
 .cr-pass-mascot {
@@ -953,13 +962,16 @@ body {
   align-items: center;
   gap: 3px;
   padding: 3px 8px;
-  background: linear-gradient(180deg, #3a2718 0%, #1c0f06 100%);
-  border: 2px solid #0d0a06;
+  background: rgba(10, 6, 4, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 2px solid rgba(13, 10, 6, 0.9);
   border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255,230,160,0.2);
+  box-shadow: inset 0 1px 0 rgba(255,230,160,0.25);
   font-family: var(--font-display), 'Lilita One', sans-serif;
   font-size: 11px;
   color: #fdd069;
+  text-shadow: 0 1px 0 #0d0a06;
 }
 .cr-pass-reward img { width: 18px; height: 18px; object-fit: contain; }
 
@@ -1027,14 +1039,16 @@ body {
   flex: 1;
   max-width: 88px;
   aspect-ratio: 3 / 4;
-  border: 3px solid #0d0a06;
+  border: 3px solid rgba(13, 10, 6, 0.9);
   border-radius: 10px;
-  background: linear-gradient(180deg, #3a2718 0%, #1c0f06 100%);
+  background: rgba(10, 6, 4, 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   box-shadow:
     inset 0 2px 0 rgba(255,230,160,0.25),
-    inset 0 -3px 0 rgba(0,0,0,0.5),
-    0 4px 0 #1a0f05,
-    0 6px 14px rgba(0,0,0,0.55);
+    inset 0 -3px 0 rgba(0,0,0,0.45),
+    0 4px 0 rgba(13,10,6,0.7),
+    0 6px 14px rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1044,9 +1058,9 @@ body {
   transition: transform 100ms ease;
 }
 .cr-reward-card:active { transform: translateY(2px) scale(0.98); }
-.cr-reward-card.easy   { border-color: #5aa04a; background: linear-gradient(180deg, #2e5a22 0%, #0f2809 100%); }
-.cr-reward-card.medium { border-color: #d19225; background: linear-gradient(180deg, #5a3a10 0%, #1a0f05 100%); }
-.cr-reward-card.hard   { border-color: #c41f1a; background: linear-gradient(180deg, #5a1010 0%, #1a0505 100%); }
+.cr-reward-card.easy   { border-color: #5aa04a; box-shadow: inset 0 2px 0 rgba(255,230,160,0.25), inset 0 -3px 0 rgba(0,0,0,0.45), 0 4px 0 rgba(13,10,6,0.7), 0 0 14px rgba(90,160,74,0.35); }
+.cr-reward-card.medium { border-color: #d19225; box-shadow: inset 0 2px 0 rgba(255,230,160,0.25), inset 0 -3px 0 rgba(0,0,0,0.45), 0 4px 0 rgba(13,10,6,0.7), 0 0 14px rgba(209,146,37,0.35); }
+.cr-reward-card.hard   { border-color: #c41f1a; box-shadow: inset 0 2px 0 rgba(255,230,160,0.25), inset 0 -3px 0 rgba(0,0,0,0.45), 0 4px 0 rgba(13,10,6,0.7), 0 0 14px rgba(196,31,26,0.4); }
 .cr-reward-card.done   { opacity: 0.55; }
 
 .cr-reward-timer {
