@@ -313,6 +313,62 @@ export default function CityCanvas({
         }
       }
 
+      // ---- Plateau (raised inner blob) ----
+      // Draw plateau grass on a container offset -18px upward to fake
+      // elevation, plus cliff strip along its south coast + shadow below.
+      const PLATEAU_RAISE = 18;
+      const plateauContainer = new Container();
+      plateauContainer.y = -PLATEAU_RAISE;
+      tileLayer.addChild(plateauContainer);
+
+      const plateauGrass = new TilingSprite({
+        texture: grassTex,
+        width: GRID_SIZE * TILE_W,
+        height: GRID_SIZE * TILE_H,
+      });
+      const plateauMask = new Graphics();
+      let plateauCellCount = 0;
+      for (let gy = 0; gy < GRID_SIZE; gy++) {
+        let runStart = -1;
+        for (let gx = 0; gx <= GRID_SIZE; gx++) {
+          const p = gx < GRID_SIZE && worldMask.isPlateau(gx, gy);
+          if (p) plateauCellCount++;
+          if (p && runStart < 0) runStart = gx;
+          if (!p && runStart >= 0) {
+            plateauMask.rect(runStart * TILE_W, gy * TILE_H, (gx - runStart) * TILE_W, TILE_H);
+            runStart = -1;
+          }
+        }
+      }
+      plateauMask.fill({ color: 0xffffff });
+      plateauContainer.addChild(plateauGrass);
+      plateauContainer.addChild(plateauMask);
+      plateauGrass.mask = plateauMask;
+
+      // Plateau cliff + shadow on every south-coast cell of the plateau
+      if (plateauCellCount > 0) {
+        for (let gy = 0; gy < GRID_SIZE; gy++) {
+          for (let gx = 0; gx < GRID_SIZE; gx++) {
+            if (!worldMask.isPlateauSouthCoast(gx, gy)) continue;
+            // Cliff strip directly under the plateau grass top
+            const cliff = new Sprite(cliffTex);
+            cliff.anchor.set(0, 0);
+            cliff.position.set(gx * TILE_W, gy * TILE_H + TILE_H - PLATEAU_RAISE);
+            tileLayer.addChild(cliff);
+
+            // Shadow on the lower ground immediately south of the cliff
+            if (terrain.shadow !== Texture.EMPTY) {
+              const shadow = new Sprite(terrain.shadow);
+              shadow.anchor.set(0, 0);
+              shadow.position.set(gx * TILE_W - TILE_W * 0.3, (gy + 1) * TILE_H - PLATEAU_RAISE + 4);
+              shadow.scale.set((TILE_W * 1.6) / terrain.shadow.width);
+              shadow.alpha = 0.45;
+              tileLayer.addChild(shadow);
+            }
+          }
+        }
+      }
+
       // ---- Water foam along coast cells (south coasts only — a foam ring
       // around every tile would be ~800 animated sprites which is too much)
       const foamSheet = terrain.waterFoam;
@@ -550,31 +606,7 @@ export default function CityCanvas({
         }
       }
 
-      // ---- Mini island shrouds + lock icons ----
-      for (const island of worldMask.islands) {
-        if (!island.locked) continue;
-        const cells = worldMask.cellsOfIsland(island);
-        if (cells.length === 0) continue;
-        const shroud = new Graphics();
-        for (const c of cells) {
-          shroud.rect(c.gx * TILE_W, c.gy * TILE_H, TILE_W, TILE_H);
-        }
-        shroud.fill({ color: 0x0a0604, alpha: 0.55 });
-        overlayLayer.addChild(shroud);
-
-        // Lock icon — reuse chest texture as a stand-in lock glyph
-        const lockTex = getTopdownTexture(atlas, 'chest');
-        if (lockTex && lockTex !== Texture.EMPTY) {
-          const lock = new Sprite(lockTex);
-          lock.anchor.set(0.5, 0.5);
-          const { sx, sy } = gridToScreen(island.cx, island.cy, 0, 0);
-          lock.position.set(sx, sy);
-          lock.scale.set((TILE_W * 2.2) / Math.max(lockTex.width, lockTex.height));
-          lock.alpha = 0.85;
-          lock.zIndex = 9999;
-          overlayLayer.addChild(lock);
-        }
-      }
+      // Mini-island shrouds + lock icons removed — no more mini islands.
 
       // ---- Clouds layer — drifting above everything ----
       const cloudLayer = new Container();
@@ -648,15 +680,16 @@ export default function CityCanvas({
       // Default interactive view: ~20 tiles wide so users see part of the
       // surrounding water margin (island in the sea). Pinch-in for buildings,
       // pinch-out to see the full map.
+      // Default: show the whole island + a ring of water around it.
       const defaultZoom = Math.min(
-        app.renderer.width / (44 * TILE_W),
-        app.renderer.height / (44 * TILE_H),
+        app.renderer.width / (52 * TILE_W),
+        app.renderer.height / (52 * TILE_H),
       );
-      // Preview view: show the explored area + some water so the scale of
-      // the map reads at a glance on home.
+      // Preview (used by home CityPreview): same scale so home teaser shows
+      // the full island.
       const previewZoom = Math.min(
-        app.renderer.width / (70 * TILE_W),
-        app.renderer.height / (70 * TILE_H),
+        app.renderer.width / (50 * TILE_W),
+        app.renderer.height / (50 * TILE_H),
       );
       const minZoom = Math.max(minZoomFit, MIN_ZOOM_INTERACTIVE);
       const startZoom = mode === 'preview' ? Math.max(previewZoom, minZoomFit) : Math.max(defaultZoom, minZoom);

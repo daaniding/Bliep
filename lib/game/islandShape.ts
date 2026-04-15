@@ -13,10 +13,22 @@ export interface Island {
   locked: boolean;
 }
 
+export interface Plateau {
+  cx: number;
+  cy: number;
+  baseRadius: number;
+  noiseAmps: number[];
+  noisePhases: number[];
+}
+
 export interface WorldMask {
   islands: Island[];
+  plateau: Plateau;
   grid: Uint8Array;
+  plateauGrid: Uint8Array;
   isLand(gx: number, gy: number): boolean;
+  isPlateau(gx: number, gy: number): boolean;
+  isPlateauSouthCoast(gx: number, gy: number): boolean;
   islandAt(gx: number, gy: number): Island | null;
   isSouthCoast(gx: number, gy: number): boolean;
   isAnyCoast(gx: number, gy: number): boolean;
@@ -31,17 +43,29 @@ function lcg(seed: number) {
   };
 }
 
-function inIsland(island: Island, gx: number, gy: number): boolean {
-  const dx = gx - island.cx;
-  const dy = gy - island.cy;
+function inBlob(
+  cx: number,
+  cy: number,
+  baseRadius: number,
+  noiseAmps: number[],
+  noisePhases: number[],
+  gx: number,
+  gy: number,
+): boolean {
+  const dx = gx - cx;
+  const dy = gy - cy;
   const dist = Math.sqrt(dx * dx + dy * dy);
   const angle = Math.atan2(dy, dx);
-  let radius = island.baseRadius;
-  for (let i = 0; i < island.noiseAmps.length; i++) {
+  let radius = baseRadius;
+  for (let i = 0; i < noiseAmps.length; i++) {
     const freq = i + 2;
-    radius += Math.sin(angle * freq + island.noisePhases[i]) * island.noiseAmps[i];
+    radius += Math.sin(angle * freq + noisePhases[i]) * noiseAmps[i];
   }
   return dist < radius;
+}
+
+function inIsland(island: Island, gx: number, gy: number): boolean {
+  return inBlob(island.cx, island.cy, island.baseRadius, island.noiseAmps, island.noisePhases, gx, gy);
 }
 
 /**
@@ -53,57 +77,50 @@ export function generateWorld(seed: number): WorldMask {
   const rand = lcg(seed);
   const islands: Island[] = [];
 
-  // Main island — big organic blob at the center.
+  // Main island — a smaller, denser organic blob. Quarter of the previous
+  // radius so the player's build area stays intimate. Noise amps scaled
+  // down proportionally so the coastline still reads as organic.
   islands.push({
     idx: 0,
     cx: Math.floor(GRID_SIZE / 2),
     cy: Math.floor(GRID_SIZE / 2),
-    baseRadius: 62,
-    noiseAmps: [12, 8, 5, 3],
+    baseRadius: 16,
+    noiseAmps: [3.5, 2.2, 1.4, 0.8],
     noisePhases: [rand() * Math.PI * 2, rand() * Math.PI * 2, rand() * Math.PI * 2, rand() * Math.PI * 2],
     theme: 'main',
     locked: false,
   });
 
-  // Mini islands — one per theme, placed around the main island.
-  const miniThemes: IslandTheme[] = ['forest', 'gold', 'meat', 'rocks', 'duck'];
-  const mainCx = islands[0].cx;
-  const mainCy = islands[0].cy;
-  const mainMaxR = islands[0].baseRadius + 15; // safety margin outside noise bumps
+  // Mini islands removed — future multi-island switcher becomes a separate
+  // scene, not adjacent blobs on the same grid.
 
-  // Distribute minis roughly evenly around the main island.
-  const angleStep = (Math.PI * 2) / miniThemes.length;
-  let angleOffset = rand() * Math.PI * 2;
-
-  for (let i = 0; i < miniThemes.length; i++) {
-    const theme = miniThemes[i];
-    // Each mini sits in the water ring outside the main island.
-    const ringDist = mainMaxR + 18 + rand() * 12; // distance from main center
-    const angle = angleOffset + i * angleStep + (rand() - 0.5) * 0.4;
-    const cx = Math.round(mainCx + Math.cos(angle) * ringDist);
-    const cy = Math.round(mainCy + Math.sin(angle) * ringDist);
-
-    const baseRadius = theme === 'duck' ? 10 + rand() * 3 : 13 + rand() * 5;
-
-    islands.push({
-      idx: i + 1,
-      cx,
-      cy,
-      baseRadius,
-      noiseAmps: [3 + rand() * 2, 2 + rand() * 2, 1.5 + rand()],
-      noisePhases: [rand() * Math.PI * 2, rand() * Math.PI * 2, rand() * Math.PI * 2],
-      theme,
-      locked: true,
-    });
-  }
+  // Inner plateau — raised blob inside the main island, roughly 1/3 the
+  // radius, offset slightly north-west of the island center so the plateau
+  // south-cliff faces open grass (buildings can sit around it).
+  const main = islands[0];
+  const plateau: Plateau = {
+    cx: main.cx - 2,
+    cy: main.cy - 3,
+    baseRadius: Math.max(4, Math.round(main.baseRadius * 0.42)),
+    noiseAmps: [1.2, 0.8, 0.5],
+    noisePhases: [rand() * Math.PI * 2, rand() * Math.PI * 2, rand() * Math.PI * 2],
+  };
 
   // Precompute the land grid: for each cell, store (island index + 1) or 0 for water.
   const grid = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  const plateauGrid = new Uint8Array(GRID_SIZE * GRID_SIZE);
   for (let gy = 0; gy < GRID_SIZE; gy++) {
     for (let gx = 0; gx < GRID_SIZE; gx++) {
       for (let i = 0; i < islands.length; i++) {
         if (inIsland(islands[i], gx, gy)) {
           grid[gy * GRID_SIZE + gx] = i + 1;
+          // Plateau cells must also be inside the main island.
+          if (
+            i === 0 &&
+            inBlob(plateau.cx, plateau.cy, plateau.baseRadius, plateau.noiseAmps, plateau.noisePhases, gx, gy)
+          ) {
+            plateauGrid[gy * GRID_SIZE + gx] = 1;
+          }
           break;
         }
       }
@@ -139,5 +156,25 @@ export function generateWorld(seed: number): WorldMask {
     return out;
   };
 
-  return { islands, grid, isLand, islandAt, isSouthCoast, isAnyCoast, cellsOfIsland };
+  const isPlateau = (gx: number, gy: number) => {
+    if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return false;
+    return plateauGrid[gy * GRID_SIZE + gx] === 1;
+  };
+
+  const isPlateauSouthCoast = (gx: number, gy: number) =>
+    isPlateau(gx, gy) && !isPlateau(gx, gy + 1);
+
+  return {
+    islands,
+    plateau,
+    grid,
+    plateauGrid,
+    isLand,
+    isPlateau,
+    isPlateauSouthCoast,
+    islandAt,
+    isSouthCoast,
+    isAnyCoast,
+    cellsOfIsland,
+  };
 }
