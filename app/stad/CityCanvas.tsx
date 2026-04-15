@@ -17,11 +17,10 @@ import {
 } from 'pixi.js';
 import {
   loadTinyswordsTerrain,
-  GRASS_TILE_CELLS,
-  CLIFF_TILE_CELLS,
   TILEMAP_CELL,
 } from '@/lib/game/tinyswordsTerrain';
-import { generateWorld, type IslandTheme } from '@/lib/game/islandShape';
+import { parseElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
+import { autotileGrassSlot, shouldPaintCliffWall, CLIFF_WALL_CELL } from '@/lib/game/autotile';
 import {
   TILE_W,
   TILE_H,
@@ -246,21 +245,46 @@ export default function CityCanvas({
         return t;
       };
 
-      // Single interior grass cell. A 2×2 mosaic includes leafy edge-tiles
-      // from the surrounding autotile border which have transparent pixels —
-      // when TilingSprite repeats them you see water through the holes.
-      // Cell (1,1) is deep enough inside the big top-left grass block to be
-      // fully opaque interior grass.
-      const grassTex = bakeCell(1, 1);
+      // (grass + cliff textures are baked on-demand via bakedOf in the
+      // static-map loop below)
 
-      const cliffTex = bakeCell(CLIFF_TILE_CELLS[0][0], CLIFF_TILE_CELLS[0][1]);
+      // ---- Static map: hand-designed Tiny Swords island + autotile ----
+      const elevation = parseElevation();
+
+      // Bake every autotile cell we need once, cache by "col,row" key.
+      // 9 flat (0..2, 0..2) + 9 raised (4..6, 0..2) + 1 cliff wall (5,5)
+      // = 19 baked textures max.
+      const bakedTiles = new Map<string, Texture>();
+      const bakedOf = (col: number, row: number): Texture => {
+        const key = `${col},${row}`;
+        let t = bakedTiles.get(key);
+        if (!t) {
+          t = bakeCell(col, row);
+          bakedTiles.set(key, t);
+        }
+        return t;
+      };
+
+      // Center the 44×30 static map on CITY_CENTER in the bigger 192×192
+      // game grid so existing building coordinates roughly still line up.
+      const mapOffsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
+      const mapOffsetGy = CITY_CENTER.gy - Math.floor(MAP_ROWS / 2);
+      const worldGx = (rx: number) => mapOffsetGx + rx;
+      const worldGy = (ry: number) => mapOffsetGy + ry;
+
+      const landAtWorld = (wgx: number, wgy: number): boolean => {
+        const rx = wgx - mapOffsetGx;
+        const ry = wgy - mapOffsetGy;
+        if (rx < 0 || rx >= MAP_COLS || ry < 0 || ry >= MAP_ROWS) return false;
+        return elevation[ry][rx] > 0;
+      };
+
+      // Water backdrop covers the whole extended map area.
       const waterTex = terrain.water;
-
       const waterLeft = -WATER_MARGIN * TILE_W;
       const waterTop = -WATER_MARGIN * TILE_H;
       const waterW = (GRID_SIZE + WATER_MARGIN * 2) * TILE_W;
       const waterH = (GRID_SIZE + WATER_MARGIN * 2) * TILE_H;
-
       const water = new TilingSprite({
         texture: waterTex,
         width: waterW,
@@ -269,130 +293,58 @@ export default function CityCanvas({
       water.position.set(waterLeft, waterTop);
       tileLayer.addChild(water);
 
-      // ---- World shape: main island + 5 themed mini islands ----
-      const worldMask = generateWorld(state.npcSeed || 1);
+      // ---- Grass + cliff-wall rendering from the elevation grid ----
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          const slot = autotileGrassSlot(elevation, rx, ry);
+          if (!slot) continue;
+          const tex = bakedOf(slot.col, slot.row);
+          const sprite = new Sprite(tex);
+          sprite.anchor.set(0, 0);
+          sprite.position.set(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H);
+          tileLayer.addChild(sprite);
 
-      // Grass layer masked to the island shapes. We render one full-grid
-      // TilingSprite and use a Graphics mask with one rect per land cell.
-      const grass = new TilingSprite({
-        texture: grassTex,
-        width: GRID_SIZE * TILE_W,
-        height: GRID_SIZE * TILE_H,
-      });
-      grass.position.set(0, 0);
-
-      const grassMask = new Graphics();
-      // Run-length encode land cells per row to reduce Graphics draw count.
-      for (let gy = 0; gy < GRID_SIZE; gy++) {
-        let runStart = -1;
-        for (let gx = 0; gx <= GRID_SIZE; gx++) {
-          const land = gx < GRID_SIZE && worldMask.isLand(gx, gy);
-          if (land && runStart < 0) runStart = gx;
-          if (!land && runStart >= 0) {
-            grassMask.rect(runStart * TILE_W, gy * TILE_H, (gx - runStart) * TILE_W, TILE_H);
-            runStart = -1;
-          }
-        }
-      }
-      grassMask.fill({ color: 0xffffff });
-
-      const grassContainer = new Container();
-      grassContainer.addChild(grass);
-      grassContainer.addChild(grassMask);
-      grass.mask = grassMask;
-      tileLayer.addChild(grassContainer);
-
-      // ---- Cliff-front tiles along every south-coast cell ----
-      for (let gy = 0; gy < GRID_SIZE; gy++) {
-        for (let gx = 0; gx < GRID_SIZE; gx++) {
-          if (!worldMask.isSouthCoast(gx, gy)) continue;
-          const cliff = new Sprite(cliffTex);
-          cliff.anchor.set(0, 0);
-          cliff.position.set(gx * TILE_W, gy * TILE_H + TILE_H * 0.55);
-          tileLayer.addChild(cliff);
-        }
-      }
-
-      // ---- Plateau (raised inner blob) ----
-      // Draw plateau grass on a container offset -18px upward to fake
-      // elevation, plus cliff strip along its south coast + shadow below.
-      const PLATEAU_RAISE = 18;
-      const plateauContainer = new Container();
-      plateauContainer.y = -PLATEAU_RAISE;
-      tileLayer.addChild(plateauContainer);
-
-      const plateauGrass = new TilingSprite({
-        texture: grassTex,
-        width: GRID_SIZE * TILE_W,
-        height: GRID_SIZE * TILE_H,
-      });
-      const plateauMask = new Graphics();
-      let plateauCellCount = 0;
-      for (let gy = 0; gy < GRID_SIZE; gy++) {
-        let runStart = -1;
-        for (let gx = 0; gx <= GRID_SIZE; gx++) {
-          const p = gx < GRID_SIZE && worldMask.isPlateau(gx, gy);
-          if (p) plateauCellCount++;
-          if (p && runStart < 0) runStart = gx;
-          if (!p && runStart >= 0) {
-            plateauMask.rect(runStart * TILE_W, gy * TILE_H, (gx - runStart) * TILE_W, TILE_H);
-            runStart = -1;
-          }
-        }
-      }
-      plateauMask.fill({ color: 0xffffff });
-      plateauContainer.addChild(plateauGrass);
-      plateauContainer.addChild(plateauMask);
-      plateauGrass.mask = plateauMask;
-
-      // Plateau cliff + shadow on every south-coast cell of the plateau
-      if (plateauCellCount > 0) {
-        for (let gy = 0; gy < GRID_SIZE; gy++) {
-          for (let gx = 0; gx < GRID_SIZE; gx++) {
-            if (!worldMask.isPlateauSouthCoast(gx, gy)) continue;
-            // Cliff strip directly under the plateau grass top
-            const cliff = new Sprite(cliffTex);
-            cliff.anchor.set(0, 0);
-            cliff.position.set(gx * TILE_W, gy * TILE_H + TILE_H - PLATEAU_RAISE);
-            tileLayer.addChild(cliff);
-
-            // Shadow on the lower ground immediately south of the cliff
-            if (terrain.shadow !== Texture.EMPTY) {
-              const shadow = new Sprite(terrain.shadow);
-              shadow.anchor.set(0, 0);
-              shadow.position.set(gx * TILE_W - TILE_W * 0.3, (gy + 1) * TILE_H - PLATEAU_RAISE + 4);
-              shadow.scale.set((TILE_W * 1.6) / terrain.shadow.width);
-              shadow.alpha = 0.45;
-              tileLayer.addChild(shadow);
-            }
+          if (shouldPaintCliffWall(elevation, rx, ry)) {
+            const wallTex = bakedOf(CLIFF_WALL_CELL.col, CLIFF_WALL_CELL.row);
+            const wall = new Sprite(wallTex);
+            wall.anchor.set(0, 0);
+            wall.position.set(worldGx(rx) * TILE_W, worldGy(ry + 1) * TILE_H);
+            tileLayer.addChild(wall);
           }
         }
       }
 
-      // ---- Water foam along coast cells (south coasts only — a foam ring
-      // around every tile would be ~800 animated sprites which is too much)
+      // ---- Water foam: every water cell with a grass neighbour ----
       const foamSheet = terrain.waterFoam;
       let foamCount = 0;
       const MAX_FOAM = 90;
-      for (let gy = 0; gy < GRID_SIZE && foamCount < MAX_FOAM; gy++) {
-        for (let gx = 0; gx < GRID_SIZE && foamCount < MAX_FOAM; gx++) {
-          if (!worldMask.isSouthCoast(gx, gy)) continue;
-          // only every ~2nd cell to sparse out foam
-          if ((gx + gy) % 2 !== 0) continue;
+      for (let ry = 0; ry < MAP_ROWS && foamCount < MAX_FOAM; ry++) {
+        for (let rx = 0; rx < MAP_COLS && foamCount < MAX_FOAM; rx++) {
+          if (elevation[ry][rx] !== 0) continue;
+          const hasGrassNeighbor =
+            (elevation[ry - 1]?.[rx] ?? 0) > 0 ||
+            (elevation[ry + 1]?.[rx] ?? 0) > 0 ||
+            (elevation[ry]?.[rx - 1] ?? 0) > 0 ||
+            (elevation[ry]?.[rx + 1] ?? 0) > 0;
+          if (!hasGrassNeighbor) continue;
+          if ((rx + ry) % 2 !== 0) continue; // sparse out foam
           const foam = new AnimatedSprite(foamSheet.frames);
           foam.animationSpeed = 0.15 + Math.random() * 0.05;
           foam.loop = true;
           foam.play();
           foam.anchor.set(0.5, 0.5);
-          foam.position.set(gx * TILE_W + TILE_W * 0.5, (gy + 1) * TILE_H + TILE_H * 0.25);
-          foam.scale.set((TILE_W * 2.2) / foamSheet.frameW);
+          foam.position.set(
+            worldGx(rx) * TILE_W + TILE_W * 0.5,
+            worldGy(ry) * TILE_H + TILE_H * 0.5,
+          );
+          foam.scale.set((TILE_W * 2.0) / foamSheet.frameW);
           foam.alpha = 0.55;
           tileLayer.addChild(foam);
           foamCount++;
         }
       }
 
-      // ---- Build zone ring: skipped when it covers the whole map
+      // ---- Build zone ring: skipped when it covers the whole map ----
       if (showBuildZone && BUILD_ZONE_RADIUS * 2 + 1 < GRID_SIZE) {
         const ring = new Graphics();
         const r = BUILD_ZONE_RADIUS;
@@ -405,26 +357,18 @@ export default function CityCanvas({
         tileLayer.addChild(ring);
       }
 
-      // ---- Decor scatter per island theme ----
-      type ThemeDensity = {
-        treeChance: number;
-        bushChance: number;
-        rockChance: number;
-        stumpCount: number;
-        goldClusters: number;
-        sheepCount: number;
-        woodIcons: number;
+      // ---- Decor scatter over the static map ----
+      const DENSITY = {
+        treeChance: 0.10,
+        bushChance: 0.08,
+        rockChance: 0.04,
       };
-      const DENSITIES: Record<IslandTheme, ThemeDensity> = {
-        // Main island is packed with ALL Tiny Swords decor types — this is
-        // where the player spends time so it needs maximum variety.
-        main:   { treeChance: 0.18, bushChance: 0.12, rockChance: 0.05, stumpCount: 28, goldClusters: 6, sheepCount: 12, woodIcons: 16 },
-        forest: { treeChance: 0.40, bushChance: 0.15, rockChance: 0.02, stumpCount: 8,  goldClusters: 0, sheepCount: 0, woodIcons: 4 },
-        gold:   { treeChance: 0.02, bushChance: 0.03, rockChance: 0.08, stumpCount: 5,  goldClusters: 3, sheepCount: 0, woodIcons: 6 },
-        meat:   { treeChance: 0.05, bushChance: 0.08, rockChance: 0.02, stumpCount: 2,  goldClusters: 0, sheepCount: 10, woodIcons: 0 },
-        rocks:  { treeChance: 0.00, bushChance: 0.01, rockChance: 0.20, stumpCount: 12, goldClusters: 1, sheepCount: 0, woodIcons: 0 },
-        duck:   { treeChance: 0.15, bushChance: 0.10, rockChance: 0.02, stumpCount: 2,  goldClusters: 0, sheepCount: 1, woodIcons: 0 },
-      };
+      const stumpCount = 18;
+      const goldClusters = 5;
+      const sheepCount = 10;
+      const woodIcons = 12;
+      const meatIcons = 8;
+      const toolIcons = 10;
 
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
@@ -475,105 +419,119 @@ export default function CityCanvas({
         decorLayer.addChild(s);
       };
 
-      // Main scatter loop — per-cell density comes from the island theme
-      for (let gy = 0; gy < GRID_SIZE; gy += 2) {
-        for (let gx = 0; gx < GRID_SIZE; gx += 2) {
-          const island = worldMask.islandAt(gx, gy);
-          if (!island) continue;
-          const d = DENSITIES[island.theme];
-          const r = hash(gx, gy, 0);
-          if (r < d.treeChance) {
-            const sheet = terrain.trees[Math.floor(hash(gx, gy, 2) * terrain.trees.length)];
-            placeAnimated(gx, gy, sheet, 1.6, 0.6, 2);
-            continue;
-          }
-          if (r < d.treeChance + d.bushChance) {
-            const sheet = terrain.bushes[Math.floor(hash(gx, gy, 3) * terrain.bushes.length)];
-            placeAnimated(gx, gy, sheet, 0.85, 0.5, 3);
-            continue;
-          }
-          if (r < d.treeChance + d.bushChance + d.rockChance) {
-            const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
-            placeStatic(gx, gy, tex, 0.7, 0.4, 5);
+      // Collect land cells once so per-type loops can pick from them.
+      const landCells: Array<{ gx: number; gy: number }> = [];
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          if (elevation[ry][rx] > 0) {
+            landCells.push({ gx: worldGx(rx), gy: worldGy(ry) });
           }
         }
       }
+      const pickLand = (salt: number) =>
+        landCells[Math.floor(hash(salt, 0, 42) * landCells.length)];
 
-      // Per-island cluster / spawn loops — sheep, gold, stumps, wood icons
-      for (const island of worldMask.islands) {
-        const cells = worldMask.cellsOfIsland(island);
-        if (cells.length === 0) continue;
-        const d = DENSITIES[island.theme];
-
-        const pickCell = (salt: number) => cells[Math.floor(hash(island.idx, salt, 99) * cells.length)];
-
-        // Stumps
-        for (let i = 0; i < d.stumpCount && terrain.stumps.length; i++) {
-          const c = pickCell(i * 3 + 7);
-          const tex = terrain.stumps[i % terrain.stumps.length];
-          placeStatic(c.gx, c.gy, tex, 1.0, 0.4, 600 + i);
+      // Trees/bushes/rocks scattered via noise over every other land cell.
+      for (let i = 0; i < landCells.length; i += 1) {
+        const { gx, gy } = landCells[i];
+        if ((gx + gy) % 2 !== 0) continue;
+        const r = hash(gx, gy, 0);
+        if (r < DENSITY.treeChance) {
+          const sheet = terrain.trees[Math.floor(hash(gx, gy, 2) * terrain.trees.length)];
+          placeAnimated(gx, gy, sheet, 1.6, 0.6, 2);
+          continue;
         }
-        // Gold clusters (4-5 stones each)
-        for (let i = 0; i < d.goldClusters && terrain.goldStones.length; i++) {
-          const center = pickCell(i * 5 + 17);
-          for (let k = 0; k < 4; k++) {
-            const gx = center.gx + Math.floor((hash(island.idx, i * 10 + k, 1) - 0.5) * 4);
-            const gy = center.gy + Math.floor((hash(island.idx, i * 10 + k, 2) - 0.5) * 4);
-            if (!worldMask.isLand(gx, gy)) continue;
-            const tex = terrain.goldStones[Math.floor(hash(gx, gy, 7) * terrain.goldStones.length)];
-            placeStatic(gx, gy, tex, 1.2, 0.3, 700 + i * 10 + k);
-          }
+        if (r < DENSITY.treeChance + DENSITY.bushChance) {
+          const sheet = terrain.bushes[Math.floor(hash(gx, gy, 3) * terrain.bushes.length)];
+          placeAnimated(gx, gy, sheet, 0.85, 0.5, 3);
+          continue;
         }
-        // Sheep — mix the 3 animations (grass/idle/move) for variety
-        const sheepSheets = [terrain.sheepGrass, terrain.sheepIdle, terrain.sheepMove].filter((s) => s.frames.length);
-        for (let i = 0; i < d.sheepCount && sheepSheets.length; i++) {
-          if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
-          const c = pickCell(i * 11 + 31);
-          const sheet = sheepSheets[Math.floor(hash(island.idx, i, 77) * sheepSheets.length)];
-          const sheep = new AnimatedSprite(sheet.frames);
-          sheep.animationSpeed = 0.07 + hash(island.idx, i, 78) * 0.04;
-          sheep.loop = true;
-          sheep.play();
-          sheep.anchor.set(0.5, 0.95);
-          const { sx, sy } = gridToScreen(c.gx, c.gy, 0, 0);
-          sheep.position.set(sx + (hash(island.idx, i, 79) - 0.5) * TILE_W * 0.4, sy + TILE_H * 0.3);
-          sheep.scale.set((TILE_W * 1.0) / sheet.frameW);
-          (sheep as unknown as { zIndex: number }).zIndex = c.gy * 1000 + c.gx + 55;
-          decorLayer.addChild(sheep);
-          animatedDecorCount++;
-        }
-        // Wood icons (wood resource drops)
-        for (let i = 0; i < d.woodIcons && terrain.wood !== Texture.EMPTY; i++) {
-          const c = pickCell(i * 7 + 41);
-          placeStatic(c.gx, c.gy, terrain.wood, 0.5, 0.3, 800 + i);
-        }
-        // Meat resource drops — same density as wood on main island
-        if (island.theme === 'main' && terrain.meat !== Texture.EMPTY) {
-          for (let i = 0; i < 8; i++) {
-            const c = pickCell(i * 13 + 91);
-            placeStatic(c.gx, c.gy, terrain.meat, 0.5, 0.3, 850 + i);
-          }
-        }
-        // Tools scattered (axe/pickaxe) — only main island
-        if (island.theme === 'main' && terrain.tools.length) {
-          for (let i = 0; i < 10; i++) {
-            const c = pickCell(i * 17 + 131);
-            const tex = terrain.tools[i % terrain.tools.length];
-            placeStatic(c.gx, c.gy, tex, 0.45, 0.35, 900 + i);
-          }
+        if (r < DENSITY.treeChance + DENSITY.bushChance + DENSITY.rockChance) {
+          const tex = terrain.rocks[Math.floor(hash(gx, gy, 5) * terrain.rocks.length)];
+          placeStatic(gx, gy, tex, 0.7, 0.4, 5);
         }
       }
 
-      // ---- Water decorations (rocks in water + rubber duck) near main island
-      const mainIsland = worldMask.islands[0];
+      // Stumps
+      for (let i = 0; i < stumpCount && terrain.stumps.length; i++) {
+        const c = pickLand(i * 3 + 7);
+        if (!c) break;
+        const tex = terrain.stumps[i % terrain.stumps.length];
+        placeStatic(c.gx, c.gy, tex, 1.0, 0.4, 600 + i);
+      }
+
+      // Gold clusters (4 stones each, close together)
+      for (let i = 0; i < goldClusters && terrain.goldStones.length; i++) {
+        const center = pickLand(i * 5 + 17);
+        if (!center) break;
+        for (let k = 0; k < 4; k++) {
+          const gx = center.gx + Math.floor((hash(i, k, 1) - 0.5) * 3);
+          const gy = center.gy + Math.floor((hash(i, k, 2) - 0.5) * 3);
+          if (!landAtWorld(gx, gy)) continue;
+          const tex = terrain.goldStones[Math.floor(hash(gx, gy, 7) * terrain.goldStones.length)];
+          placeStatic(gx, gy, tex, 1.2, 0.3, 700 + i * 10 + k);
+        }
+      }
+
+      // Sheep — mix the 3 animations for variety
+      const sheepSheets = [terrain.sheepGrass, terrain.sheepIdle, terrain.sheepMove].filter((s) => s.frames.length);
+      for (let i = 0; i < sheepCount && sheepSheets.length; i++) {
+        if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
+        const c = pickLand(i * 11 + 31);
+        if (!c) break;
+        const sheet = sheepSheets[Math.floor(hash(i, 0, 77) * sheepSheets.length)];
+        const sheep = new AnimatedSprite(sheet.frames);
+        sheep.animationSpeed = 0.07 + hash(i, 0, 78) * 0.04;
+        sheep.loop = true;
+        sheep.play();
+        sheep.anchor.set(0.5, 0.95);
+        const { sx, sy } = gridToScreen(c.gx, c.gy, 0, 0);
+        sheep.position.set(sx + (hash(i, 0, 79) - 0.5) * TILE_W * 0.4, sy + TILE_H * 0.3);
+        sheep.scale.set((TILE_W * 1.0) / sheet.frameW);
+        (sheep as unknown as { zIndex: number }).zIndex = c.gy * 1000 + c.gx + 55;
+        decorLayer.addChild(sheep);
+        animatedDecorCount++;
+      }
+
+      // Wood/meat/tool icons — small detail drops on grass
+      for (let i = 0; i < woodIcons && terrain.wood !== Texture.EMPTY; i++) {
+        const c = pickLand(i * 7 + 41);
+        if (!c) break;
+        placeStatic(c.gx, c.gy, terrain.wood, 0.5, 0.3, 800 + i);
+      }
+      for (let i = 0; i < meatIcons && terrain.meat !== Texture.EMPTY; i++) {
+        const c = pickLand(i * 13 + 91);
+        if (!c) break;
+        placeStatic(c.gx, c.gy, terrain.meat, 0.5, 0.3, 850 + i);
+      }
+      for (let i = 0; i < toolIcons && terrain.tools.length; i++) {
+        const c = pickLand(i * 17 + 131);
+        if (!c) break;
+        const tex = terrain.tools[i % terrain.tools.length];
+        placeStatic(c.gx, c.gy, tex, 0.45, 0.35, 900 + i);
+      }
+
+      // ---- Water decorations around the island edge ----
+      // Find the bounding box of the island in world coords, then scatter
+      // water rocks + rubber ducks in the water margin around it.
+      let islandMinGx = Infinity, islandMaxGx = -Infinity, islandMinGy = Infinity, islandMaxGy = -Infinity;
+      for (const c of landCells) {
+        if (c.gx < islandMinGx) islandMinGx = c.gx;
+        if (c.gx > islandMaxGx) islandMaxGx = c.gx;
+        if (c.gy < islandMinGy) islandMinGy = c.gy;
+        if (c.gy > islandMaxGy) islandMaxGy = c.gy;
+      }
+      const islandCx = (islandMinGx + islandMaxGx) / 2;
+      const islandCy = (islandMinGy + islandMaxGy) / 2;
+      const islandRadius = Math.max(islandMaxGx - islandMinGx, islandMaxGy - islandMinGy) / 2;
+
       if (terrain.waterRocks.length) {
         for (let i = 0; i < 14; i++) {
           const angle = hash(i, 0, 33) * Math.PI * 2;
-          const dist = mainIsland.baseRadius + 10 + hash(i, 1, 33) * 10;
-          const gx = Math.round(mainIsland.cx + Math.cos(angle) * dist);
-          const gy = Math.round(mainIsland.cy + Math.sin(angle) * dist);
-          if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) continue;
-          if (worldMask.isLand(gx, gy)) continue;
+          const dist = islandRadius + 4 + hash(i, 1, 33) * 8;
+          const gx = Math.round(islandCx + Math.cos(angle) * dist);
+          const gy = Math.round(islandCy + Math.sin(angle) * dist);
+          if (landAtWorld(gx, gy)) continue;
           if (animatedDecorCount >= MAX_ANIMATED_DECOR) break;
           const sheet = terrain.waterRocks[i % terrain.waterRocks.length];
           const rock = new AnimatedSprite(sheet.frames);
@@ -592,11 +550,10 @@ export default function CityCanvas({
       if (terrain.duck !== Texture.EMPTY) {
         for (let i = 0; i < 3; i++) {
           const angle = Math.PI * (0.5 + i * 0.4);
-          const dist = mainIsland.baseRadius + 6 + i * 4;
-          const gx = Math.round(mainIsland.cx + Math.cos(angle) * dist);
-          const gy = Math.round(mainIsland.cy + Math.sin(angle) * dist);
-          if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) continue;
-          if (worldMask.isLand(gx, gy)) continue;
+          const dist = islandRadius + 3 + i * 3;
+          const gx = Math.round(islandCx + Math.cos(angle) * dist);
+          const gy = Math.round(islandCy + Math.sin(angle) * dist);
+          if (landAtWorld(gx, gy)) continue;
           const duck = new Sprite(terrain.duck);
           duck.anchor.set(0.5, 0.5);
           const { sx, sy } = gridToScreen(gx, gy, 0, 0);
@@ -605,8 +562,6 @@ export default function CityCanvas({
           tileLayer.addChild(duck);
         }
       }
-
-      // Mini-island shrouds + lock icons removed — no more mini islands.
 
       // ---- Clouds layer — drifting above everything ----
       const cloudLayer = new Container();
