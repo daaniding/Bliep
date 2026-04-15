@@ -151,15 +151,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* === Big centered Battle button === */}
+        {/* === Dual CTA row — Battle + Party === */}
         <div className="cr-cta-row">
           <button
             type="button"
-            className="cr-cta cr-cta-gold cr-cta-big"
+            className="cr-cta cr-cta-gold"
             disabled={!chosenTask || pick.completed}
             onClick={() => chosenTask && !pick.completed && setShowTimerModal(true)}
           >
             Battle
+          </button>
+          <button
+            type="button"
+            className="cr-cta cr-cta-pink"
+            onClick={() => sfxTap()}
+          >
+            Party!
           </button>
         </div>
         {pick.completed && (

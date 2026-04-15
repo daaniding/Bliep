@@ -25,25 +25,25 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
   return (
     <div className="app-shell">
 
-      {/* ── CLASH ROYALE TOP BAR ── */}
+      {/* ── CLASH ROYALE TOP BAR — two rows of compact pills ── */}
       {!hideTopBar && (
         <div className="cr-topbar">
 
-          {/* Left: level badge + nameplate with XP bar */}
-          <Link href="/settings" className="cr-nameplate">
+          {/* LEFT: level badge + XP pill */}
+          <Link href="/settings" className="cr-level-group">
             <div className="cr-level-badge">
               <span>{level}</span>
             </div>
-            <div className="cr-name-block">
-              <span className="cr-name">DAAN</span>
+            <div className="cr-xp-pill">
+              <span className="cr-xp-label">LVL {level}</span>
               <div className="cr-xp-track">
                 <div className="cr-xp-fill" style={{ width: `${(xp / xpMax) * 100}%` }} />
-                <span className="cr-xp-text">LVL {level} · {xp}/{xpMax}</span>
               </div>
+              <span className="cr-xp-val">{xp}/{xpMax}</span>
             </div>
           </Link>
 
-          {/* Right: trophy + gold + gems chips + menu */}
+          {/* RIGHT: 3 resource chips + menu */}
           <div className="cr-top-right">
             <Link href="/league" className="cr-chip cr-chip-trophy">
               <img src="/assets/icons/trophy.png" alt="" />
