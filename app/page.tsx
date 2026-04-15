@@ -129,7 +129,7 @@ export default function Home() {
         </div>
         {/* bottom overlay removed — city fills full viewport */}
 
-        {/* === DAILY ROYALE banner === */}
+        {/* === DAILY ROYALE banner with mini reward slots === */}
         <div className="cr-pass-banner">
           <img src="/assets/ui2/warrior-mascot.png" alt="" className="cr-pass-mascot" />
           <div className="cr-pass-mid">
@@ -144,28 +144,22 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <div className="cr-pass-reward">
-            <img src="/assets/icons/coins.png" alt="" />
-            <span>{chosenTask ? chosenTask.coins : '?'}</span>
+          <div className="cr-pass-slots">
+            <div className="cr-pass-slot"><img src="/assets/icons/coins.png" alt="" /></div>
+            <div className="cr-pass-slot"><img src="/assets/icons/star.png" alt="" /></div>
+            <div className="cr-pass-slot cr-pass-slot-big"><img src="/assets/icons/chest.png" alt="" /></div>
           </div>
         </div>
 
-        {/* === Dual CTA buttons (Battle + Party) === */}
+        {/* === Big centered Battle button === */}
         <div className="cr-cta-row">
           <button
             type="button"
-            className="cr-cta cr-cta-gold"
+            className="cr-cta cr-cta-gold cr-cta-big"
             disabled={!chosenTask || pick.completed}
             onClick={() => chosenTask && !pick.completed && setShowTimerModal(true)}
           >
             Battle
-          </button>
-          <button
-            type="button"
-            className="cr-cta cr-cta-pink"
-            onClick={() => sfxTap()}
-          >
-            Party!
           </button>
         </div>
         {pick.completed && (
@@ -178,21 +172,29 @@ export default function Home() {
 
       </div>
 
-      {/* === Reward cards row above menu bar === */}
+      {/* === Card hand above menu bar (warrior playing cards) === */}
       <div className="cr-reward-row" aria-hidden>
         {(['easy','medium','hard','daily'] as const).map((tier) => {
-          const cfg: Record<string, { icon: string; label: string; min: string }> = {
-            easy:   { icon: '/assets/icons/chest.png',  label: 'Arena 1', min: '15 MIN' },
-            medium: { icon: '/assets/icons/shield.png', label: 'Arena 2', min: '30 MIN' },
-            hard:   { icon: '/assets/icons/star.png',   label: 'Arena 3', min: '60 MIN' },
-            daily:  { icon: '/assets/icons/medal.png',  label: 'Daily',   min: '24 H'   },
+          const cfg: Record<string, { hero: string; label: string; min: string }> = {
+            easy:   { hero: '/assets/walkers2/warrior-blue.png',   label: '15 min',  min: 'Arena 1' },
+            medium: { hero: '/assets/walkers2/warrior-yellow.png', label: '30 min',  min: 'Arena 2' },
+            hard:   { hero: '/assets/walkers2/warrior-red.png',    label: '60 min',  min: 'Arena 3' },
+            daily:  { hero: '/assets/walkers2/warrior-purple.png', label: 'DAILY',   min: 'Royal'  },
           };
           const c = cfg[tier];
           const cls = tier === 'daily' ? '' : tier;
           return (
             <button key={tier} type="button" className={`cr-reward-card ${cls} ${pick.completed ? 'done' : ''}`}>
               <span className="cr-reward-timer">{c.min}</span>
-              <img src={c.icon} alt="" className="cr-reward-icon" />
+              <div
+                className="cr-reward-art"
+                style={{
+                  backgroundImage: `url(${c.hero})`,
+                  backgroundSize: 'auto 100%',
+                  backgroundPosition: 'left center',
+                  backgroundRepeat: 'no-repeat',
+                }}
+              />
               <span className="cr-reward-label">{c.label}</span>
             </button>
           );

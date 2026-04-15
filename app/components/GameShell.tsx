@@ -35,31 +35,29 @@ export default function GameShell({ children, hideNav = false, hideTopBar = fals
               <span>{level}</span>
             </div>
             <div className="cr-name-block">
-              <div className="cr-name-row">
-                <span className="cr-name">DAAN</span>
-                <img src="/assets/icons/trophy.png" alt="" className="cr-mini-icon" />
-                <span className="cr-mini-val">{trophies}</span>
-              </div>
+              <span className="cr-name">DAAN</span>
               <div className="cr-xp-track">
                 <div className="cr-xp-fill" style={{ width: `${(xp / xpMax) * 100}%` }} />
-                <span className="cr-xp-text">{xp}/{xpMax}</span>
+                <span className="cr-xp-text">LVL {level} · {xp}/{xpMax}</span>
               </div>
             </div>
           </Link>
 
-          {/* Right: gold chip + gems chip + menu */}
+          {/* Right: trophy + gold + gems chips + menu */}
           <div className="cr-top-right">
+            <Link href="/league" className="cr-chip cr-chip-trophy">
+              <img src="/assets/icons/trophy.png" alt="" />
+              <span>{trophies}</span>
+            </Link>
             <div className="cr-chip cr-chip-gold">
               <img src="/assets/icons/coins.png" alt="" />
               <span>{coins}</span>
               <span className="cr-chip-plus">+</span>
             </div>
-            {streak.current > 0 && (
-              <div className="cr-chip cr-chip-streak">
-                <span className="cr-chip-icon">🔥</span>
-                <span>{streak.current}</span>
-              </div>
-            )}
+            <div className="cr-chip cr-chip-gem">
+              <img src="/assets/icons/star.png" alt="" />
+              <span>{streak.current || 0}</span>
+            </div>
             <Link href="/settings" className="cr-menu-btn" aria-label="Menu">
               <span></span><span></span><span></span>
             </Link>
