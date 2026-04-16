@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, winChance, wallRefundFraction, type PveCamp } from '@/lib/pveCamps';
-import { loadCity, saveCity, addCoins, spendCoins } from '@/lib/cityStore';
+import { loadCity, saveCity, addCoins, spendCoins, resetCity } from '@/lib/cityStore';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import BattleIsland from './BattleIsland';
@@ -167,10 +167,10 @@ export default function AttackClient() {
             </div>
           )}
 
-          {/* DEV: test coins */}
-          {process.env.NODE_ENV === 'development' || true ? (
+          {/* DEV: test buttons */}
+          <div className="flex gap-3 mb-4">
             <button
-              className="mb-4 text-[10px] text-faint underline"
+              className="text-[10px] text-faint underline"
               onClick={() => {
                 const city = loadCity();
                 saveCity(addCoins(city, 5000));
@@ -179,7 +179,18 @@ export default function AttackClient() {
             >
               +5000 coins (test)
             </button>
-          ) : null}
+            <button
+              className="text-[10px] text-[#c75b3d] underline"
+              onClick={() => {
+                resetCity();
+                localStorage.removeItem('bliep:pve:v1');
+                localStorage.removeItem('bliep:streak');
+                window.location.reload();
+              }}
+            >
+              Reset alles (test)
+            </button>
+          </div>
 
           <div className="space-y-3">
             {CAMPS.map(camp => {
