@@ -80,13 +80,15 @@ export function resetCity(): CityState {
 }
 
 function defaultCity(): CityState {
-  const center = Math.floor(32 / 2);
+  // Place start-house at CITY_CENTER (96,96) on the 192×192 grid
+  const cx = 96;
+  const cy = 96;
   return {
     version: 2,
     coins: 0,
     speedTokens: 0,
     buildings: [
-      { id: 'start-house', type: 'house', gx: center, gy: center + 1, level: 1 },
+      { id: 'start-house', type: 'house', gx: cx, gy: cy, level: 1 },
     ],
     buildQueue: [],
     chest: { lastOpenAt: 0 },
@@ -98,11 +100,25 @@ function defaultCity(): CityState {
 
 function normalize(parsed: Partial<CityState>): CityState {
   const base = defaultCity();
+  let buildings = parsed.buildings ?? base.buildings;
+
+  // Fix start-house position: old saves have it at (16,17) which is off-island.
+  // Move it to CITY_CENTER (96,96) if it's clearly in the wrong spot.
+  const startHouse = buildings.find(b => b.id === 'start-house');
+  if (startHouse && startHouse.gx < 60) {
+    startHouse.gx = 96;
+    startHouse.gy = 96;
+  }
+  // Ensure start-house exists
+  if (!buildings.some(b => b.id === 'start-house')) {
+    buildings = [{ id: 'start-house', type: 'house' as const, gx: 96, gy: 96, level: 1 }, ...buildings];
+  }
+
   return {
     version: 2,
     coins: parsed.coins ?? base.coins,
     speedTokens: parsed.speedTokens ?? 0,
-    buildings: parsed.buildings ?? base.buildings,
+    buildings,
     buildQueue: parsed.buildQueue ?? [],
     chest: parsed.chest ?? base.chest,
     npcSeed: parsed.npcSeed ?? base.npcSeed,
