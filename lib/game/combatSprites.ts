@@ -28,9 +28,9 @@ function sliceRow(tex: Texture, frameW: number, frameH: number, count: number): 
 // ---- Knight sprites (/assets/knight/) ----
 
 export interface KnightSprites {
-  idle: Texture[];   // 8 frames, 84×84
-  run: Texture[];    // 8 frames, 96×84
-  attack: Texture[]; // 7 frames, 84×84
+  idle: Texture[];   // 8 frames, 84×84 (672/84=8)
+  run: Texture[];    // 8 frames, 96×84 (768/96=8)
+  attack: Texture[]; // 6 frames, 96×84 (576/96=6)
 }
 
 let knightCache: KnightSprites | null = null;
@@ -51,7 +51,7 @@ export async function loadKnightSprites(): Promise<KnightSprites> {
   knightCache = {
     idle: sliceRow(idle, 84, 84, 8),
     run: sliceRow(run, 96, 84, 8),
-    attack: sliceRow(attack, 84, 84, 7),
+    attack: sliceRow(attack, 96, 84, 6),
   };
   return knightCache;
 }
