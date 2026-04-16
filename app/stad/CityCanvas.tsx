@@ -18,7 +18,7 @@ import {
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { sandToWaterIndex, grassToSandIndex } from '@/lib/game/autotile';
+// autotile imports removed — no sand/coast tiles needed
 import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
@@ -255,7 +255,7 @@ export default function CityCanvas({
         const rx = wgx - mapOffsetGx;
         const ry = wgy - mapOffsetGy;
         if (rx < 0 || rx >= MAP_COLS || ry < 0 || ry >= MAP_ROWS) return false;
-        return elevation[ry][rx] >= 2; // sand or grass
+        return elevation[ry][rx] === 3; // grass only
       };
 
       // ---- Bake water tile to a 2×2 block for seamless tiling ----
@@ -302,7 +302,6 @@ export default function CityCanvas({
 
       // Collect cells by type for rendering + preview bbox
       const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
-      const sandCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const landCells: Array<{ gx: number; gy: number }> = [];
 
       for (let ry = 0; ry < MAP_ROWS; ry++) {
@@ -313,95 +312,29 @@ export default function CityCanvas({
             grassCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           }
-          if (v === 2) {
-            sandCells.push({ gx, gy, rx, ry });
-            landCells.push({ gx, gy });
-          }
         }
       }
 
-      // ---- Shallow water + river: rendered as a single Graphics overlay ----
-      // Using one big Graphics draw instead of individual sprites prevents
-      // the visible-tile-gaps artifact at low zoom levels.
+      // ---- Shallow water overlay (subtle depth near coast) ----
       const waterOverlay = new Graphics();
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
-          const v = elevation[ry][rx];
-          if (v === 1) {
-            // Shallow water — lighter blue tint
+          if (elevation[ry][rx] === 1) {
             waterOverlay.rect(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H, TILE_W, TILE_H);
-            waterOverlay.fill({ color: 0x7ec8e3, alpha: 0.25 });
-          } else if (v === 4) {
-            // River water — greenish-blue tint
-            waterOverlay.rect(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H, TILE_W, TILE_H);
-            waterOverlay.fill({ color: 0x5ab89a, alpha: 0.3 });
+            waterOverlay.fill({ color: 0x7ec8e3, alpha: 0.2 });
           }
         }
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Layer 3: Sand tiles + sand→water coast autotile ----
-      for (const cell of sandCells) {
-        const idx = sandToWaterIndex(elevation, cell.rx, cell.ry);
-        // If bordering water, use coast tile; otherwise plain sand fill
-        const tex = (idx !== null && idx !== 4) ? terrain.coast[idx] : terrain.sandFill;
-        const sprite = new Sprite(tex);
-        sprite.anchor.set(0, 0);
-        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
-        sprite.width = TILE_W;
-        sprite.height = TILE_H;
-        tileLayer.addChild(sprite);
-      }
-
-      // ---- Layer 4: Grass tiles + grass→sand transition ----
+      // ---- Grass tiles — clean edge, no sand, no cliffs ----
       for (const cell of grassCells) {
-        // Base grass fill — pick from variants using hash for consistency
-        const grassIdx = Math.floor(hash(cell.gx, cell.gy, 42) * terrain.grass.length);
-        const sprite = new Sprite(terrain.grass[grassIdx]);
+        const sprite = new Sprite(terrain.grass[0]);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
         tileLayer.addChild(sprite);
-
-        // Grass→sand edge overlay (if bordering sand)
-        const sandIdx = grassToSandIndex(elevation, cell.rx, cell.ry);
-        if (sandIdx !== null && terrain.sandToGrass.length > sandIdx) {
-          const edge = new Sprite(terrain.sandToGrass[sandIdx]);
-          edge.anchor.set(0, 0);
-          edge.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
-          edge.width = TILE_W;
-          edge.height = TILE_H;
-          edge.alpha = 0.7;
-          tileLayer.addChild(edge);
-        }
-      }
-
-      // ================================================================
-      // COASTAL ROCKS — scattered along the beach near water
-      // ================================================================
-      if (terrain.rocks.length > 0) {
-        for (const cell of sandCells) {
-          // Only place rocks on sand cells that directly touch water
-          const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
-          const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
-          const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
-          const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-          const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1;
-          if (!touchesWater) continue;
-          if (hash(cell.gx, cell.gy, 1500) > 0.15) continue; // ~15% of coast sand cells
-          const idx = Math.floor(hash(cell.gx, cell.gy, 1501) * terrain.rocks.length);
-          const tex = terrain.rocks[idx];
-          const rock = new Sprite(tex);
-          rock.anchor.set(0.5, 0.8);
-          const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
-          rock.position.set(sx + (hash(cell.gx, cell.gy, 1502) - 0.5) * TILE_W * 0.4,
-                            sy + (hash(cell.gx, cell.gy, 1503) - 0.5) * TILE_H * 0.3);
-          rock.width = TILE_W * (0.5 + hash(cell.gx, cell.gy, 1504) * 0.4);
-          rock.height = rock.width * (tex.height / tex.width);
-          rock.zIndex = Math.floor(rock.position.y);
-          decorLayer.addChild(rock);
-        }
       }
 
       // ================================================================
@@ -467,18 +400,17 @@ export default function CityCanvas({
       }
 
       // ================================================================
-      // CATTAILS / REEDS — along grass cells that touch water/river
+      // CATTAILS / REEDS — along grass cells that touch water
       // ================================================================
       if (terrain.cattails.length > 0) {
         for (const cell of grassCells) {
-          // Check if this grass cell borders water or river
           const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
           const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
           const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
           const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-          const touchesWater = (n <= 1 || n === 4) || (s <= 1 || s === 4) || (w <= 1 || w === 4) || (e <= 1 || e === 4);
+          const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1;
           if (!touchesWater) continue;
-          if (hash(cell.gx, cell.gy, 2000) > 0.25) continue; // ~25% of water-edge grass
+          if (hash(cell.gx, cell.gy, 2000) > 0.25) continue;
           const idx = Math.floor(hash(cell.gx, cell.gy, 2001) * terrain.cattails.length);
           const sprite = new Sprite(terrain.cattails[idx]);
           sprite.anchor.set(0.5, 0.9);

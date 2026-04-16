@@ -110,7 +110,7 @@ export const ELEVATION_TEXT = `
 ........................................................................................................................
 `;
 
-/** Parse raw ASCII → number grid (0=water, 3=grass, 4=river). */
+/** Parse raw ASCII → number grid (0=water, 3=grass). River removed — all land is grass. */
 export function parseElevation(): number[][] {
   const lines = ELEVATION_TEXT.trim().split('\n');
   const rows: number[][] = [];
@@ -119,8 +119,8 @@ export function parseElevation(): number[][] {
     const row: number[] = [];
     for (let i = 0; i < MAP_COLS; i++) {
       const ch = padded[i];
-      if (ch === '1') row.push(3);      // grass
-      else if (ch === 'r') row.push(4); // river
+      // Both '1' and 'r' become grass — river removed for cleaner look
+      if (ch === '1' || ch === 'r') row.push(3);
       else row.push(0);                 // water
     }
     rows.push(row);
@@ -130,11 +130,10 @@ export function parseElevation(): number[][] {
 }
 
 /**
- * Post-process the raw elevation grid to add sand beach and shallow water.
+ * Post-process the raw elevation grid.
  *
- * Flood-fills outward from coastline:
- * - Grass cells within 2 tiles of any water/river → sand (2)
- * - Water cells within 3 tiles of any land → shallow water (1)
+ * No sand band — grass goes directly to water for a clean natural edge.
+ * Only adds shallow water (1) near coastline for visual depth.
  */
 export function processElevation(raw: number[][]): number[][] {
   const rows = raw.length;
@@ -143,76 +142,24 @@ export function processElevation(raw: number[][]): number[][] {
   // Deep copy
   const grid: number[][] = raw.map(r => [...r]);
 
-  // Helper: is this cell any kind of water?
-  const isWater = (r: number, c: number) => {
-    const v = raw[r]?.[c] ?? 0;
-    return v === 0 || v === 4; // ocean or river
-  };
-  // Helper: is this cell any kind of land?
-  const isLand = (r: number, c: number) => {
-    const v = raw[r]?.[c] ?? 0;
-    return v === 3; // grass
-  };
-
-  // ---- Pass 1: Sand band (grass→sand near water) ----
-  // BFS from all water cells, mark grass cells within distance 2 as sand
-  const distToWater: number[][] = Array.from({ length: rows }, () =>
+  // ---- Shallow water (water cells near land) ----
+  const distToLand: number[][] = Array.from({ length: rows }, () =>
     new Array(cols).fill(999)
   );
   const queue: Array<[number, number]> = [];
 
-  // Seed BFS from all water/river cells
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (isWater(r, c)) {
-        distToWater[r][c] = 0;
+      if (grid[r][c] === 3) {
+        distToLand[r][c] = 0;
         queue.push([r, c]);
       }
     }
   }
 
-  // BFS
   let qi = 0;
   while (qi < queue.length) {
     const [r, c] = queue[qi++];
-    const d = distToWater[r][c];
-    if (d >= 3) continue; // don't spread further than 3
-    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      if (distToWater[nr][nc] <= d + 1) continue;
-      distToWater[nr][nc] = d + 1;
-      queue.push([nr, nc]);
-    }
-  }
-
-  // Convert grass cells close to water into sand
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === 3 && distToWater[r][c] <= 2) {
-        grid[r][c] = 2; // sand
-      }
-    }
-  }
-
-  // ---- Pass 2: Shallow water (water cells near land) ----
-  const distToLand: number[][] = Array.from({ length: rows }, () =>
-    new Array(cols).fill(999)
-  );
-  const queue2: Array<[number, number]> = [];
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (raw[r][c] === 3 || raw[r][c] === 2 || grid[r][c] === 2) {
-        distToLand[r][c] = 0;
-        queue2.push([r, c]);
-      }
-    }
-  }
-
-  let qi2 = 0;
-  while (qi2 < queue2.length) {
-    const [r, c] = queue2[qi2++];
     const d = distToLand[r][c];
     if (d >= 4) continue;
     for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
@@ -220,7 +167,7 @@ export function processElevation(raw: number[][]): number[][] {
       if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
       if (distToLand[nr][nc] <= d + 1) continue;
       distToLand[nr][nc] = d + 1;
-      queue2.push([nr, nc]);
+      queue.push([nr, nc]);
     }
   }
 
