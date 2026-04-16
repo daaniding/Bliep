@@ -386,18 +386,7 @@ export default function CityCanvas({
         }
       }
 
-      // ---- Build zone ring: skipped when it covers the whole map ----
-      if (showBuildZone && BUILD_ZONE_RADIUS * 2 + 1 < GRID_SIZE) {
-        const ring = new Graphics();
-        const r = BUILD_ZONE_RADIUS;
-        const left = (CITY_CENTER.gx - r) * TILE_W;
-        const top = (CITY_CENTER.gy - r) * TILE_H;
-        const w = (r * 2 + 1) * TILE_W;
-        const h = (r * 2 + 1) * TILE_H;
-        ring.rect(left, top, w, h);
-        ring.stroke({ color: 0xfdd069, width: 4, alpha: 0.55 });
-        tileLayer.addChild(ring);
-      }
+      // Build zone = the island itself (no ring needed, coast is the border)
 
       // ---- Decor over the static map ----
       // Everything removed — the player paints decor/buildings/paths on
