@@ -123,6 +123,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
       };
       const landCells: Array<{ gx: number; gy: number }> = [];
       const landEdgeCells: Array<{ gx: number; gy: number }> = [];
+      const landSet = new Set<string>();
 
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
@@ -130,6 +131,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
           const gx = mapOffsetGx + rx;
           const gy = mapOffsetGy + ry;
           landCells.push({ gx, gy });
+          landSet.add(`${gx},${gy}`);
           const hasWater =
             (elevation[ry - 1]?.[rx] ?? 0) === 0 ||
             (elevation[ry + 1]?.[rx] ?? 0) === 0 ||
@@ -275,7 +277,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
 
       // ---- Init battle (landEdgeCells passed directly!) ----
       const islandBbox = { minGx: mapOffsetGx, maxGx: mapOffsetGx + MAP_COLS, minGy: mapOffsetGy, maxGy: mapOffsetGy + MAP_ROWS };
-      const battle = createBattle(camp, buildings, 0, 0, landEdgeCells);
+      const battle = createBattle(camp, buildings, 0, 0, landEdgeCells, landSet);
 
       const enemyUnit = combat.enemies[camp.id];
       if (!enemyUnit) { console.error('No enemy sprites for camp', camp.id); return; }
@@ -494,7 +496,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
         }
 
         // ---- Camera shake (only during attacks, scaled by timeScale) ----
-        if (battle.phase === 'fight' && battle.enemies.some(e => e.state === 'attack')) {
+        if (battle.phase === 'battle' && battle.enemies.some(e => e.state === 'attack')) {
           const intensity = battle.timeScale < 0.5 ? 5 : 3; // stronger shake in slow-mo
           world.x = camX + (Math.random() - 0.5) * intensity;
           world.y = camY + (Math.random() - 0.5) * intensity * 0.7;
