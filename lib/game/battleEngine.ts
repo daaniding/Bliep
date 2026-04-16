@@ -9,7 +9,8 @@
  * - Castle (start-house) is the lose condition
  */
 
-import type { PveCamp } from '@/lib/pveCamps';
+import type { PveCamp, Difficulty } from '@/lib/pveCamps';
+import { DIFFICULTY_MULT } from '@/lib/pveCamps';
 import type { PlacedBuilding } from '@/lib/cityStore';
 import { TILE_W, TILE_H } from './iso';
 import { footprintOf } from './buildings';
@@ -97,6 +98,7 @@ export interface BattleState {
   slowMoTimer: number;
   castleId: string | null;
   castleHit: boolean;
+  difficulty: Difficulty;
   /** Damage events for floating numbers — consumed by renderer each frame. */
   damageEvents: DamageEvent[];
   /** Wave announcement text (set when new wave starts). */
@@ -135,6 +137,7 @@ export function createBattle(
   ox: number, oy: number,
   landEdgeCells: Array<{ gx: number; gy: number }>,
   landSet: Set<string>,
+  difficulty: Difficulty = 'easy',
 ): BattleState {
   const castle = buildings.find(b => b.id === 'start-house') ?? buildings.find(b => b.type === 'house');
   const castleId = castle?.id ?? null;
@@ -199,8 +202,9 @@ export function createBattle(
     }
   }
 
-  // Waves
-  const total = camp.spriteCount + 3;
+  // Waves — scaled by difficulty
+  const dm = DIFFICULTY_MULT[difficulty];
+  const total = Math.round((camp.spriteCount + 3) * dm.enemyCount);
   const w1 = Math.max(2, Math.ceil(total * 0.3));
   const w2 = Math.max(2, Math.ceil(total * 0.45));
   const w3 = Math.max(1, total - w1 - w2);
@@ -210,7 +214,7 @@ export function createBattle(
     enemies: [], defenders, archers, arrows: [], fx: [],
     buildingHp, nextId, landEdgeCells, landSet,
     countdownNum: 3, timeScale: 1, slowMoTimer: 0,
-    castleId, castleHit: false,
+    castleId, castleHit: false, difficulty,
     damageEvents: [], waveAnnouncement: null, waveAnnouncementTimer: 0,
     currentWave: 0, waveSpawned: [0, 0, 0], waveTotals: [w1, w2, w3], waveTimer: 0,
     buildingRects,
@@ -441,7 +445,8 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
 
   const pos = edgePos(ox, oy, state.landEdgeCells);
   const c = buildingCenter(targetB, ox, oy);
-  const baseHp = 30 + camp.defense * 3;
+  const diffMult = DIFFICULTY_MULT[state.difficulty];
+  const baseHp = (30 + camp.defense * 3) * diffMult.enemyHp;
   const mult = tier === 'scout' ? 0.5 : tier === 'soldier' ? 1.0 : 2.5;
   const spdMult = tier === 'scout' ? 1.5 : tier === 'soldier' ? 1.0 : 0.7;
   const hp = Math.round(baseHp * mult);

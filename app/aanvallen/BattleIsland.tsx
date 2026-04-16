@@ -22,17 +22,18 @@ import { spriteForLevel, footprintOf, BUILDINGS } from '@/lib/game/buildings';
 import { autotileGrassSlot } from '@/lib/game/autotile';
 import { TILE_W, TILE_H, CITY_CENTER } from '@/lib/game/iso';
 import { parseElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import type { PveCamp } from '@/lib/pveCamps';
+import type { PveCamp, Difficulty } from '@/lib/pveCamps';
 import type { CityState } from '@/lib/cityStore';
 
 interface Props {
   camp: PveCamp;
   cityState: CityState;
+  difficulty: Difficulty;
   /** Called with the actual battle outcome (true=won, false=lost). */
   onComplete: (won: boolean) => void;
 }
 
-export default function BattleIsland({ camp, cityState, onComplete }: Props) {
+export default function BattleIsland({ camp, cityState, difficulty, onComplete }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
@@ -211,7 +212,8 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
         const cy = (b.gy + fp.h / 2) * TILE_H;
         sprite.x = cx; sprite.y = cy;
         const bdef = BUILDINGS[b.type];
-        const baseScale = (bdef.spriteScale ?? 1) * 1.4;
+        const isCastle = b.id === 'start-house';
+        const baseScale = (bdef.spriteScale ?? 1) * (isCastle ? 2.2 : 1.4); // castle 2.2× bigger
         const span = Math.max(fp.w, fp.h) * TILE_W;
         sprite.width = span * baseScale;
         sprite.height = (tex.height / tex.width) * span * baseScale;
@@ -278,7 +280,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
 
       // ---- Init battle (landEdgeCells passed directly!) ----
       const islandBbox = { minGx: mapOffsetGx, maxGx: mapOffsetGx + MAP_COLS, minGy: mapOffsetGy, maxGy: mapOffsetGy + MAP_ROWS };
-      const battle = createBattle(camp, buildings, 0, 0, landEdgeCells, landSet);
+      const battle = createBattle(camp, buildings, 0, 0, landEdgeCells, landSet, difficulty);
 
       const enemyUnit = combat.enemies[camp.id];
       if (!enemyUnit) { console.error('No enemy sprites for camp', camp.id); return; }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, winChance, wallRefundFraction, type PveCamp } from '@/lib/pveCamps';
+import { CAMPS, DIFFICULTY_MULT, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, winChance, wallRefundFraction, type PveCamp, type Difficulty } from '@/lib/pveCamps';
 import { loadCity, saveCity, addCoins, spendCoins, resetCity } from '@/lib/cityStore';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -62,7 +62,7 @@ export default function AttackClient() {
   const [pveState, setPveState] = useState<Record<string, number>>(() => loadPveState());
   const [, setNow] = useState(Date.now());
   const [confirmCamp, setConfirmCamp] = useState<PveCamp | null>(null);
-  const [battling, setBattling] = useState<{ camp: PveCamp; cityState: CityState } | null>(null);
+  const [battling, setBattling] = useState<{ camp: PveCamp; cityState: CityState; difficulty: Difficulty } | null>(null);
   const [result, setResult] = useState<{ camp: PveCamp; won: boolean } | null>(null);
   const [kazerneLvl, setKazerneLvl] = useState(0);
   const [totalWallLevel, setTotalWallLevel] = useState(0);
@@ -90,34 +90,40 @@ export default function AttackClient() {
     setConfirmCamp(camp);
   }, [coins, pveState]);
 
-  const startBattle = useCallback(() => {
+  const startBattle = useCallback((diff: Difficulty) => {
     if (!confirmCamp) return;
+
+    const dm = DIFFICULTY_MULT[diff];
+    const cost = Math.round(confirmCamp.hireCost * dm.cost);
 
     // Spend hire cost up front
     const city = loadCity();
-    saveCity(spendCoins(city, confirmCamp.hireCost));
+    saveCity(spendCoins(city, cost));
 
     // Snapshot city state and start the real battle
     const citySnapshot = loadCity();
-    setBattling({ camp: confirmCamp, cityState: citySnapshot });
+    setBattling({ camp: confirmCamp, cityState: citySnapshot, difficulty: diff });
     setConfirmCamp(null);
   }, [confirmCamp]);
 
   /** Called by BattleIsland with the REAL outcome. */
   const handleBattleComplete = useCallback((won: boolean) => {
     if (!battling) return;
-    const { camp: battleCamp } = battling;
+    const { camp: battleCamp, difficulty } = battling;
+    const dm = DIFFICULTY_MULT[difficulty];
 
     if (won) {
+      const rewardCoins = Math.round(battleCamp.rewardCoins * dm.reward);
+      const rewardTrophies = Math.round(battleCamp.rewardTrophies * dm.reward);
       const after = loadCity();
-      saveCity(addCoins(after, battleCamp.rewardCoins));
+      saveCity(addCoins(after, rewardCoins));
       const next = { ...pveState, [battleCamp.id]: Date.now() };
       savePveState(next);
       setPveState(next);
-      awardTrophies(battleCamp.rewardTrophies, `${battleCamp.name} verslagen`);
+      awardTrophies(rewardTrophies, `${battleCamp.name} verslagen (${dm.label})`);
     } else {
-      // Refund based on walls
-      const refunded = Math.floor(battleCamp.hireCost * wallRefundFraction(totalWallLevel));
+      const cost = Math.round(battleCamp.hireCost * dm.cost);
+      const refunded = Math.floor(cost * wallRefundFraction(totalWallLevel));
       if (refunded > 0) {
         const after = loadCity();
         saveCity(addCoins(after, refunded));
@@ -290,9 +296,27 @@ export default function AttackClient() {
                   </p>
                 </div>
               )}
-              <button onClick={startBattle} className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl glow-accent active:scale-[0.98] transition-transform text-sm mb-2">
-                {kazerneLvl === 0 ? 'Toch aanvallen' : 'Aanvallen'}
-              </button>
+              <div className="space-y-2">
+                {(['easy', 'normal', 'hard'] as Difficulty[]).map(diff => {
+                  const dm = DIFFICULTY_MULT[diff];
+                  const cost = Math.round(confirmCamp.hireCost * dm.cost);
+                  const reward = Math.round(confirmCamp.rewardCoins * dm.reward);
+                  const canAfford = coins >= cost;
+                  return (
+                    <button
+                      key={diff}
+                      disabled={!canAfford}
+                      onClick={() => startBattle(diff)}
+                      className={`w-full py-3 rounded-2xl active:scale-[0.98] transition-transform text-sm font-semibold ${
+                        canAfford ? 'text-white' : 'opacity-40 text-white'
+                      }`}
+                      style={{ backgroundColor: canAfford ? dm.color : '#666' }}
+                    >
+                      {dm.label} — {cost} 🪙 → {reward} 🪙
+                    </button>
+                  );
+                })}
+              </div>
               <button onClick={() => setConfirmCamp(null)} className="w-full text-faint text-xs font-medium py-2">
                 Annuleer
               </button>
@@ -307,6 +331,7 @@ export default function AttackClient() {
           <BattleIsland
             camp={battling.camp}
             cityState={battling.cityState}
+            difficulty={battling.difficulty}
             onComplete={handleBattleComplete}
           />
         </div>

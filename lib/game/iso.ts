@@ -31,7 +31,7 @@ export function centerOrigin(viewW: number, viewH: number): { originX: number; o
 }
 
 export const CITY_CENTER = { gx: Math.floor(GRID_SIZE / 2), gy: Math.floor(GRID_SIZE / 2) };
-export const BUILD_ZONE_RADIUS = 96;
+export const BUILD_ZONE_RADIUS = 18; // roughly matches island size
 
 export function inBuildZone(gx: number, gy: number): boolean {
   const dx = gx - CITY_CENTER.gx;
