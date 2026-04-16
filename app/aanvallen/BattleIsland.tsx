@@ -242,7 +242,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
       app.canvas.addEventListener('wheel', (e: WheelEvent) => {
         e.preventDefault();
         const f = e.deltaY > 0 ? 0.9 : 1.1;
-        const nz = Math.max(fitScale * 0.5, Math.min(fitScale * 4, zoom * f));
+        const nz = Math.max(fitScale * 1.0, Math.min(fitScale * 4, zoom * f));
         camX = e.offsetX - (e.offsetX - camX) * (nz / zoom);
         camY = e.offsetY - (e.offsetY - camY) * (nz / zoom);
         zoom = nz; applyCamera();
@@ -258,7 +258,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
           const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
           const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
           if (lastPinchDist > 0) {
-            const nz = Math.max(fitScale * 0.5, Math.min(fitScale * 4, zoom * dist / lastPinchDist));
+            const nz = Math.max(fitScale * 1.0, Math.min(fitScale * 4, zoom * dist / lastPinchDist));
             const rect = app.canvas.getBoundingClientRect();
             const mx = cx - rect.left, my = cy - rect.top;
             camX = mx - (mx - camX) * (nz / zoom) + (cx - lastPinchCx);
@@ -489,10 +489,15 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
           }
         }
 
-        // ---- Castle hit flash ----
-        if (battle.castleHit) {
-          vignette.clear();
-          vignette.rect(0, 0, W, H).fill({ color: 0xff0000, alpha: 0.15 });
+        // ---- Castle hit flash (brief red then fade) ----
+        const flashState = (app as any)._flash ??= { alpha: 0 };
+        if (battle.castleHit) flashState.alpha = 0.2;
+        if (flashState.alpha > 0) {
+          flashState.alpha = Math.max(0, flashState.alpha - rawDt * 2);
+          if (battle.phase !== 'resolve') {
+            vignette.clear();
+            if (flashState.alpha > 0.01) vignette.rect(0, 0, W, H).fill({ color: 0xff0000, alpha: flashState.alpha });
+          }
         }
 
         // ---- Unit HP bars ----

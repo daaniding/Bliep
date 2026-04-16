@@ -111,13 +111,13 @@ export interface BattleState {
 
 // ---- Config ----
 
-const ENEMY_SPEED = 55;
-const ENEMY_ATTACK_INTERVAL = 0.8;
-const ENEMY_DAMAGE = 15;
-const ATTACK_RANGE = TILE_W * 2; // generous so enemies actually reach buildings
-const ARROW_SPEED = 320;
-const ARROW_DAMAGE = 25;
-const ARCHER_COOLDOWN = 1.0;
+const ENEMY_SPEED = 80;           // was 55 — much faster
+const ENEMY_ATTACK_INTERVAL = 0.7;
+const ENEMY_DAMAGE = 18;          // was 15
+const ATTACK_RANGE = TILE_W * 1.8;
+const ARROW_SPEED = 350;
+const ARROW_DAMAGE = 15;          // was 25 — archers were OP
+const ARCHER_COOLDOWN = 1.5;      // was 1.0 — shoot less often
 const HP_PER_LEVEL = 50;
 const WALL_HP_BONUS = 25;
 const COUNTDOWN_SEC = 2.5;
@@ -173,7 +173,7 @@ export function createBattle(
         id: nextId++,
         x: bx + (Math.random() - 0.5) * TILE_W, y: by + Math.random() * TILE_H,
         hp: 60 + b.level * 15, maxHp: 60 + b.level * 15,
-        speed: 60, damage: 12 + b.level * 5,
+        speed: 90, damage: 12 + b.level * 5,  // was 60 — much faster
         attackTimer: 0, attackInterval: 0.8,
         state: 'idle', targetEnemyId: null, facingLeft: false,
         unitType: b.level >= 6 ? 'lancer' : 'warrior',
@@ -258,46 +258,67 @@ function retargetToCastle(e: BattleEnemy, s: BattleState, buildings: PlacedBuild
 
 /** Check if a pixel position is on land. */
 function isLand(px: number, py: number, landSet: Set<string>): boolean {
-  const gx = Math.floor(px / TILE_W);
-  const gy = Math.floor(py / TILE_H);
-  return landSet.has(`${gx},${gy}`);
+  return landSet.has(`${Math.floor(px / TILE_W)},${Math.floor(py / TILE_H)}`);
 }
 
-/** Steer unit around building rects and keep on land. */
+/** Check if position collides with any building rect (except skipId). */
+function hitsBuilding(px: number, py: number, rects: BattleState['buildingRects'], skipId?: string): boolean {
+  const margin = TILE_W * 0.5;
+  for (const r of rects) {
+    if (r.id === skipId) continue;
+    if (px > r.left - margin && px < r.right + margin && py > r.top - margin && py < r.bottom + margin) return true;
+  }
+  return false;
+}
+
+/** Move unit toward (dx,dy) direction, avoiding buildings and water. */
 function steer(
   x: number, y: number, dx: number, dy: number, speed: number, dt: number,
   rects: BattleState['buildingRects'], landSet: Set<string>, skipId?: string,
 ): { mx: number; my: number } {
-  let mx = dx * speed * dt;
-  let my = dy * speed * dt;
-  const nx = x + mx, ny = y + my;
-  const pad = TILE_W * 0.4;
+  const step = speed * dt;
 
-  // Building collision — slide along edges
+  // Try full movement first
+  const fx = x + dx * step, fy = y + dy * step;
+  if (!hitsBuilding(fx, fy, rects, skipId) && isLand(fx, fy, landSet)) {
+    return { mx: dx * step, my: dy * step };
+  }
+
+  // Try X only (slide horizontally)
+  const sx = x + dx * step;
+  if (!hitsBuilding(sx, y, rects, skipId) && isLand(sx, y, landSet)) {
+    return { mx: dx * step, my: 0 };
+  }
+
+  // Try Y only (slide vertically)
+  const sy = y + dy * step;
+  if (!hitsBuilding(x, sy, rects, skipId) && isLand(x, sy, landSet)) {
+    return { mx: 0, my: dy * step };
+  }
+
+  // Try perpendicular directions to go around
+  const perp1x = x - dy * step, perp1y = y + dx * step;
+  if (!hitsBuilding(perp1x, perp1y, rects, skipId) && isLand(perp1x, perp1y, landSet)) {
+    return { mx: -dy * step, my: dx * step };
+  }
+  const perp2x = x + dy * step, perp2y = y - dx * step;
+  if (!hitsBuilding(perp2x, perp2y, rects, skipId) && isLand(perp2x, perp2y, landSet)) {
+    return { mx: dy * step, my: -dx * step };
+  }
+
+  // Stuck — push away from nearest building
   for (const r of rects) {
     if (r.id === skipId) continue;
-    if (nx > r.left - pad && nx < r.right + pad && ny > r.top - pad && ny < r.bottom + pad) {
-      const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
-      if (Math.abs(x - cx) > Math.abs(y - cy)) {
-        mx = 0;
-        my = (dy > 0 ? 1 : dy < 0 ? -1 : (Math.random() > 0.5 ? 1 : -1)) * speed * dt;
-      } else {
-        my = 0;
-        mx = (dx > 0 ? 1 : dx < 0 ? -1 : (Math.random() > 0.5 ? 1 : -1)) * speed * dt;
-      }
-      break;
+    const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    const d = Math.hypot(x - cx, y - cy);
+    if (d < TILE_W * 2 && d > 0) {
+      const pushX = ((x - cx) / d) * step * 0.5;
+      const pushY = ((y - cy) / d) * step * 0.5;
+      if (isLand(x + pushX, y + pushY, landSet)) return { mx: pushX, my: pushY };
     }
   }
 
-  // Land check — don't walk into water
-  if (!isLand(x + mx, y + my, landSet)) {
-    // Try sliding along the coast
-    if (isLand(x + mx, y, landSet)) { my = 0; }
-    else if (isLand(x, y + my, landSet)) { mx = 0; }
-    else { mx = 0; my = 0; } // stuck — don't move into water
-  }
-
-  return { mx, my };
+  return { mx: 0, my: 0 };
 }
 
 // ---- Main tick ----
@@ -415,7 +436,7 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
   const c = buildingCenter(targetB, ox, oy);
   const baseHp = 30 + camp.defense * 3;
   const mult = tier === 'scout' ? 0.5 : tier === 'soldier' ? 1.0 : 2.5;
-  const spdMult = tier === 'scout' ? 1.2 : tier === 'soldier' ? 1.0 : 0.6;
+  const spdMult = tier === 'scout' ? 1.5 : tier === 'soldier' ? 1.0 : 0.7;
   const hp = Math.round(baseHp * mult);
 
   state.enemies.push({

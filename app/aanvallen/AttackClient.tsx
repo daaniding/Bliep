@@ -173,7 +173,9 @@ export default function AttackClient() {
               className="text-[10px] text-faint underline"
               onClick={() => {
                 const city = loadCity();
-                saveCity(addCoins(city, 5000));
+                const c = addCoins(city, 5000);
+                c.speedTokens += 20;
+                saveCity(c);
                 window.location.reload();
               }}
             >
