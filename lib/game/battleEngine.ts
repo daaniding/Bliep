@@ -27,6 +27,8 @@ export interface BattleEnemy {
   attackTimer: number;
   facingLeft: boolean;
   tier: 'scout' | 'soldier' | 'elite';
+  /** Stuck detection: last position + timer. */
+  lastX: number; lastY: number; stuckTimer: number;
 }
 
 export interface BattleDefender {
@@ -413,23 +415,28 @@ export function tickBattle(
 // ---- Spawn ----
 
 function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'elite', buildings: PlacedBuilding[], ox: number, oy: number) {
+  const alive = [...state.buildingHp.entries()].filter(([, h]) => !h.destroyed)
+    .map(([id]) => buildings.find(b => b.id === id)).filter(Boolean) as PlacedBuilding[];
+  if (alive.length === 0) return;
+
   let targetB: PlacedBuilding | undefined;
 
   if (tier === 'scout') {
-    // Scouts target towers first (to disable archers), then random
-    const aliveTowers = buildings.filter(b => b.type === 'tower' && !state.buildingHp.get(b.id)?.destroyed);
-    if (aliveTowers.length > 0) targetB = aliveTowers[Math.floor(Math.random() * aliveTowers.length)];
-  }
-
-  // Soldiers and elites target castle
-  if (!targetB) {
-    targetB = state.castleId ? buildings.find(b => b.id === state.castleId) : undefined;
-  }
-
-  if (!targetB || state.buildingHp.get(targetB.id)?.destroyed) {
-    const alive = [...state.buildingHp.entries()].filter(([, h]) => !h.destroyed).map(([id]) => buildings.find(b => b.id === id)).filter(Boolean) as PlacedBuilding[];
+    // Scouts target towers first, then barracks, then random
+    const towers = alive.filter(b => b.type === 'tower');
+    const barracks = alive.filter(b => b.type === 'barracks');
+    if (towers.length > 0) targetB = towers[Math.floor(Math.random() * towers.length)];
+    else if (barracks.length > 0) targetB = barracks[Math.floor(Math.random() * barracks.length)];
+  } else if (tier === 'soldier') {
+    // Soldiers target random buildings (spread damage)
     targetB = alive[Math.floor(Math.random() * alive.length)];
+  } else {
+    // Elites go for the castle
+    const castle = alive.find(b => b.id === state.castleId);
+    if (castle) targetB = castle;
   }
+
+  if (!targetB) targetB = alive[Math.floor(Math.random() * alive.length)];
   if (!targetB) return;
 
   const pos = edgePos(ox, oy, state.landEdgeCells);
@@ -447,6 +454,7 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
     speed: ENEMY_SPEED * spdMult + Math.random() * 8,
     state: 'walk', attackTimer: 0,
     facingLeft: c.x < pos.x, tier,
+    lastX: pos.x, lastY: pos.y, stuckTimer: 0,
   });
 }
 
@@ -455,6 +463,32 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
 function tickEnemies(state: BattleState, dt: number, buildings: PlacedBuilding[], ox: number, oy: number) {
   for (const e of state.enemies) {
     if (e.state === 'dead') continue;
+
+    // Stuck detection: if barely moved in 1.5s, retarget to nearest building
+    if (e.state === 'walk') {
+      e.stuckTimer += dt;
+      if (e.stuckTimer > 1.5) {
+        const moved = Math.hypot(e.x - e.lastX, e.y - e.lastY);
+        if (moved < TILE_W * 0.5) {
+          // Stuck! Find nearest alive building
+          let nearestB: PlacedBuilding | null = null, nearD = Infinity;
+          for (const [id, hp] of state.buildingHp) {
+            if (hp.destroyed) continue;
+            const b = buildings.find(bb => bb.id === id);
+            if (!b) continue;
+            const c = buildingCenter(b, ox, oy);
+            const d = Math.hypot(c.x - e.x, c.y - e.y);
+            if (d < nearD) { nearD = d; nearestB = b; }
+          }
+          if (nearestB) {
+            const c = buildingCenter(nearestB, ox, oy);
+            e.targetBuildingId = nearestB.id;
+            e.targetX = c.x; e.targetY = c.y;
+          }
+        }
+        e.lastX = e.x; e.lastY = e.y; e.stuckTimer = 0;
+      }
+    }
 
     if (e.state === 'walk') {
       // Check if wall is in our path and retarget to it
