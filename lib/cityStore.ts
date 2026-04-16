@@ -81,13 +81,13 @@ export function resetCity(): CityState {
 }
 
 function defaultCity(): CityState {
-  // Place start-house at the center of the island
+  // Place start-house at the center of the island (93,91)
   return {
     version: 2,
     coins: 0,
     speedTokens: 0,
     buildings: [
-      { id: 'start-house', type: 'house', gx: 90, gy: 95, level: 1 },
+      { id: 'start-house', type: 'house', gx: 93, gy: 91, level: 1 },
     ],
     buildQueue: [],
     chest: { lastOpenAt: 0 },
@@ -104,11 +104,11 @@ function normalize(parsed: Partial<CityState>): CityState {
   // Fix start-house position: must be on the island
   const startHouse = buildings.find(b => b.id === 'start-house');
   if (startHouse && (startHouse.gx < 60 || startHouse.gx > 120 || startHouse.gy < 60 || startHouse.gy > 120)) {
-    startHouse.gx = 90;
-    startHouse.gy = 95;
+    startHouse.gx = 93;
+    startHouse.gy = 91;
   }
   if (!buildings.some(b => b.id === 'start-house')) {
-    buildings = [{ id: 'start-house', type: 'house' as const, gx: 90, gy: 95, level: 1 }, ...buildings];
+    buildings = [{ id: 'start-house', type: 'house' as const, gx: 93, gy: 91, level: 1 }, ...buildings];
   }
 
   return {

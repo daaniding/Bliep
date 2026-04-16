@@ -115,13 +115,13 @@ export interface BattleState {
 
 // ---- Config ----
 
-const ENEMY_SPEED = 80;           // was 55 — much faster
+const ENEMY_SPEED = 75;
 const ENEMY_ATTACK_INTERVAL = 0.7;
-const ENEMY_DAMAGE = 18;          // was 15
-const ATTACK_RANGE = TILE_W * 1.8;
+const ENEMY_DAMAGE = 16;
+const ATTACK_RANGE = TILE_W * 1.3; // close to building before attacking
 const ARROW_SPEED = 350;
-const ARROW_DAMAGE = 15;          // was 25 — archers were OP
-const ARCHER_COOLDOWN = 1.5;      // was 1.0 — shoot less often
+const ARROW_DAMAGE = 18;
+const ARCHER_COOLDOWN = 1.3;
 const HP_PER_LEVEL = 50;
 const WALL_HP_BONUS = 25;
 const COUNTDOWN_SEC = 2.5;
@@ -457,6 +457,22 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
   if (!targetB) return;
 
   const pos = edgePos(ox, oy, state.landEdgeCells);
+
+  // If target is behind a wall, attack the wall first
+  if (targetB.type !== 'wall') {
+    const walls = alive.filter(b => b.type === 'wall');
+    const tc = buildingCenter(targetB, ox, oy);
+    for (const wall of walls) {
+      const wc = buildingCenter(wall, ox, oy);
+      const dToWall = Math.hypot(wc.x - pos.x, wc.y - pos.y);
+      const dToTarget = Math.hypot(tc.x - pos.x, tc.y - pos.y);
+      if (dToWall < dToTarget * 0.8) {
+        targetB = wall;
+        break;
+      }
+    }
+  }
+
   const c = buildingCenter(targetB, ox, oy);
   const diffMult = DIFFICULTY_MULT[state.difficulty];
   const baseHp = (30 + camp.defense * 3) * diffMult.enemyHp;
@@ -509,26 +525,6 @@ function tickEnemies(state: BattleState, dt: number, buildings: PlacedBuilding[]
     }
 
     if (e.state === 'walk') {
-      // Check if wall is in our path and retarget to it
-      const targetB = buildings.find(b => b.id === e.targetBuildingId);
-      if (targetB && targetB.type !== 'wall') {
-        for (const r of state.buildingRects) {
-          if (r.id === e.targetBuildingId) continue;
-          const wb = buildings.find(b => b.id === r.id);
-          if (!wb || wb.type !== 'wall') continue;
-          if (state.buildingHp.get(r.id)?.destroyed) continue;
-          // Is this wall between us and target?
-          const wallCx = (r.left + r.right) / 2, wallCy = (r.top + r.bottom) / 2;
-          const distToWall = Math.hypot(wallCx - e.x, wallCy - e.y);
-          const distToTarget = Math.hypot(e.targetX - e.x, e.targetY - e.y);
-          if (distToWall < distToTarget && distToWall < TILE_W * 4) {
-            e.targetBuildingId = wb.id;
-            e.targetX = wallCx; e.targetY = wallCy;
-            break;
-          }
-        }
-      }
-
       const dx = e.targetX - e.x, dy = e.targetY - e.y;
       const dist = Math.hypot(dx, dy);
       if (dist < ATTACK_RANGE) {
@@ -537,7 +533,10 @@ function tickEnemies(state: BattleState, dt: number, buildings: PlacedBuilding[]
         const ndx = dx / dist, ndy = dy / dist;
         const { mx, my } = steer(e.x, e.y, ndx, ndy, e.speed, dt, state.buildingRects, state.landSet, state, e.targetBuildingId);
         e.x += mx; e.y += my;
-        e.facingLeft = mx < 0;
+        // Only update facing if actually moving
+        if (Math.abs(mx) > 0.5 || Math.abs(my) > 0.5) {
+          e.facingLeft = mx < -0.5;
+        }
       }
     }
 
