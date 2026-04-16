@@ -797,7 +797,12 @@ export default function CityCanvas({
             p.moved += Math.hypot(dx, dy);
             p.lastX = e.global.x;
             p.lastY = e.global.y;
-            if (pointers.size === 1) {
+
+            // In placement mode: ghost follows finger, NO world panning
+            if (placingRef.current && pointers.size === 1) {
+              const { gx, gy } = globalToGrid(e.global.x, e.global.y);
+              updateGhost(gx, gy);
+            } else if (pointers.size === 1) {
               world.position.x += dx;
               world.position.y += dy;
               clampWorld();
@@ -811,17 +816,24 @@ export default function CityCanvas({
               zoomAround(pinchMid.x, pinchMid.y, target);
             }
           }
-          if (placingRef.current) {
-            const { gx, gy } = globalToGrid(e.global.x, e.global.y);
-            updateGhost(gx, gy);
-          }
         };
 
         const onUp = (e: FederatedPointerEvent) => {
           const p = pointers.get(e.pointerId);
           if (!p) return;
-          const wasTap = p.moved < TAP_THRESHOLD_PX && pointers.size === 1;
+          const wasDrag = p.moved >= TAP_THRESHOLD_PX;
+          const wasTap = !wasDrag && pointers.size === 1;
           pointers.delete(e.pointerId);
+
+          // In placement mode: place on release (drag OR tap)
+          if (placingRef.current) {
+            const { gx, gy } = globalToGrid(e.global.x, e.global.y);
+            if (inBounds(gx, gy)) {
+              callbacksRef.current.onTapTile?.(gx, gy);
+            }
+            return;
+          }
+
           if (!wasTap) return;
           const { gx, gy } = globalToGrid(e.global.x, e.global.y);
           if (!inBounds(gx, gy)) return;
