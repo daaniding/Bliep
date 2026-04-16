@@ -363,8 +363,20 @@ export default function BattleIsland({ camp, cityState, won, onComplete }: Props
         minGy: mapOffsetGy,
         maxGy: mapOffsetGy + MAP_ROWS,
       };
-      const battle = createBattle(camp, buildings, won, 0, 0);
+      // Origin in pixels — buildings use grid coords relative to (0,0)
+      // so origin is 0. But enemies need to know about the island position.
+      const originX = 0;
+      const originY = 0;
+      const battle = createBattle(camp, buildings, won, originX, originY);
       battle.landEdgeCells = landEdgeCells;
+
+      // ---- Cinematic: start zoomed-in, slowly pull back during spawn ----
+      const cinematicStartZoom = fitScale * 2.2;
+      const cinematicEndZoom = fitScale * 1.1;
+      zoom = cinematicStartZoom;
+      let cinematicTime = 0;
+      const CINEMATIC_DURATION = 2.5; // seconds for zoom-out
+      let cinematicDone = false;
 
       // ---- Sprite pools ----
       const enemySpriteMap = new Map<number, AnimatedSprite>();
@@ -403,11 +415,29 @@ export default function BattleIsland({ camp, cityState, won, onComplete }: Props
       resultText.alpha = 0;
       uiLayer.addChild(resultText);
 
+      // ---- Vignette overlay for cinematic look ----
+      const vignette = new Graphics();
+      vignette.rect(0, 0, W, H);
+      vignette.fill({ color: 0x000000, alpha: 0 });
+      app.stage.addChild(vignette);
+
       // ---- Main ticker ----
       app.ticker.add((ticker) => {
         const dt = ticker.deltaTime / 60;
 
-        tickBattle(battle, dt, buildings, 0, 0, islandBbox, camp);
+        // ---- Cinematic camera: zoom out during spawn ----
+        if (!cinematicDone) {
+          cinematicTime += dt;
+          const t = Math.min(cinematicTime / CINEMATIC_DURATION, 1);
+          const ease = 1 - Math.pow(1 - t, 3); // ease out cubic
+          zoom = cinematicStartZoom + (cinematicEndZoom - cinematicStartZoom) * ease;
+          camX = W / 2 - islandCx * zoom;
+          camY = H / 2 - islandCy * zoom;
+          applyCamera();
+          if (t >= 1) cinematicDone = true;
+        }
+
+        tickBattle(battle, dt, buildings, originX, originY, islandBbox, camp);
 
         // ---- Sync enemies ----
         for (const enemy of battle.enemies) {
@@ -593,17 +623,37 @@ export default function BattleIsland({ camp, cityState, won, onComplete }: Props
           world.y = camY;
         }
 
-        // ---- Result text ----
+        // ---- Resolve phase: cinematic zoom + result text ----
         if (battle.phase === 'resolve') {
+          // Slow zoom in for dramatic effect
+          const resolveZoom = cinematicEndZoom * 1.3;
+          zoom += (resolveZoom - zoom) * dt * 1.5;
+          camX = W / 2 - islandCx * zoom;
+          camY = H / 2 - islandCy * zoom;
+          applyCamera();
+
+          // Vignette darken edges
+          vignette.clear();
+          const vigAlpha = Math.min(resultText.alpha * 0.4, 0.4);
+          vignette.rect(0, 0, W, H);
+          vignette.fill({ color: 0x000000, alpha: vigAlpha });
+
+          // Result text with pop-in
           resultText.text = won ? 'OVERWINNING!' : 'VERSLAGEN!';
-          resultText.alpha = Math.min(resultText.alpha + dt * 2, 1);
-          resultText.scale.set(Math.min(resultText.scale.x + dt * 2, 1.2));
+          resultText.alpha = Math.min(resultText.alpha + dt * 2.5, 1);
+          const targetScale = 1.0;
+          if (resultText.scale.x < targetScale) {
+            // Overshoot spring
+            const t = resultText.alpha;
+            const spring = t < 0.5 ? t * 2 * 1.3 : 1.3 - (t - 0.5) * 2 * 0.3;
+            resultText.scale.set(spring);
+          }
         }
 
         // ---- Done ----
         if (isBattleDone(battle) && !doneRef.current) {
           doneRef.current = true;
-          setTimeout(() => onCompleteRef.current(), 800);
+          setTimeout(() => onCompleteRef.current(), 1200);
         }
       });
     })();

@@ -15,6 +15,7 @@
 import type { PveCamp } from '@/lib/pveCamps';
 import type { PlacedBuilding } from '@/lib/cityStore';
 import { TILE_W, TILE_H } from './iso';
+import { footprintOf } from './buildings';
 
 // ---- Types ----
 
@@ -150,7 +151,7 @@ export function createBattle(
   const barracks = buildings.filter(b => b.type === 'barracks');
   for (const b of barracks) {
     const count = Math.min(b.level + 1, 6); // 2-6 warriors per barracks
-    const fp = { w: 3, h: 3 }; // barracks footprint
+    const fp = footprintOf('barracks');
     const bx = originX + (b.gx + fp.w / 2) * TILE_W;
     const by = originY + (b.gy + fp.h / 2) * TILE_H;
     for (let i = 0; i < count; i++) {
@@ -280,9 +281,9 @@ function tickSpawn(
       if (!target) return;
 
       const pos = randomEdgePosition(originX, originY, islandBbox, state.landEdgeCells);
-      const fp = { w: 1, h: 1 }; // simplified
-      const targetX = originX + (target.gx + fp.w / 2) * TILE_W;
-      const targetY = originY + (target.gy + fp.h / 2) * TILE_H;
+      const tfp = footprintOf(target.type);
+      const targetX = originX + (target.gx + tfp.w / 2) * TILE_W;
+      const targetY = originY + (target.gy + tfp.h / 2) * TILE_H;
 
       const hpBase = 40 + camp.defense * 2;
       state.enemies.push({
@@ -308,8 +309,9 @@ function tickSpawn(
   if (state.archers.length === 0) {
     const towers = buildings.filter(b => b.type === 'tower');
     for (const tower of towers) {
-      const tx = originX + (tower.gx + 1) * TILE_W; // center of 2×2
-      const ty = originY + (tower.gy + 1) * TILE_H;
+      const tfp = footprintOf('tower');
+      const tx = originX + (tower.gx + tfp.w / 2) * TILE_W;
+      const ty = originY + (tower.gy + tfp.h / 2) * TILE_H;
       state.archers.push({
         id: state.nextId++,
         x: tx,
@@ -400,8 +402,9 @@ function tickFight(
               if (alive.length > 0) {
                 const next = alive[Math.floor(Math.random() * alive.length)];
                 enemy.targetBuildingId = next.id;
-                enemy.targetX = originX + (next.gx + 0.5) * TILE_W;
-                enemy.targetY = originY + (next.gy + 0.5) * TILE_H;
+                const nfp = footprintOf(next.type);
+                enemy.targetX = originX + (next.gx + nfp.w / 2) * TILE_W;
+                enemy.targetY = originY + (next.gy + nfp.h / 2) * TILE_H;
                 enemy.state = 'walk';
               }
             }
