@@ -255,7 +255,7 @@ export default function CityCanvas({
         const rx = wgx - mapOffsetGx;
         const ry = wgy - mapOffsetGy;
         if (rx < 0 || rx >= MAP_COLS || ry < 0 || ry >= MAP_ROWS) return false;
-        return elevation[ry][rx] === 3; // grass only
+        return elevation[ry][rx] >= 2; // sand or grass
       };
 
       // ---- Bake water tile to a 2×2 block for seamless tiling ----
@@ -302,6 +302,7 @@ export default function CityCanvas({
 
       // Collect cells by type for rendering + preview bbox
       const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
+      const sandCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const landCells: Array<{ gx: number; gy: number }> = [];
 
       for (let ry = 0; ry < MAP_ROWS; ry++) {
@@ -312,20 +313,56 @@ export default function CityCanvas({
             grassCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           }
+          if (v === 2) {
+            sandCells.push({ gx, gy, rx, ry });
+            landCells.push({ gx, gy });
+          }
         }
       }
 
-      // ---- Shallow water overlay (subtle depth near coast) ----
+      // ---- Shallow water gradient (tropical feel) ----
+      // Closer to land = lighter/more turquoise, further = deeper blue
       const waterOverlay = new Graphics();
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
           if (elevation[ry][rx] === 1) {
+            // Calculate distance to nearest land for gradient
+            let minDist = 4;
+            for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+              const nr = ry + dr, nc = rx + dc;
+              const nv = elevation[nr]?.[nc] ?? 0;
+              if (nv >= 2) { minDist = 1; break; }
+            }
+            if (minDist > 1) {
+              // Check 2-tile radius
+              outer: for (let dr = -2; dr <= 2; dr++) {
+                for (let dc = -2; dc <= 2; dc++) {
+                  const nv = elevation[ry+dr]?.[rx+dc] ?? 0;
+                  if (nv >= 2) { minDist = 2; break outer; }
+                }
+              }
+            }
+            // Gradient: closest = bright turquoise, further = subtle blue
+            const color = minDist <= 1 ? 0x7ee8d0 : minDist <= 2 ? 0x6dd8c8 : 0x5cc0c0;
+            const alpha = minDist <= 1 ? 0.3 : minDist <= 2 ? 0.22 : 0.15;
             waterOverlay.rect(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H, TILE_W, TILE_H);
-            waterOverlay.fill({ color: 0x7ec8e3, alpha: 0.2 });
+            waterOverlay.fill({ color, alpha });
           }
         }
       }
       tileLayer.addChild(waterOverlay);
+
+      // ---- Sand beach strip (1 tile wide) ----
+      for (const cell of sandCells) {
+        const sprite = new Sprite(terrain.sandFill);
+        sprite.anchor.set(0, 0);
+        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+        sprite.width = TILE_W;
+        sprite.height = TILE_H;
+        // Warm sandy tint
+        sprite.tint = 0xFFF5E0;
+        tileLayer.addChild(sprite);
+      }
 
       // ---- Grass tiles — tint variation + coast autotile edges ----
       const grassTints = [
@@ -336,7 +373,7 @@ export default function CityCanvas({
         0xEEFFE0, // bright clearing
       ];
       for (const cell of grassCells) {
-        // Check if this grass cell borders water — use coast autotile edge
+        // Check if this grass cell borders sand/water — use coast autotile edge
         const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
         const isEdge = coastIdx !== null && coastIdx !== 4;
 
@@ -346,7 +383,6 @@ export default function CityCanvas({
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
-        // Only tint interior grass, not coast edges
         if (!isEdge) {
           const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
           sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
@@ -519,7 +555,25 @@ export default function CityCanvas({
         }
       }
 
-      // ---- Animated water + cloud drift ----
+      // ---- Wave foam along coastline ----
+      // Collect sand cells that border water for foam placement
+      const foamCells: Array<{ px: number; py: number; phase: number }> = [];
+      for (const cell of sandCells) {
+        // Only place foam on sand cells touching water
+        const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+        const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+        const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+        const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+        if (n > 1 && s > 1 && w > 1 && e > 1) continue; // fully surrounded by land
+        const px = cell.gx * TILE_W + TILE_W / 2;
+        const py = cell.gy * TILE_H + TILE_H / 2;
+        foamCells.push({ px, py, phase: hash(cell.gx, cell.gy, 777) * Math.PI * 2 });
+      }
+
+      const foamLayer = new Graphics();
+      tileLayer.addChild(foamLayer);
+
+      // ---- Animated water + cloud drift + foam ----
       let waterT = 0;
       const cloudWrapX = GRID_SIZE * TILE_W + 400;
       app.ticker.add((ticker) => {
@@ -529,6 +583,17 @@ export default function CityCanvas({
         for (const c of cloudSprites) {
           c.sprite.position.x += c.speed * dt;
           if (c.sprite.position.x > cloudWrapX) c.sprite.position.x = -200;
+        }
+
+        // Animate foam — gentle wave pulse
+        const t = Date.now() / 1000;
+        foamLayer.clear();
+        for (const f of foamCells) {
+          const wave = Math.sin(t * 1.2 + f.phase) * 0.5 + 0.5; // 0-1 pulse
+          const alpha = 0.15 + wave * 0.25;
+          const radius = TILE_W * 0.25 + wave * TILE_W * 0.1;
+          foamLayer.circle(f.px, f.py, radius);
+          foamLayer.fill({ color: 0xFFFFFF, alpha });
         }
       });
 

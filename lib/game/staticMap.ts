@@ -132,34 +132,64 @@ export function parseElevation(): number[][] {
 /**
  * Post-process the raw elevation grid.
  *
- * No sand band — grass goes directly to water for a clean natural edge.
- * Only adds shallow water (1) near coastline for visual depth.
+ * Adds a thin 1-tile sand beach + shallow water gradient for island feel.
+ *   0 = deep water
+ *   1 = shallow water (2-3 tiles from coast)
+ *   2 = sand/beach (1-tile strip at water edge)
+ *   3 = grass (buildable land)
  */
 export function processElevation(raw: number[][]): number[][] {
   const rows = raw.length;
   const cols = raw[0]?.length ?? 0;
 
-  // Deep copy
   const grid: number[][] = raw.map(r => [...r]);
 
-  // ---- Shallow water (water cells near land) ----
-  const distToLand: number[][] = Array.from({ length: rows }, () =>
+  // ---- BFS: distance from every cell to nearest water ----
+  const distToWater: number[][] = Array.from({ length: rows }, () =>
     new Array(cols).fill(999)
   );
-  const queue: Array<[number, number]> = [];
-
+  const q1: Array<[number, number]> = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === 3) {
-        distToLand[r][c] = 0;
-        queue.push([r, c]);
+      if (raw[r][c] === 0) { distToWater[r][c] = 0; q1.push([r, c]); }
+    }
+  }
+  let i1 = 0;
+  while (i1 < q1.length) {
+    const [r, c] = q1[i1++];
+    const d = distToWater[r][c];
+    if (d >= 2) continue;
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      if (distToWater[nr][nc] <= d + 1) continue;
+      distToWater[nr][nc] = d + 1;
+      q1.push([nr, nc]);
+    }
+  }
+
+  // Thin sand beach: grass cells exactly 1 tile from water → sand
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] === 3 && distToWater[r][c] === 1) {
+        grid[r][c] = 2; // sand
       }
     }
   }
 
-  let qi = 0;
-  while (qi < queue.length) {
-    const [r, c] = queue[qi++];
+  // ---- BFS: distance from every cell to nearest land ----
+  const distToLand: number[][] = Array.from({ length: rows }, () =>
+    new Array(cols).fill(999)
+  );
+  const q2: Array<[number, number]> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] >= 2) { distToLand[r][c] = 0; q2.push([r, c]); }
+    }
+  }
+  let i2 = 0;
+  while (i2 < q2.length) {
+    const [r, c] = q2[i2++];
     const d = distToLand[r][c];
     if (d >= 4) continue;
     for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
@@ -167,15 +197,15 @@ export function processElevation(raw: number[][]): number[][] {
       if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
       if (distToLand[nr][nc] <= d + 1) continue;
       distToLand[nr][nc] = d + 1;
-      queue.push([nr, nc]);
+      q2.push([nr, nc]);
     }
   }
 
-  // Mark ocean cells near land as shallow water
+  // Shallow water: ocean cells within 3 tiles of land
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (grid[r][c] === 0 && distToLand[r][c] <= 3) {
-        grid[r][c] = 1; // shallow water
+        grid[r][c] = 1;
       }
     }
   }
