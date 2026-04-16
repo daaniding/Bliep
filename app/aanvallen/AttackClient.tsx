@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, resolveBattle, winChance, wallRefundFraction, type PveCamp, type BattleResult } from '@/lib/pveCamps';
+import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, winChance, wallRefundFraction, type PveCamp } from '@/lib/pveCamps';
 import { loadCity, saveCity, addCoins, spendCoins } from '@/lib/cityStore';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
@@ -62,8 +62,8 @@ export default function AttackClient() {
   const [pveState, setPveState] = useState<Record<string, number>>(() => loadPveState());
   const [, setNow] = useState(Date.now());
   const [confirmCamp, setConfirmCamp] = useState<PveCamp | null>(null);
-  const [battling, setBattling] = useState<{ camp: PveCamp; result: BattleResult; cityState: CityState } | null>(null);
-  const [result, setResult] = useState<{ camp: PveCamp; result: BattleResult } | null>(null);
+  const [battling, setBattling] = useState<{ camp: PveCamp; cityState: CityState } | null>(null);
+  const [result, setResult] = useState<{ camp: PveCamp; won: boolean } | null>(null);
   const [kazerneLvl, setKazerneLvl] = useState(0);
   const [totalWallLevel, setTotalWallLevel] = useState(0);
 
@@ -93,41 +93,41 @@ export default function AttackClient() {
   const startBattle = useCallback(() => {
     if (!confirmCamp) return;
 
-    // Spend the hire cost up front
+    // Spend hire cost up front
     const city = loadCity();
     saveCity(spendCoins(city, confirmCamp.hireCost));
 
-    // Pre-compute battle result before showing animation
-    const battleResult = resolveBattle(confirmCamp, kazerneLvl, totalWallLevel);
-
-    // Show the battle animation with current city state
+    // Snapshot city state and start the real battle
     const citySnapshot = loadCity();
-    setBattling({ camp: confirmCamp, result: battleResult, cityState: citySnapshot });
+    setBattling({ camp: confirmCamp, cityState: citySnapshot });
     setConfirmCamp(null);
-  }, [confirmCamp, kazerneLvl, totalWallLevel]);
+  }, [confirmCamp]);
 
-  const handleBattleComplete = useCallback(() => {
+  /** Called by BattleIsland with the REAL outcome. */
+  const handleBattleComplete = useCallback((won: boolean) => {
     if (!battling) return;
-    const { camp: battleCamp, result: battleResult } = battling;
+    const { camp: battleCamp } = battling;
 
-    if (battleResult.won) {
+    if (won) {
       const after = loadCity();
-      saveCity(addCoins(after, battleResult.coinsGained));
+      saveCity(addCoins(after, battleCamp.rewardCoins));
       const next = { ...pveState, [battleCamp.id]: Date.now() };
       savePveState(next);
       setPveState(next);
-      awardTrophies(battleResult.trophiesDelta, `${battleCamp.name} verslagen`);
+      awardTrophies(battleCamp.rewardTrophies, `${battleCamp.name} verslagen`);
     } else {
-      if (battleResult.refunded > 0) {
+      // Refund based on walls
+      const refunded = Math.floor(battleCamp.hireCost * wallRefundFraction(totalWallLevel));
+      if (refunded > 0) {
         const after = loadCity();
-        saveCity(addCoins(after, battleResult.refunded));
+        saveCity(addCoins(after, refunded));
       }
-      awardTrophies(battleResult.trophiesDelta, `${battleCamp.name} verloren`);
+      awardTrophies(-3, `${battleCamp.name} verloren`);
     }
 
-    setResult({ camp: battleCamp, result: battleResult });
+    setResult({ camp: battleCamp, won });
     setBattling(null);
-  }, [battling, pveState, awardTrophies]);
+  }, [battling, pveState, awardTrophies, totalWallLevel]);
 
   return (
     <div className="min-h-dvh bg-surface relative pb-16">
@@ -266,13 +266,12 @@ export default function AttackClient() {
         </div>
       )}
 
-      {/* Battle animation — fullscreen island view */}
+      {/* Battle — fullscreen island view */}
       {battling && (
         <div className="fixed inset-0 z-30">
           <BattleIsland
             camp={battling.camp}
             cityState={battling.cityState}
-            won={battling.result.won}
             onComplete={handleBattleComplete}
           />
         </div>
@@ -283,25 +282,21 @@ export default function AttackClient() {
         <div className="fixed inset-0 z-30 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setResult(null)}>
           <div className="bg-surface rounded-3xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="text-center">
-              <div className="text-6xl mb-2">{result.result.won ? '🎉' : '💀'}</div>
+              <div className="text-6xl mb-2">{result.won ? '🎉' : '💀'}</div>
               <h3 className="font-serif text-2xl text-ink italic mb-1">
-                {result.result.won ? 'Overwinning!' : 'Verslagen'}
+                {result.won ? 'Overwinning!' : 'Verslagen'}
               </h3>
               <p className="text-muted text-sm mb-4">{result.camp.name}</p>
               <div className="bg-subtle rounded-2xl p-4 mb-5">
-                {result.result.won ? (
+                {result.won ? (
                   <>
-                    <p className="text-[#3a6a3a] font-bold text-lg">+{result.result.coinsGained} 🪙</p>
-                    <p className="text-[#7a2e1a] font-bold text-lg">+{result.result.trophiesDelta} 🏆</p>
+                    <p className="text-[#3a6a3a] font-bold text-lg">+{result.camp.rewardCoins} 🪙</p>
+                    <p className="text-[#7a2e1a] font-bold text-lg">+{result.camp.rewardTrophies} 🏆</p>
                   </>
                 ) : (
                   <>
                     <p className="text-[#7a2e1a] font-bold text-lg">−3 🏆</p>
-                    {result.result.refunded > 0 ? (
-                      <p className="text-[#3a6a3a] font-bold text-sm mt-1">+{result.result.refunded} 🪙 terug van je muren</p>
-                    ) : (
-                      <p className="text-faint text-xs mt-1">Je huurlingen zijn verslagen</p>
-                    )}
+                    <p className="text-faint text-xs mt-1">Je verdediging was niet sterk genoeg</p>
                   </>
                 )}
               </div>
