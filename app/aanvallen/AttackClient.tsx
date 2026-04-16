@@ -269,8 +269,16 @@ export default function AttackClient() {
                   <span className="font-bold text-[#7a2e1a]">−3 🏆</span>
                 </div>
               </div>
+              {kazerneLvl === 0 && (
+                <div className="bg-[#C75B3D]/10 border border-[#C75B3D]/20 rounded-xl p-3 mb-4 text-left">
+                  <p className="text-[#7a2e1a] text-xs font-semibold mb-0.5">⚠️ Geen verdediging!</p>
+                  <p className="text-[#7a2e1a]/70 text-[11px]">
+                    Bouw een Kazerne of Wachttoren in je stad voor soldaten en boogschutters die terugvechten.
+                  </p>
+                </div>
+              )}
               <button onClick={startBattle} className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl glow-accent active:scale-[0.98] transition-transform text-sm mb-2">
-                Aanvallen
+                {kazerneLvl === 0 ? 'Toch aanvallen' : 'Aanvallen'}
               </button>
               <button onClick={() => setConfirmCamp(null)} className="w-full text-faint text-xs font-medium py-2">
                 Annuleer

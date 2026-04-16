@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import {
   AnimatedSprite,
   Application,
+  ColorMatrixFilter,
   Container,
   Graphics,
   Sprite,
@@ -66,6 +67,13 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
       // ---- Scene ----
       const world = new Container();
       app.stage.addChild(world);
+
+      // Night/dusk filter for dramatic battle atmosphere
+      const nightFilter = new ColorMatrixFilter();
+      nightFilter.brightness(0.65, false);
+      nightFilter.saturate(-0.2, true);
+      world.filters = [nightFilter];
+
       const tileLayer = new Container();
       world.addChild(tileLayer);
       const buildingLayer = new Container();
@@ -222,7 +230,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
       const pad = TILE_W * 4;
       const fitScale = Math.min(W / (maxPx - minPx + pad * 2), H / (maxPy - minPy + pad * 2));
 
-      let zoom = fitScale * 2.0; // start zoomed in
+      let zoom = fitScale * 3.0; // start close on city
       let camX = W / 2 - islandCx * zoom;
       let camY = H / 2 - islandCy * zoom;
       const applyCamera = () => { world.scale.set(zoom); world.x = camX; world.y = camY; };
@@ -308,7 +316,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
 
       // ---- Cinematic state ----
       let cinematicTime = 0;
-      const targetZoom = fitScale * 1.1;
+      const targetZoom = fitScale * 1.5; // don't zoom too far out
 
       // ---- Main ticker ----
       app.ticker.add((ticker) => {
@@ -319,7 +327,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
         if (battle.phase === 'countdown') {
           const t = Math.min(cinematicTime / 2.5, 1);
           const ease = 1 - Math.pow(1 - t, 3);
-          zoom = fitScale * 2.0 + (targetZoom - fitScale * 2.0) * ease;
+          zoom = fitScale * 3.0 + (targetZoom - fitScale * 3.0) * ease;
           camX = W / 2 - islandCx * zoom;
           camY = H / 2 - islandCy * zoom;
           applyCamera();
@@ -359,7 +367,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
           } else {
             sprite.x = enemy.x; sprite.y = enemy.y;
             sprite.zIndex = Math.floor(enemy.y);
-            const sc = TILE_W / enemyUnit.frameH * 1.8;
+            const sc = TILE_W / enemyUnit.frameH * 3.0;
             sprite.scale.set(enemy.facingLeft ? -sc : sc, sc);
             const want = enemy.state === 'walk' ? enemyUnit.run : enemy.state === 'attack' ? enemyUnit.attack : enemyUnit.idle;
             if (sprite.textures !== want) { sprite.textures = want; sprite.play(); }
@@ -382,7 +390,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
           } else {
             sprite.x = def.x; sprite.y = def.y;
             sprite.zIndex = Math.floor(def.y);
-            const sc = TILE_W / uf.frameH * 1.8;
+            const sc = TILE_W / uf.frameH * 3.0;
             sprite.scale.set(def.facingLeft ? -sc : sc, sc);
             const want = def.state === 'walk' ? uf.run : def.state === 'attack' ? uf.attack : uf.idle;
             if (sprite.textures !== want) { sprite.textures = want; sprite.play(); }
@@ -399,7 +407,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
             archerSpriteMap.set(a.id, sprite);
           }
           sprite.x = a.x; sprite.y = a.y; sprite.zIndex = Math.floor(a.y);
-          sprite.scale.set(TILE_W / 192 * 1.6);
+          sprite.scale.set(TILE_W / 192 * 2.8);
           const want = a.state === 'shoot' ? combat.archer.shoot : combat.archer.idle;
           if (sprite.textures !== want) { sprite.textures = want; sprite.play(); }
         }
@@ -433,7 +441,7 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
             const frames = fx.type === 'explosion' ? combat.fx.explosion : combat.fx.fireSmall;
             const sprite = new AnimatedSprite(frames);
             sprite.anchor.set(0.5);
-            sprite.scale.set(fx.type === 'explosion' ? TILE_W / 192 * 2.5 : TILE_W / 64 * 1.5);
+            sprite.scale.set(fx.type === 'explosion' ? TILE_W / 192 * 4 : TILE_W / 64 * 2.5);
             sprite.animationSpeed = fx.type === 'explosion' ? 0.35 : 0.25;
             sprite.loop = false;
             sprite.onComplete = () => { fx.done = true; };
