@@ -1,19 +1,21 @@
 /**
- * 4-bit autotile for the antarcticbees coastline.
+ * Multi-layer autotile for the antarcticbees coastline.
  *
- * Checks the 4 cardinal neighbours (N, S, E, W) of each land cell.
- * Where a neighbour is water (elevation 0), the cell needs an edge tile.
- * The result is an index into FarmTerrain.coast[] (0-8), which maps:
+ * The processed elevation grid has these values:
+ *   0 = deep water
+ *   1 = shallow water
+ *   2 = sand/beach
+ *   3 = grass (buildable)
+ *   4 = river water
  *
+ * We need multiple transition layers:
+ *   sand → water  (rocky coastline)
+ *   grass → sand   (soft edge into beach)
+ *
+ * Each autotile returns a 3×3 index (0-8):
  *   0=NW  1=N  2=NE
  *   3=W   4=C  5=E
  *   6=SW  7=S  8=SE
- *
- * For fully interior cells (no water neighbour), returns index 4 (center).
- *
- * Elevation values (staticMap.ts):
- *   0 = water
- *   1 = grass (buildable land)
  */
 
 export interface TileCell {
@@ -21,46 +23,101 @@ export interface TileCell {
   row: number;
 }
 
+// ---- Elevation category helpers ----
+
+/** Is this cell water (ocean, shallow, or river)? */
+function isWaterish(v: number): boolean {
+  return v === 0 || v === 1 || v === 4;
+}
+
+/** Is this cell solid ground (sand or grass)? */
+function isGround(v: number): boolean {
+  return v === 2 || v === 3;
+}
+
+// ---- 4-bit neighbor → 3×3 slot ----
+
+function neighborSlot(edgeN: boolean, edgeS: boolean, edgeW: boolean, edgeE: boolean): number {
+  let slotX = 1;
+  let slotY = 1;
+  if (edgeW) slotX = 0;
+  if (edgeE) slotX = 2;
+  if (edgeN) slotY = 0;
+  if (edgeS) slotY = 2;
+  return slotY * 3 + slotX;
+}
+
+function get(elev: number[][], gy: number, gx: number): number {
+  return elev[gy]?.[gx] ?? 0;
+}
+
+// ============================================================
+// SAND → WATER coastline autotile
+// ============================================================
 /**
- * Returns an index (0-8) into the coast[] array for the given cell.
- * Returns null if the cell itself is water (elevation 0).
+ * For sand cells (2): returns 0-8 index into coast[] tiles if this sand
+ * cell borders water. Returns 4 (center) if surrounded by ground.
+ * Returns null if this cell is not sand.
  */
+export function sandToWaterIndex(
+  elev: number[][],
+  gx: number,
+  gy: number,
+): number | null {
+  if (get(elev, gy, gx) !== 2) return null;
+  const n = get(elev, gy - 1, gx);
+  const s = get(elev, gy + 1, gx);
+  const w = get(elev, gy, gx - 1);
+  const e = get(elev, gy, gx + 1);
+  return neighborSlot(isWaterish(n), isWaterish(s), isWaterish(w), isWaterish(e));
+}
+
+// ============================================================
+// GRASS → SAND transition autotile
+// ============================================================
+/**
+ * For grass cells (3): returns 0-8 index into sandToGrass[] tiles if this
+ * grass cell borders sand. Returns null if not grass or not bordering sand.
+ * Returns 4 (center = no edge) if fully surrounded by grass.
+ */
+export function grassToSandIndex(
+  elev: number[][],
+  gx: number,
+  gy: number,
+): number | null {
+  if (get(elev, gy, gx) !== 3) return null;
+  const n = get(elev, gy - 1, gx);
+  const s = get(elev, gy + 1, gx);
+  const w = get(elev, gy, gx - 1);
+  const e = get(elev, gy, gx + 1);
+  // Edge = neighbor is NOT grass (it's sand, water, or river)
+  const edgeN = n !== 3;
+  const edgeS = s !== 3;
+  const edgeW = w !== 3;
+  const edgeE = e !== 3;
+  if (!edgeN && !edgeS && !edgeW && !edgeE) return null; // no edges, fully interior
+  return neighborSlot(edgeN, edgeS, edgeW, edgeE);
+}
+
+// ============================================================
+// Legacy compat: simple coast index (grass on water)
+// Used by CityCanvas for basic rendering fallback.
+// ============================================================
 export function autotileCoastIndex(
   elev: number[][],
   gx: number,
   gy: number,
 ): number | null {
-  const e = elev[gy]?.[gx] ?? 0;
-  if (e === 0) return null; // water cell — no grass tile
-
-  const get = (y: number, x: number) => elev[y]?.[x] ?? 0;
-  const n = get(gy - 1, gx);
-  const s = get(gy + 1, gx);
-  const w = get(gy, gx - 1);
-  const eN = get(gy, gx + 1);
-
-  // Edge flags: true when neighbour is water (lower)
-  const edgeN = n === 0;
-  const edgeS = s === 0;
-  const edgeW = w === 0;
-  const edgeE = eN === 0;
-
-  // Map to 3×3 grid slot (slotX=col, slotY=row)
-  // Default = center (1,1)
-  let slotX = 1; // 0=left, 1=center, 2=right
-  let slotY = 1; // 0=top,  1=middle, 2=bottom
-  if (edgeW) slotX = 0;
-  if (edgeE) slotX = 2;
-  if (edgeN) slotY = 0;
-  if (edgeS) slotY = 2;
-
-  return slotY * 3 + slotX; // 0-8 index
+  const e = get(elev, gy, gx);
+  if (isWaterish(e)) return null;
+  const n = get(elev, gy - 1, gx);
+  const s = get(elev, gy + 1, gx);
+  const w = get(elev, gy, gx - 1);
+  const eE = get(elev, gy, gx + 1);
+  return neighborSlot(isWaterish(n), isWaterish(s), isWaterish(w), isWaterish(eE));
 }
 
-/**
- * Legacy wrapper: returns {col, row} for backward compat with old code.
- * col/row here are the 3×3 slot (0-2, 0-2), NOT tileset pixel coords.
- */
+/** Legacy wrapper for old code. */
 export function autotileGrassSlot(
   elev: number[][],
   gx: number,
@@ -71,49 +128,7 @@ export function autotileGrassSlot(
   return { col: idx % 3, row: Math.floor(idx / 3) };
 }
 
-/**
- * Check if a water cell should show an inner-corner overlay.
- * An inner corner exists when a water cell has grass on two adjacent
- * cardinal sides (forming an L-shape of grass around it).
- *
- * Returns an array of corner indices (0=NW, 1=NE, 2=SW, 3=SE)
- * to render from coastInner[].
- */
-export function innerCorners(
-  elev: number[][],
-  gx: number,
-  gy: number,
-): number[] {
-  const e = elev[gy]?.[gx] ?? 0;
-  if (e !== 0) return []; // only for water cells
-
-  const get = (y: number, x: number) => (elev[y]?.[x] ?? 0) > 0;
-  const n = get(gy - 1, gx);
-  const s = get(gy + 1, gx);
-  const w = get(gy, gx - 1);
-  const eE = get(gy, gx + 1);
-
-  const corners: number[] = [];
-  // NW inner: grass to N AND W
-  if (n && w) corners.push(0);
-  // NE inner: grass to N AND E
-  if (n && eE) corners.push(1);
-  // SW inner: grass to S AND W
-  if (s && w) corners.push(2);
-  // SE inner: grass to S AND E
-  if (s && eE) corners.push(3);
-
-  return corners;
-}
-
-/**
- * Returns true if we should paint a cliff wall under a plateau cell.
- * Currently unused (no plateau in antarcticbees), kept for API compat.
- */
-export function shouldPaintCliffWall(
-  elev: number[][],
-  gx: number,
-  gy: number,
-): boolean {
+/** Kept for API compat. */
+export function shouldPaintCliffWall(): boolean {
   return false;
 }

@@ -17,8 +17,9 @@ import {
   Point,
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
-import { parseElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { autotileCoastIndex } from '@/lib/game/autotile';
+import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
+import { sandToWaterIndex, grassToSandIndex } from '@/lib/game/autotile';
+import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
   TILE_H,
@@ -239,8 +240,10 @@ export default function CityCanvas({
 
       // ================================================================
       // TERRAIN RENDERING (antarcticbees Farm tileset)
+      // Multi-layer: deep water → shallow water → sand → grass
       // ================================================================
-      const elevation = parseElevation();
+      const rawElev = parseElevation();
+      const elevation = processElevation(rawElev);
 
       // Center the island in the 192×192 game grid
       const mapOffsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
@@ -252,19 +255,26 @@ export default function CityCanvas({
         const rx = wgx - mapOffsetGx;
         const ry = wgy - mapOffsetGy;
         if (rx < 0 || rx >= MAP_COLS || ry < 0 || ry >= MAP_ROWS) return false;
-        return elevation[ry][rx] > 0;
+        return elevation[ry][rx] >= 2; // sand or grass
       };
 
-      // ---- Bake 16px tiles to standalone textures ----
-      // Pixi v8 TilingSprite ignores source frames, so we must bake
-      // tile textures via generateTexture for the water tiling to work.
+      // ---- Bake water tile to a 2×2 block for seamless tiling ----
+      // Single 16px→64px tiles show seams at certain zoom levels.
+      // Using a 2×2 block (128×128) eliminates visible tile edges.
       const bakedWater = (() => {
-        const s = new Sprite(terrain.water);
-        s.width = FARM_TILE;
-        s.height = FARM_TILE;
-        const t = app.renderer.generateTexture({ target: s, resolution: TILE_SCALE });
+        const c = new Container();
+        for (let dy = 0; dy < 2; dy++) {
+          for (let dx = 0; dx < 2; dx++) {
+            const s = new Sprite(terrain.water);
+            s.width = TILE_W;
+            s.height = TILE_H;
+            s.position.set(dx * TILE_W, dy * TILE_H);
+            c.addChild(s);
+          }
+        }
+        const t = app.renderer.generateTexture({ target: c, resolution: 1 });
         if (t.source) t.source.scaleMode = 'nearest';
-        s.destroy();
+        c.destroy({ children: true });
         return t;
       })();
 
@@ -281,7 +291,7 @@ export default function CityCanvas({
       water.position.set(waterLeft, waterTop);
       tileLayer.addChild(water);
 
-      // ---- Grass + coastline tiles from elevation grid ----
+      // ---- Multi-layer terrain rendering ----
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
         let h = (x * 374761393 + y * 668265263 + salt * 2147483647 + seed * 69069) | 0;
@@ -290,135 +300,163 @@ export default function CityCanvas({
         return ((h >>> 0) % 10000) / 10000;
       };
 
-      // Helper: is this cell on the coast (adjacent to water)?
-      const isCoastCell = (rx: number, ry: number): boolean => {
-        if ((elevation[ry]?.[rx] ?? 0) === 0) return true;
-        return (elevation[ry - 1]?.[rx] ?? 0) === 0 ||
-               (elevation[ry + 1]?.[rx] ?? 0) === 0 ||
-               (elevation[ry]?.[rx - 1] ?? 0) === 0 ||
-               (elevation[ry]?.[rx + 1] ?? 0) === 0;
-      };
+      // Collect cells by type for rendering + preview bbox
+      const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
+      const sandCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
+      const landCells: Array<{ gx: number; gy: number }> = [];
 
-      // Distance from coast (0 = coast, higher = more interior)
-      const distFromCoast = (rx: number, ry: number): number => {
-        if (isCoastCell(rx, ry)) return 0;
-        for (let d = 1; d <= 4; d++) {
-          for (let dy = -d; dy <= d; dy++) {
-            for (let dx = -d; dx <= d; dx++) {
-              if (Math.abs(dx) === d || Math.abs(dy) === d) {
-                if ((elevation[ry + dy]?.[rx + dx] ?? 0) === 0) return d;
-              }
-            }
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          const v = elevation[ry][rx];
+          const gx = worldGx(rx), gy = worldGy(ry);
+          if (v === 3) {
+            grassCells.push({ gx, gy, rx, ry });
+            landCells.push({ gx, gy });
           }
-        }
-        return 5;
-      };
-
-      for (let ry = 0; ry < MAP_ROWS; ry++) {
-        for (let rx = 0; rx < MAP_COLS; rx++) {
-          const coastIdx = autotileCoastIndex(elevation, rx, ry);
-          if (coastIdx === null) continue;
-          const tex = coastIdx === 4 ? terrain.grass[0] : terrain.coast[coastIdx];
-          const sprite = new Sprite(tex);
-          sprite.anchor.set(0, 0);
-          sprite.position.set(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H);
-          sprite.width = TILE_W;
-          sprite.height = TILE_H;
-          tileLayer.addChild(sprite);
-        }
-      }
-
-      // Collect land cells for spawning + preview bbox
-      const landCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
-      for (let ry = 0; ry < MAP_ROWS; ry++) {
-        for (let rx = 0; rx < MAP_COLS; rx++) {
-          if (elevation[ry][rx] > 0) {
-            landCells.push({ gx: worldGx(rx), gy: worldGy(ry), rx, ry });
+          if (v === 2) {
+            sandCells.push({ gx, gy, rx, ry });
+            landCells.push({ gx, gy });
           }
         }
       }
 
-      // ================================================================
-      // DECORATION SCATTER — flowers, grass tufts, mushrooms, bushes
-      // ================================================================
-      // This creates the lush, lived-in feel like the reference image.
-      // Each cell gets checked for a decoration roll. Decorations are
-      // placed as sprites in the decorLayer (y-sorted).
+      // ---- Shallow water + river: rendered as a single Graphics overlay ----
+      // Using one big Graphics draw instead of individual sprites prevents
+      // the visible-tile-gaps artifact at low zoom levels.
+      const waterOverlay = new Graphics();
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          const v = elevation[ry][rx];
+          if (v === 1) {
+            // Shallow water — lighter blue tint
+            waterOverlay.rect(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H, TILE_W, TILE_H);
+            waterOverlay.fill({ color: 0x7ec8e3, alpha: 0.25 });
+          } else if (v === 4) {
+            // River water — greenish-blue tint
+            waterOverlay.rect(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H, TILE_W, TILE_H);
+            waterOverlay.fill({ color: 0x5ab89a, alpha: 0.3 });
+          }
+        }
+      }
+      tileLayer.addChild(waterOverlay);
 
-      for (const cell of landCells) {
-        const coastDist = distFromCoast(cell.rx, cell.ry);
+      // ---- Layer 3: Sand tiles + sand→water coast autotile ----
+      for (const cell of sandCells) {
+        const idx = sandToWaterIndex(elevation, cell.rx, cell.ry);
+        // If bordering water, use coast tile; otherwise plain sand fill
+        const tex = (idx !== null && idx !== 4) ? terrain.coast[idx] : terrain.sandFill;
+        const sprite = new Sprite(tex);
+        sprite.anchor.set(0, 0);
+        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+        sprite.width = TILE_W;
+        sprite.height = TILE_H;
+        tileLayer.addChild(sprite);
+      }
+
+      // ---- Layer 4: Grass tiles + grass→sand transition ----
+      for (const cell of grassCells) {
+        // Base grass fill
+        const sprite = new Sprite(terrain.grass[0]);
+        sprite.anchor.set(0, 0);
+        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+        sprite.width = TILE_W;
+        sprite.height = TILE_H;
+        tileLayer.addChild(sprite);
+
+        // Grass→sand edge overlay (if bordering sand)
+        const sandIdx = grassToSandIndex(elevation, cell.rx, cell.ry);
+        if (sandIdx !== null && terrain.sandToGrass.length > sandIdx) {
+          const edge = new Sprite(terrain.sandToGrass[sandIdx]);
+          edge.anchor.set(0, 0);
+          edge.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+          edge.width = TILE_W;
+          edge.height = TILE_H;
+          edge.alpha = 0.7;
+          tileLayer.addChild(edge);
+        }
+      }
+
+      // ================================================================
+      // COASTAL ROCKS — scattered along the beach near water
+      // ================================================================
+      if (terrain.rocks.length > 0) {
+        for (const cell of sandCells) {
+          // Only place rocks on sand cells that directly touch water
+          const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+          const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+          const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+          const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+          const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1;
+          if (!touchesWater) continue;
+          if (hash(cell.gx, cell.gy, 1500) > 0.15) continue; // ~15% of coast sand cells
+          const idx = Math.floor(hash(cell.gx, cell.gy, 1501) * terrain.rocks.length);
+          const tex = terrain.rocks[idx];
+          const rock = new Sprite(tex);
+          rock.anchor.set(0.5, 0.8);
+          const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
+          rock.position.set(sx + (hash(cell.gx, cell.gy, 1502) - 0.5) * TILE_W * 0.4,
+                            sy + (hash(cell.gx, cell.gy, 1503) - 0.5) * TILE_H * 0.3);
+          rock.width = TILE_W * (0.5 + hash(cell.gx, cell.gy, 1504) * 0.4);
+          rock.height = rock.width * (tex.height / tex.width);
+          rock.zIndex = Math.floor(rock.position.y);
+          decorLayer.addChild(rock);
+        }
+      }
+
+      // ================================================================
+      // DECORATION SCATTER — flowers, tufts, mushrooms on GRASS cells
+      // ================================================================
+      for (const cell of grassCells) {
         const centerDist = Math.hypot(cell.gx - CITY_CENTER.gx, cell.gy - CITY_CENTER.gy);
-
-        // Skip coast cells for most decor (keep shoreline clean)
-        if (coastDist === 0) continue;
-
         const r = hash(cell.gx, cell.gy, 100);
         const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
 
-        // ---- Grass tufts: ~12% of cells, scattered everywhere ----
-        if (r < 0.12 && terrain.grassTufts.length > 0) {
+        // Grass tufts ~10%
+        if (r < 0.10 && terrain.grassTufts.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 101) * terrain.grassTufts.length);
           const sprite = new Sprite(terrain.grassTufts[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.6,
-                              sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.6);
-          sprite.width = TILE_W * 0.7;
-          sprite.height = TILE_H * 0.7;
-          sprite.alpha = 0.8;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.5,
+                              sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.5);
+          sprite.width = TILE_W * 0.6;
+          sprite.height = TILE_H * 0.6;
+          sprite.alpha = 0.75;
           sprite.zIndex = Math.floor(sprite.position.y) - 1;
           decorLayer.addChild(sprite);
           continue;
         }
-
-        // ---- White flowers: ~4% of cells ----
-        if (r < 0.16 && r >= 0.12 && terrain.flowersWhite.length > 0 && coastDist >= 2) {
+        // White flowers ~4%
+        if (r < 0.14 && terrain.flowersWhite.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 201) * terrain.flowersWhite.length);
           const sprite = new Sprite(terrain.flowersWhite[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.4,
-                              sy + (hash(cell.gx, cell.gy, 203) - 0.5) * TILE_H * 0.4);
-          sprite.width = TILE_W * 0.65;
-          sprite.height = TILE_H * 0.65;
-          sprite.zIndex = Math.floor(sprite.position.y);
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.3, sy);
+          sprite.width = TILE_W * 0.55;
+          sprite.height = TILE_H * 0.55;
+          sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
         }
-
-        // ---- Purple flowers: ~2% of cells ----
-        if (r < 0.18 && r >= 0.16 && terrain.flowersPurple.length > 0 && coastDist >= 2) {
+        // Purple flowers ~2%
+        if (r < 0.16 && terrain.flowersPurple.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 301) * terrain.flowersPurple.length);
           const sprite = new Sprite(terrain.flowersPurple[idx]);
           sprite.anchor.set(0.5, 0.8);
           sprite.position.set(sx, sy);
-          sprite.width = TILE_W * 0.65;
-          sprite.height = TILE_H * 0.65;
+          sprite.width = TILE_W * 0.55;
+          sprite.height = TILE_H * 0.55;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
         }
-
-        // ---- Mushrooms: ~1% of cells, only in forest-ish areas (far from center) ----
-        if (r < 0.19 && r >= 0.18 && terrain.mushrooms.length > 0 && centerDist > 18 && coastDist >= 2) {
+        // Mushrooms ~1%, far from center
+        if (r < 0.17 && terrain.mushrooms.length > 0 && centerDist > 18) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 401) * terrain.mushrooms.length);
           const sprite = new Sprite(terrain.mushrooms[idx]);
           sprite.anchor.set(0.5, 0.9);
           sprite.position.set(sx, sy);
-          sprite.width = TILE_W * 0.5;
-          sprite.height = TILE_H * 0.5;
-          sprite.zIndex = Math.floor(sy);
-          decorLayer.addChild(sprite);
-          continue;
-        }
-
-        // ---- Small bushes: ~2% of cells, scattered ----
-        if (r < 0.21 && r >= 0.19 && terrain.bushes.length > 0 && coastDist >= 2) {
-          const idx = Math.floor(hash(cell.gx, cell.gy, 501) * terrain.bushes.length);
-          const tex = terrain.bushes[idx];
-          const sprite = new Sprite(tex);
-          sprite.anchor.set(0.5, 0.9);
-          sprite.position.set(sx, sy);
-          const bScale = (TILE_W * 1.2) / Math.max(tex.width, tex.height);
-          sprite.scale.set(bScale);
+          sprite.width = TILE_W * 0.45;
+          sprite.height = TILE_H * 0.45;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
@@ -426,73 +464,57 @@ export default function CityCanvas({
       }
 
       // ================================================================
-      // TREES — larger, more varied, with cherry blossoms + fruit trees
+      // TREE GROVES — clustered, not random
       // ================================================================
-      for (const cell of landCells) {
-        const coastDist = distFromCoast(cell.rx, cell.ry);
-        const centerDist = Math.hypot(cell.gx - CITY_CENTER.gx, cell.gy - CITY_CENTER.gy);
-        if (coastDist < 2) continue; // keep coast clear
-        if (centerDist < 12) continue; // clear zone around center
+      const groveplacements = generateGroves(
+        elevation, MAP_COLS, MAP_ROWS,
+        CITY_CENTER.gx, CITY_CENTER.gy,
+        mapOffsetGx, mapOffsetGy, seed,
+      );
 
-        const r = hash(cell.gx, cell.gy, 600);
-        const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
+      for (const tp of groveplacements) {
+        const { sx, sy } = gridToScreen(tp.gx, tp.gy, 0, 0);
+        const px = sx + tp.offsetX * TILE_W;
+        const py = sy + tp.offsetY * TILE_H;
+        let tex: Texture | null = null;
 
-        // ---- Regular trees: ~4% ----
-        if (r < 0.04 && terrain.trees.length > 0) {
-          const treeIdx = Math.floor(hash(cell.gx, cell.gy, 601) * terrain.trees.length);
-          const sheet = terrain.trees[treeIdx];
-          if (!sheet.frames.length) continue;
-          const sprite = new Sprite(sheet.frames[0]);
-          sprite.anchor.set(0.5, 0.9);
-          const treeScale = (TILE_W * 2.5) / Math.max(sheet.frameW, sheet.frameH);
-          sprite.scale.set(treeScale);
-          sprite.position.set(sx, sy);
-          sprite.zIndex = Math.floor(sy);
-          decorLayer.addChild(sprite);
-          continue;
+        switch (tp.type) {
+          case 'basic':
+            if (terrain.trees.length > 0) {
+              const sheet = terrain.trees[tp.sheetIndex % terrain.trees.length];
+              tex = sheet.frames[0] ?? null;
+            }
+            break;
+          case 'large':
+            if (terrain.largeTrees.length > 0)
+              tex = terrain.largeTrees[tp.sheetIndex % terrain.largeTrees.length];
+            break;
+          case 'cherry':
+            if (terrain.cherryTrees.length > 0)
+              tex = terrain.cherryTrees[tp.sheetIndex % terrain.cherryTrees.length];
+            break;
+          case 'fruit':
+            if (terrain.fruitTrees.length > 0)
+              tex = terrain.fruitTrees[tp.sheetIndex % terrain.fruitTrees.length];
+            break;
+          case 'pine':
+            if (terrain.trees.length > 0) {
+              // Pine is the last tree sheet (index 4)
+              const pineIdx = Math.min(4, terrain.trees.length - 1);
+              const sheet = terrain.trees[pineIdx];
+              tex = sheet.frames[0] ?? null;
+            }
+            break;
         }
 
-        // ---- Cherry blossom trees: ~0.5% (rare, beautiful) ----
-        if (r < 0.045 && r >= 0.04 && terrain.cherryTrees.length > 0 && centerDist > 15) {
-          const idx = Math.floor(hash(cell.gx, cell.gy, 701) * terrain.cherryTrees.length);
-          const tex = terrain.cherryTrees[idx];
-          const sprite = new Sprite(tex);
-          sprite.anchor.set(0.5, 0.9);
-          const treeScale = (TILE_W * 3.0) / Math.max(tex.width, tex.height);
-          sprite.scale.set(treeScale);
-          sprite.position.set(sx, sy);
-          sprite.zIndex = Math.floor(sy);
-          decorLayer.addChild(sprite);
-          continue;
-        }
-
-        // ---- Fruit trees: ~1% ----
-        if (r < 0.055 && r >= 0.045 && terrain.fruitTrees.length > 0 && centerDist > 14) {
-          const idx = Math.floor(hash(cell.gx, cell.gy, 801) * terrain.fruitTrees.length);
-          const tex = terrain.fruitTrees[idx];
-          const sprite = new Sprite(tex);
-          sprite.anchor.set(0.5, 0.9);
-          const treeScale = (TILE_W * 2.8) / Math.max(tex.width, tex.height);
-          sprite.scale.set(treeScale);
-          sprite.position.set(sx, sy);
-          sprite.zIndex = Math.floor(sy);
-          decorLayer.addChild(sprite);
-          continue;
-        }
-
-        // ---- Large tileset trees: ~1.5% (for variety) ----
-        if (r < 0.07 && r >= 0.055 && terrain.largeTrees.length > 0 && centerDist > 16) {
-          const idx = Math.floor(hash(cell.gx, cell.gy, 901) * terrain.largeTrees.length);
-          const tex = terrain.largeTrees[idx];
-          const sprite = new Sprite(tex);
-          sprite.anchor.set(0.5, 0.9);
-          const treeScale = (TILE_W * 2.5) / Math.max(tex.width, tex.height);
-          sprite.scale.set(treeScale);
-          sprite.position.set(sx, sy);
-          sprite.zIndex = Math.floor(sy);
-          decorLayer.addChild(sprite);
-          continue;
-        }
+        if (!tex) continue;
+        const sprite = new Sprite(tex);
+        sprite.anchor.set(0.5, 0.9);
+        const treeScale = (TILE_W * tp.scale) / Math.max(tex.width, tex.height);
+        sprite.scale.set(treeScale);
+        sprite.position.set(px, py);
+        sprite.zIndex = Math.floor(py);
+        decorLayer.addChild(sprite);
       }
 
       // No ambient wandering animals — NPCs appear when buildings are placed.

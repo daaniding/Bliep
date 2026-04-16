@@ -35,20 +35,20 @@ export const BUILD_ZONE_RADIUS = 18;
 
 // ---- Land-based build zone (uses elevation data) ----
 
-import { parseElevation, MAP_COLS, MAP_ROWS } from './staticMap';
+import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from './staticMap';
 
 let _landTiles: Set<string> | null = null;
 
 /** Get the set of all land tiles in world grid coords. Cached. */
 export function getLandTiles(): Set<string> {
   if (_landTiles) return _landTiles;
-  const elev = parseElevation();
+  const elev = processElevation(parseElevation());
   const offsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
   const offsetGy = CITY_CENTER.gy - Math.floor(MAP_ROWS / 2);
   _landTiles = new Set<string>();
   for (let ry = 0; ry < MAP_ROWS; ry++) {
     for (let rx = 0; rx < MAP_COLS; rx++) {
-      if (elev[ry][rx] > 0) {
+      if (elev[ry][rx] === 3) { // only grass is buildable (not sand/water/river)
         _landTiles.add(`${offsetGx + rx},${offsetGy + ry}`);
       }
     }

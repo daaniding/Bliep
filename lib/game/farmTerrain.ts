@@ -20,35 +20,36 @@ export interface FarmTerrain {
   tileset: Texture;
   water: Texture;
 
-  /** 3×3 coastline: [NW,N,NE, W,C,E, SW,S,SE] */
+  /** 3×3 coastline (sand→water): [NW,N,NE, W,C,E, SW,S,SE] */
   coast: Texture[];
   /** Inner corners: [NW,NE,SW,SE] */
   coastInner: Texture[];
 
-  /** Single grass fill tile (coast center). */
+  /** Single grass fill tile. */
   grass: Texture[];
+  /** Sand fill tile. */
+  sandFill: Texture;
+  /** 3×3 sand-on-grass transition (path autotile). */
+  sandToGrass: Texture[];
 
   // ---- Decorations ----
-  /** White daisy flowers (small, 16×16). */
   flowersWhite: Texture[];
-  /** Purple/iris flowers (small, 16×16). */
   flowersPurple: Texture[];
-  /** Grass tufts / small weeds (16×16). */
   grassTufts: Texture[];
-  /** Mushrooms (16×16). */
   mushrooms: Texture[];
+  /** Coastal rocks and boulders. */
+  rocks: Texture[];
 
   // ---- Trees ----
-  /** Animated tree spritesheets (basic trees + pine). */
   trees: AnimatedSheet[];
-  /** Large standalone trees cut from tileset (multi-tile). */
   largeTrees: Texture[];
-  /** Cherry blossom trees from tileset. */
   cherryTrees: Texture[];
-  /** Fruit trees from tileset. */
   fruitTrees: Texture[];
-  /** Small bushes from tileset. */
   bushes: Texture[];
+
+  // ---- Animated assets ----
+  /** Windmill animation (4 frames, 96×128). */
+  windmill: AnimatedSheet | null;
 
   /** Cloud sprites. */
   clouds: Texture[];
@@ -155,6 +156,27 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   ];
 
   // ============================================================
+  // SAND (beach band between grass and water)
+  // ============================================================
+  const sandFill = tile(16, 37); // center of path autotile = solid sand
+  // 3×3 sand-on-grass autotile (path tiles)
+  const sandToGrass: Texture[] = [
+    tile(15, 36), tile(16, 36), tile(17, 36),
+    tile(15, 37), tile(16, 37), tile(17, 37),
+    tile(15, 38), tile(16, 38), tile(17, 38),
+  ];
+
+  // ============================================================
+  // ROCKS (coastal boulders and field stones)
+  // ============================================================
+  const rocks = [
+    rect(17 * TILE, 5 * TILE, TILE, TILE),     // small log
+    rect(18 * TILE, 6 * TILE, 2 * TILE, TILE), // rock pile
+    tile(18, 7),                                 // single stone
+  ];
+  for (const t of rocks) nearest(t);
+
+  // ============================================================
   // MUSHROOMS at cols 13-17, row 5
   // ============================================================
   const mushrooms = [
@@ -233,6 +255,17 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   for (const t of bushes) nearest(t);
 
   // ============================================================
+  // WINDMILL (animated building, 4 frames)
+  // ============================================================
+  let windmill: AnimatedSheet | null = null;
+  const windmillTex = await safeLoad(`${BASE}/windmill/windmill_spring_summerSheet.png`);
+  if (windmillTex) {
+    nearest(windmillTex);
+    // 384×128 = 4 frames of 96×128
+    windmill = { frames: sliceFrames(windmillTex, 96, 128, 4), frameW: 96, frameH: 128 };
+  }
+
+  // ============================================================
   // CLOUDS
   // ============================================================
   const clouds: Texture[] = [];
@@ -259,8 +292,10 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
 
   cached = {
     tileset, water, coast, coastInner, grass,
+    sandFill, sandToGrass, rocks,
     flowersWhite, flowersPurple, grassTufts, mushrooms,
     trees, largeTrees, cherryTrees, fruitTrees, bushes,
+    windmill,
     clouds, buildings, tile, rect,
   };
   return cached;
