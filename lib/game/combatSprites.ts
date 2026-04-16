@@ -58,6 +58,9 @@ export interface FxFrames {
 /** All camp enemy types keyed by camp id. */
 export interface CombatSprites {
   enemies: Record<string, UnitFrames>; // keyed by camp id
+  /** Blue defenders spawned by barracks. */
+  blueWarrior: UnitFrames;
+  blueLancer: UnitFrames;
   archer: ArcherFrames;
   arrow: Texture;
   fx: FxFrames;
@@ -100,6 +103,7 @@ export async function loadCombatSprites(): Promise<CombatSprites> {
   // Load all enemy types in parallel
   const [
     bandiet, wolven, fort, goblin, draak,
+    blueWarrior, blueLancer,
     archerIdle, archerShoot, arrowTex,
     explosion, fireSmall, fireLarge,
   ] = await Promise.all([
@@ -108,6 +112,8 @@ export async function loadCombatSprites(): Promise<CombatSprites> {
     loadUnit('purple', 'warrior', 192),
     loadUnit('red', 'lancer', 320),
     loadUnit('black', 'lancer', 320),
+    loadUnit('blue', 'warrior', 192),
+    loadUnit('blue', 'lancer', 320),
     Assets.load<Texture>(`${UNITS}/blue/archer/idle.png`),
     Assets.load<Texture>(`${UNITS}/blue/archer/shoot.png`),
     Assets.load<Texture>(`${UNITS}/blue/archer/arrow.png`),
@@ -128,6 +134,8 @@ export async function loadCombatSprites(): Promise<CombatSprites> {
       goblin,
       draak,
     },
+    blueWarrior,
+    blueLancer,
     archer: {
       idle: sliceRow(archerIdle, 192, 192, 6),
       shoot: sliceRow(archerShoot, 192, 192, 8),

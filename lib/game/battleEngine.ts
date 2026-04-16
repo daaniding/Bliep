@@ -69,6 +69,25 @@ export interface BattleFx {
   done: boolean;
 }
 
+export interface BattleDefender {
+  id: number;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  speed: number;
+  damage: number;
+  attackTimer: number;
+  attackInterval: number;
+  state: 'walk' | 'attack' | 'idle' | 'dead';
+  targetEnemyId: number | null;
+  facingLeft: boolean;
+  animFrame: number;
+  animTimer: number;
+  /** 'warrior' for barracks lvl 1-5, 'lancer' for lvl 6+ */
+  unitType: 'warrior' | 'lancer';
+}
+
 export interface BuildingHp {
   buildingId: string;
   hp: number;
@@ -83,6 +102,7 @@ export interface BattleState {
   elapsed: number;
   won: boolean;         // pre-computed outcome
   enemies: BattleEnemy[];
+  defenders: BattleDefender[];
   archers: BattleArcher[];
   arrows: BattleArrow[];
   fx: BattleFx[];
@@ -124,16 +144,47 @@ export function createBattle(
     }
   }
 
+  // Spawn defenders from barracks
+  const defenders: BattleDefender[] = [];
+  let nextId = 1;
+  const barracks = buildings.filter(b => b.type === 'barracks');
+  for (const b of barracks) {
+    const count = Math.min(b.level + 1, 6); // 2-6 warriors per barracks
+    const fp = { w: 3, h: 3 }; // barracks footprint
+    const bx = originX + (b.gx + fp.w / 2) * TILE_W;
+    const by = originY + (b.gy + fp.h / 2) * TILE_H;
+    for (let i = 0; i < count; i++) {
+      defenders.push({
+        id: nextId++,
+        x: bx + (Math.random() - 0.5) * TILE_W * 2,
+        y: by + (Math.random() - 0.5) * TILE_H * 2,
+        hp: 60 + b.level * 10,
+        maxHp: 60 + b.level * 10,
+        speed: 50 + Math.random() * 10,
+        damage: 12 + b.level * 3,
+        attackTimer: 0,
+        attackInterval: 1.0,
+        state: 'idle',
+        targetEnemyId: null,
+        facingLeft: false,
+        animFrame: 0,
+        animTimer: 0,
+        unitType: b.level >= 6 ? 'lancer' : 'warrior',
+      });
+    }
+  }
+
   return {
     phase: 'spawn',
     elapsed: 0,
     won,
     enemies: [],
+    defenders,
     archers: [],
     arrows: [],
     fx: [],
     buildingHp,
-    nextId: 1,
+    nextId,
   };
 }
 
@@ -453,6 +504,107 @@ function tickFight(
       arrow.x += (dx / dist) * step;
       arrow.y += (dy / dist) * step;
       arrow.angle = Math.atan2(dy, dx);
+    }
+  }
+
+  // ---- Defenders: blue warriors from barracks ----
+  for (const def of state.defenders) {
+    if (def.state === 'dead') continue;
+
+    // Find nearest alive enemy
+    if (def.state === 'idle' || (def.state === 'walk' && def.targetEnemyId === null)) {
+      let closest: BattleEnemy | null = null;
+      let closestDist = Infinity;
+      for (const e of state.enemies) {
+        if (e.state === 'dead') continue;
+        const dx = e.x - def.x;
+        const dy = e.y - def.y;
+        const d = dx * dx + dy * dy;
+        if (d < closestDist) {
+          closestDist = d;
+          closest = e;
+        }
+      }
+      if (closest) {
+        def.targetEnemyId = closest.id;
+        def.state = 'walk';
+      }
+    }
+
+    // Walk toward target enemy
+    if (def.state === 'walk' && def.targetEnemyId !== null) {
+      const target = state.enemies.find(e => e.id === def.targetEnemyId);
+      if (!target || target.state === 'dead') {
+        def.targetEnemyId = null;
+        def.state = 'idle';
+        continue;
+      }
+      const dx = target.x - def.x;
+      const dy = target.y - def.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      def.facingLeft = dx < 0;
+
+      if (dist < TILE_W * 0.8) {
+        def.state = 'attack';
+        def.attackTimer = 0;
+      } else {
+        const step = def.speed * dt;
+        def.x += (dx / dist) * step;
+        def.y += (dy / dist) * step;
+      }
+    }
+
+    // Attack enemy
+    if (def.state === 'attack') {
+      const target = state.enemies.find(e => e.id === def.targetEnemyId);
+      if (!target || target.state === 'dead') {
+        def.targetEnemyId = null;
+        def.state = 'idle';
+        continue;
+      }
+      def.attackTimer += dt;
+      if (def.attackTimer >= def.attackInterval) {
+        def.attackTimer = 0;
+        target.hp -= def.damage;
+        if (target.hp <= 0) {
+          target.state = 'dead';
+          state.fx.push({ id: state.nextId++, x: target.x, y: target.y - 10, type: 'explosion', frame: 0, timer: 0, done: false });
+          def.targetEnemyId = null;
+          def.state = 'idle';
+        }
+      }
+      // If enemy walks away, follow
+      const dx = target.x - def.x;
+      const dy = target.y - def.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > TILE_W * 1.5) {
+        def.state = 'walk';
+      }
+    }
+
+    // Anim
+    def.animTimer += dt;
+    if (def.animTimer > 0.15) {
+      def.animTimer = 0;
+      def.animFrame++;
+    }
+  }
+
+  // Enemies can also hit defenders
+  for (const enemy of state.enemies) {
+    if (enemy.state !== 'attack') continue;
+    // Check if a defender is nearby
+    for (const def of state.defenders) {
+      if (def.state === 'dead') continue;
+      const dx = def.x - enemy.x;
+      const dy = def.y - enemy.y;
+      if (Math.sqrt(dx * dx + dy * dy) < TILE_W) {
+        def.hp -= ENEMY_DAMAGE * 0.5 * dt; // enemies slowly damage nearby defenders
+        if (def.hp <= 0) {
+          def.state = 'dead';
+          state.fx.push({ id: state.nextId++, x: def.x, y: def.y - 10, type: 'explosion', frame: 0, timer: 0, done: false });
+        }
+      }
     }
   }
 

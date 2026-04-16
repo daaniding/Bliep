@@ -196,25 +196,53 @@ export default function BattleIsland({ camp, cityState, won, onComplete }: Props
         }
       }
 
-      // ---- Buildings ----
+      // ---- Buildings + trees/paths ----
       const buildings = cityState.buildings;
       const buildingSpriteMap = new Map<string, Sprite>();
 
       for (const b of buildings) {
+        const fp = footprintOf(b.type);
+        const centerGx = b.gx + (fp.w - 1) / 2;
+        const centerGy = b.gy + (fp.h - 1) / 2;
+        const cx = (b.gx + fp.w / 2) * TILE_W;
+        const cy = (b.gy + fp.h / 2) * TILE_H;
+
+        // Trees — use terrain tree sprites
+        if (b.type === 'tree' && terrain.trees.length) {
+          const sheet = terrain.trees[(b.gx + b.gy) % terrain.trees.length];
+          const treeSprite = new Sprite(sheet.frames[0]);
+          treeSprite.anchor.set(0.5, 0.95);
+          const longSide = Math.max(sheet.frameW, sheet.frameH);
+          treeSprite.scale.set((TILE_W * 1.2) / longSide);
+          treeSprite.x = centerGx * TILE_W + TILE_W / 2;
+          treeSprite.y = centerGy * TILE_H + TILE_H * 0.9;
+          treeSprite.zIndex = Math.floor(treeSprite.y);
+          buildingLayer.addChild(treeSprite);
+          continue;
+        }
+
+        // Paths — simple brown rectangle
+        if (b.type === 'path') {
+          const pathRect = new Graphics();
+          pathRect.rect(b.gx * TILE_W + 4, b.gy * TILE_H + 4, TILE_W - 8, TILE_H - 8);
+          pathRect.fill({ color: 0x8B7355 });
+          pathRect.zIndex = 0;
+          buildingLayer.addChild(pathRect);
+          continue;
+        }
+
+        // Regular buildings
         const slug = spriteForLevel(b.type, b.level);
         const tex = getTopdownTexture(atlas, slug);
         if (!tex) continue;
 
-        const fp = footprintOf(b.type);
         const sprite = new Sprite(tex);
         sprite.anchor.set(0.5, 0.95);
-        const cx = (b.gx + fp.w / 2) * TILE_W;
-        const cy = (b.gy + fp.h / 2) * TILE_H;
         sprite.x = cx;
         sprite.y = cy;
 
-        const def = BUILDINGS[b.type];
-        const baseScale = (def.spriteScale ?? 1) * 1.4;
+        const bdef = BUILDINGS[b.type];
+        const baseScale = (bdef.spriteScale ?? 1) * 1.4;
         const span = Math.max(fp.w, fp.h) * TILE_W;
         sprite.width = span * baseScale;
         sprite.height = (tex.height / tex.width) * span * baseScale;
@@ -441,6 +469,41 @@ export default function BattleIsland({ camp, cityState, won, onComplete }: Props
           if (sprite.textures !== wantFrames) {
             sprite.textures = wantFrames;
             sprite.play();
+          }
+        }
+
+        // ---- Sync defenders (blue warriors/lancers) ----
+        const defenderSpriteMap = (app as any)._defSpriteMap ??= new Map<number, AnimatedSprite>();
+        for (const def of battle.defenders) {
+          let sprite = defenderSpriteMap.get(def.id);
+          const unitFrames = def.unitType === 'lancer' ? combat.blueLancer : combat.blueWarrior;
+          if (!sprite) {
+            sprite = new AnimatedSprite(unitFrames.idle);
+            sprite.anchor.set(0.5, 0.8);
+            sprite.animationSpeed = 0.15;
+            sprite.play();
+            battleLayer.addChild(sprite);
+            defenderSpriteMap.set(def.id, sprite);
+          }
+          if (def.state === 'dead') {
+            sprite.alpha = Math.max(0, sprite.alpha - dt * 3);
+            if (sprite.alpha <= 0) {
+              battleLayer.removeChild(sprite);
+              defenderSpriteMap.delete(def.id);
+            }
+          } else {
+            sprite.x = def.x;
+            sprite.y = def.y;
+            sprite.zIndex = Math.floor(def.y);
+            const unitScale = TILE_W / unitFrames.frameH * 1.8;
+            sprite.scale.set(def.facingLeft ? -unitScale : unitScale, unitScale);
+            const wantFrames = def.state === 'walk' ? unitFrames.run :
+                              def.state === 'attack' ? unitFrames.attack :
+                              unitFrames.idle;
+            if (sprite.textures !== wantFrames) {
+              sprite.textures = wantFrames;
+              sprite.play();
+            }
           }
         }
 
