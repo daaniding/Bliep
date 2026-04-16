@@ -53,6 +53,8 @@ export interface BattleArrow {
   id: number;
   x: number; y: number;
   targetX: number; targetY: number;
+  /** Track a living enemy for homing arrows. */
+  trackEnemyId?: number;
   speed: number; damage: number; angle: number;
 }
 
@@ -85,11 +87,14 @@ export interface BattleState {
   countdownNum: number;
   timeScale: number;
   slowMoTimer: number;
+  /** Castle (start-house) — if destroyed, player loses. */
+  castleId: string | null;
+  castleHit: boolean;
   /** Wave system: which wave we're on (0-2), enemies per wave. */
   currentWave: number;
-  wavesSpawned: number[];  // how many spawned per wave
-  waveTotals: number[];    // total per wave
-  waveDelay: number;       // delay between waves
+  wavesSpawned: number[];
+  waveTotals: number[];
+  waveDelay: number;
 }
 
 // ---- Config ----
@@ -116,6 +121,10 @@ export function createBattle(
   originX: number, originY: number,
   landEdgeCells: Array<{ gx: number; gy: number }>,
 ): BattleState {
+  // Castle = start-house
+  const castle = buildings.find(b => b.id === 'start-house') ?? buildings.find(b => b.type === 'house');
+  const castleId = castle?.id ?? null;
+
   // Wall bonus
   const wallBonus = buildings.filter(b => b.type === 'wall').reduce((s, w) => s + w.level, 0) * WALL_HP_BONUS;
 
@@ -123,7 +132,8 @@ export function createBattle(
   const buildingHp = new Map<string, BuildingHp>();
   for (const b of buildings) {
     if (['house', 'farm', 'barracks', 'wall', 'tower', 'fountain'].includes(b.type)) {
-      const maxHp = b.level * BUILDING_HP_PER_LEVEL + wallBonus;
+      const isCastle = b.id === castleId;
+      const maxHp = b.level * BUILDING_HP_PER_LEVEL + wallBonus + (isCastle ? 80 : 0); // castle gets bonus HP
       buildingHp.set(b.id, { buildingId: b.id, hp: maxHp, maxHp, destroyed: false });
     }
   }
@@ -178,6 +188,7 @@ export function createBattle(
     enemies: [], defenders, archers, arrows: [], fx: [],
     buildingHp, nextId, landEdgeCells,
     countdownNum: 3, timeScale: 1, slowMoTimer: 0,
+    castleId, castleHit: false,
     currentWave: 0,
     wavesSpawned: [0, 0, 0],
     waveTotals: [scoutCount, armyCount, eliteCount],
@@ -228,11 +239,18 @@ function spawnEnemy(
   state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'elite',
   buildings: PlacedBuilding[], ox: number, oy: number,
 ) {
-  const targets = buildings.filter(b =>
-    ['house', 'farm', 'barracks', 'tower', 'fountain'].includes(b.type) &&
-    !state.buildingHp.get(b.id)?.destroyed
-  );
-  const target = targets[Math.floor(Math.random() * targets.length)];
+  // Elite targets castle, others target random buildings
+  let target: PlacedBuilding | undefined;
+  if (tier === 'elite' && state.castleId) {
+    target = buildings.find(b => b.id === state.castleId);
+  }
+  if (!target) {
+    const targets = buildings.filter(b =>
+      ['house', 'farm', 'barracks', 'tower', 'fountain'].includes(b.type) &&
+      !state.buildingHp.get(b.id)?.destroyed
+    );
+    target = targets[Math.floor(Math.random() * targets.length)];
+  }
   if (!target) return;
 
   const pos = edgePos(ox, oy, state.landEdgeCells);
@@ -246,7 +264,7 @@ function spawnEnemy(
   const speedMult = tier === 'scout' ? 1.3 : tier === 'soldier' ? 1.0 : 0.7;
   const hp = Math.round(baseHp * hpMult);
 
-  state.enemies.push({
+  const enemy: BattleEnemy = {
     id: state.nextId++,
     x: pos.x, y: pos.y, targetX: tx, targetY: ty,
     targetBuildingId: target.id,
@@ -255,7 +273,9 @@ function spawnEnemy(
     state: 'walk', attackTimer: 0,
     facingLeft: tx < pos.x,
     tier,
-  });
+  };
+  checkWallBlock(enemy, state, buildings, ox, oy);
+  state.enemies.push(enemy);
 }
 
 // ---- Tick ----
@@ -324,16 +344,21 @@ export function tickBattle(
       tickDefenders(state, dt);
       tickEnemyVsDefenders(state, dt);
 
-      // Win/lose
+      // Win/lose — castle destroyed = lose, all enemies dead = win
       const alive = state.enemies.filter(e => e.state !== 'dead').length;
-      const aliveB = [...state.buildingHp.values()].filter(h => !h.destroyed).length;
+      const castleHp = state.castleId ? state.buildingHp.get(state.castleId) : null;
+      const castleDestroyed = castleHp?.destroyed ?? false;
+
+      // Reset castle hit flash
+      state.castleHit = false;
 
       if (alive === 0) {
         state.won = true; state.phase = 'resolve'; state.elapsed = 0;
-      } else if (aliveB === 0) {
+      } else if (castleDestroyed) {
         state.won = false; state.phase = 'resolve'; state.elapsed = 0;
+        state.slowMoTimer = 0.8;
       } else if (state.elapsed > MAX_BATTLE_TIME) {
-        state.won = aliveB > 0;
+        state.won = !castleDestroyed;
         if (state.won) for (const e of state.enemies) if (e.state !== 'dead') killEnemy(e, state);
         state.phase = 'resolve'; state.elapsed = 0;
       }
@@ -398,6 +423,7 @@ function tickEnemyMovement(state: BattleState, dt: number, buildings: PlacedBuil
         const bhp = state.buildingHp.get(e.targetBuildingId);
         if (bhp && !bhp.destroyed) {
           bhp.hp -= ENEMY_DAMAGE;
+          if (e.targetBuildingId === state.castleId) state.castleHit = true;
           state.fx.push({ id: state.nextId++, x: e.targetX + (Math.random() - 0.5) * 30, y: e.targetY - 20 + (Math.random() - 0.5) * 20, type: 'fire', done: false });
           if (bhp.hp <= 0) {
             bhp.hp = 0; bhp.destroyed = true;
@@ -421,6 +447,7 @@ function tickArchers(state: BattleState, dt: number) {
         state.arrows.push({
           id: state.nextId++, x: a.x, y: a.y,
           targetX: target.x, targetY: target.y,
+          trackEnemyId: target.id,
           speed: ARROW_SPEED, damage: ARROW_DAMAGE,
           angle: Math.atan2(target.y - a.y, target.x - a.x),
         });
@@ -433,16 +460,24 @@ function tickArchers(state: BattleState, dt: number) {
 function tickArrows(state: BattleState, dt: number) {
   for (let i = state.arrows.length - 1; i >= 0; i--) {
     const a = state.arrows[i];
+
+    // Homing: update target position to tracked enemy
+    if (a.trackEnemyId) {
+      const tracked = state.enemies.find(e => e.id === a.trackEnemyId);
+      if (tracked && tracked.state !== 'dead') {
+        a.targetX = tracked.x;
+        a.targetY = tracked.y;
+      }
+    }
+
     const dx = a.targetX - a.x, dy = a.targetY - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 14) {
-      for (const e of state.enemies) {
-        if (e.state === 'dead') continue;
-        if (Math.hypot(e.x - a.targetX, e.y - a.targetY) < TILE_W) {
-          e.hp -= a.damage;
-          if (e.hp <= 0) killEnemy(e, state);
-          break;
-        }
+    if (dist < 18) {
+      // Hit the tracked enemy directly
+      const target = a.trackEnemyId ? state.enemies.find(e => e.id === a.trackEnemyId) : null;
+      if (target && target.state !== 'dead') {
+        target.hp -= a.damage;
+        if (target.hp <= 0) killEnemy(target, state);
       }
       state.arrows.splice(i, 1);
     } else {
@@ -483,17 +518,55 @@ function tickDefenders(state: BattleState, dt: number) {
 
 function tickEnemyVsDefenders(state: BattleState, dt: number) {
   for (const e of state.enemies) {
-    if (e.state !== 'attack') continue;
+    if (e.state === 'dead') continue;
+    // Enemies actively fight defenders that are close
     for (const d of state.defenders) {
       if (d.state === 'dead') continue;
-      if (Math.hypot(d.x - e.x, d.y - e.y) < TILE_W) {
-        d.hp -= ENEMY_DAMAGE * 0.4 * dt;
+      const dist = Math.hypot(d.x - e.x, d.y - e.y);
+      if (dist < TILE_W * 1.2) {
+        // Enemy hits defender
+        d.hp -= ENEMY_DAMAGE * 0.6 * dt;
         if (d.hp <= 0) {
           d.state = 'dead';
           state.fx.push({ id: state.nextId++, x: d.x, y: d.y - 10, type: 'explosion', done: false });
         }
+        // Enemy faces the defender
+        e.facingLeft = d.x < e.x;
       }
     }
+  }
+}
+
+/** If enemy is heading to castle and a wall is closer, retarget to wall first. */
+function checkWallBlock(
+  e: BattleEnemy, state: BattleState,
+  buildings: PlacedBuilding[], ox: number, oy: number,
+) {
+  if (!e.targetBuildingId) return;
+  const targetB = buildings.find(b => b.id === e.targetBuildingId);
+  if (!targetB || targetB.type === 'wall') return; // already targeting a wall
+
+  // Find nearest alive wall between enemy and target
+  const walls = buildings.filter(b => b.type === 'wall' && !state.buildingHp.get(b.id)?.destroyed);
+  let nearestWall: PlacedBuilding | null = null;
+  let nearestDist = Infinity;
+
+  for (const w of walls) {
+    const wx = ox + (w.gx + 0.5) * TILE_W;
+    const wy = oy + (w.gy + 0.5) * TILE_H;
+    const distToEnemy = Math.hypot(wx - e.x, wy - e.y);
+    const distToTarget = Math.hypot(wx - e.targetX, wy - e.targetY);
+    // Wall is "in the way" if it's closer to the enemy than the target
+    if (distToEnemy < distToTarget && distToEnemy < nearestDist) {
+      nearestDist = distToEnemy;
+      nearestWall = w;
+    }
+  }
+
+  if (nearestWall && nearestDist < TILE_W * 5) {
+    e.targetBuildingId = nearestWall.id;
+    e.targetX = ox + (nearestWall.gx + 0.5) * TILE_W;
+    e.targetY = oy + (nearestWall.gy + 0.5) * TILE_H;
   }
 }
 

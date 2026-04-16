@@ -452,23 +452,45 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
           }
         }
 
-        // ---- Building HP bars ----
+        // ---- Building HP bars + castle crown ----
         for (const [bid, bhp] of battle.buildingHp) {
           const bs = buildingSpriteMap.get(bid);
           if (!bs) continue;
+          const isCastle = bid === battle.castleId;
+
           if (bhp.destroyed) {
             bs.alpha = 0.25; bs.tint = 0x333333;
-          } else if (bhp.hp < bhp.maxHp) {
+          } else if (bhp.hp < bhp.maxHp || isCastle) {
             const r = bhp.hp / bhp.maxHp;
-            bs.tint = r > 0.5 ? 0xffffff : r > 0.25 ? 0xff9999 : 0xff4444;
+            if (bhp.hp < bhp.maxHp) {
+              bs.tint = r > 0.5 ? 0xffffff : r > 0.25 ? 0xff9999 : 0xff4444;
+            }
+
             let bar = hpBarMap.get(bid);
             if (!bar) { bar = new Graphics(); battleLayer.addChild(bar); hpBarMap.set(bid, bar); }
             bar.clear();
-            const bw = 50, bh = 6, bx = bs.x - bw / 2, by = bs.y - bs.height * 0.7;
-            bar.rect(bx, by, bw, bh).fill({ color: 0x000000, alpha: 0.6 });
-            bar.rect(bx + 1, by + 1, (bw - 2) * r, bh - 2).fill({ color: r > 0.5 ? 0x4caf50 : r > 0.25 ? 0xff9800 : 0xf44336 });
+            const bw = isCastle ? 70 : 50;
+            const bh = isCastle ? 8 : 6;
+            const bx = bs.x - bw / 2;
+            const by = bs.y - bs.height * 0.7 - (isCastle ? 14 : 0);
+
+            // Castle crown icon
+            if (isCastle) {
+              bar.star(bs.x, by - 12, 5, 10, 5, 0);
+              bar.fill({ color: 0xfdd069 });
+            }
+
+            bar.rect(bx, by, bw, bh).fill({ color: 0x000000, alpha: 0.7 });
+            bar.rect(bx + 1, by + 1, (bw - 2) * r, bh - 2)
+              .fill({ color: isCastle ? 0xfdd069 : (r > 0.5 ? 0x4caf50 : r > 0.25 ? 0xff9800 : 0xf44336) });
             bar.zIndex = 999999;
           }
+        }
+
+        // ---- Castle hit flash ----
+        if (battle.castleHit) {
+          vignette.clear();
+          vignette.rect(0, 0, W, H).fill({ color: 0xff0000, alpha: 0.15 });
         }
 
         // ---- Camera shake (only during attacks, scaled by timeScale) ----

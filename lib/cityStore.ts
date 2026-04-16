@@ -158,6 +158,7 @@ export function addSpeedTokens(state: CityState, amount: number): CityState {
 
 /** Demolish a building. Refunds 50% of base cost. Removes any pending build queue items. */
 export function removeBuilding(state: CityState, buildingId: string): { state: CityState; refund: number } {
+  if (buildingId === 'start-house') return { state, refund: 0 }; // castle can't be demolished
   const b = state.buildings.find(x => x.id === buildingId);
   if (!b) return { state, refund: 0 };
   // Refund: 50% of base cost summed across all upgrade levels achieved
