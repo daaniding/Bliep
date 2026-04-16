@@ -1,4 +1,5 @@
 import { BUILDINGS, buildTimeSec, farmRateFor, footprintOf, footprintsOverlap, type BuildingType } from './game/buildings';
+import { inBuildZone } from './game/iso';
 
 const STORAGE_KEY = 'bliep:city:v2';
 const LEGACY_KEY = 'bliep:city:v1';
@@ -80,15 +81,13 @@ export function resetCity(): CityState {
 }
 
 function defaultCity(): CityState {
-  // Place start-house at CITY_CENTER (96,96) on the 192×192 grid
-  const cx = 96;
-  const cy = 96;
+  // Place start-house at the center of the island (91,92)
   return {
     version: 2,
     coins: 0,
     speedTokens: 0,
     buildings: [
-      { id: 'start-house', type: 'house', gx: cx, gy: cy, level: 1 },
+      { id: 'start-house', type: 'house', gx: 91, gy: 92, level: 1 },
     ],
     buildQueue: [],
     chest: { lastOpenAt: 0 },
@@ -102,16 +101,15 @@ function normalize(parsed: Partial<CityState>): CityState {
   const base = defaultCity();
   let buildings = parsed.buildings ?? base.buildings;
 
-  // Fix start-house position: old saves have it at (16,17) which is off-island.
-  // Move it to CITY_CENTER (96,96) if it's clearly in the wrong spot.
+  // Fix start-house position: must be on the island center (91,92)
   const startHouse = buildings.find(b => b.id === 'start-house');
-  if (startHouse && startHouse.gx < 60) {
-    startHouse.gx = 96;
-    startHouse.gy = 96;
+  if (startHouse && (startHouse.gx < 70 || startHouse.gx > 110 || startHouse.gy < 75 || startHouse.gy > 105)) {
+    startHouse.gx = 91;
+    startHouse.gy = 92;
   }
   // Ensure start-house exists
   if (!buildings.some(b => b.id === 'start-house')) {
-    buildings = [{ id: 'start-house', type: 'house' as const, gx: 96, gy: 96, level: 1 }, ...buildings];
+    buildings = [{ id: 'start-house', type: 'house' as const, gx: 91, gy: 92, level: 1 }, ...buildings];
   }
 
   return {
@@ -196,6 +194,9 @@ export function removeBuilding(state: CityState, buildingId: string): { state: C
 }
 
 export function placeBuilding(state: CityState, type: BuildingType, gx: number, gy: number): CityState {
+  // Must be in build zone (on the island)
+  if (!inBuildZone(gx, gy)) return state;
+
   // No overlapping — check the proposed footprint against every placed
   // building's own footprint rect.
   const { w, h } = footprintOf(type);

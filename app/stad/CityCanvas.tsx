@@ -1102,7 +1102,8 @@ export default function CityCanvas({
         continue;
       }
 
-      const slug = spriteForLevel(b.type, b.level);
+      // Start-house always shows castle sprite
+      const slug = b.id === 'start-house' ? 'ts:yellow:castle' : spriteForLevel(b.type, b.level);
       const tex = getTopdownTexture(atlas, slug);
       if (!tex || tex === Texture.EMPTY) continue;
       const sprite = new Sprite(tex);
