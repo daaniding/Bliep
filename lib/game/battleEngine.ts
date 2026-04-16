@@ -88,6 +88,8 @@ export interface BattleState {
   fx: BattleFx[];
   buildingHp: Map<string, BuildingHp>;
   nextId: number;
+  /** Land edge cells for spawning enemies on the coast (set by BattleIsland). */
+  landEdgeCells?: Array<{ gx: number; gy: number }>;
 }
 
 // ---- Config ----
@@ -137,33 +139,31 @@ export function createBattle(
 
 // ---- Spawn helpers ----
 
-/** Pick a random edge position on the island (outside build zone). */
-function randomEdgePosition(originX: number, originY: number, islandBbox: { minGx: number; maxGx: number; minGy: number; maxGy: number }): { x: number; y: number } {
+/** Pick a random spawn position on the island coast. */
+function randomEdgePosition(
+  originX: number,
+  originY: number,
+  islandBbox: { minGx: number; maxGx: number; minGy: number; maxGy: number },
+  landEdgeCells?: Array<{ gx: number; gy: number }>,
+): { x: number; y: number } {
+  // Use actual land edge cells if available — enemies spawn on the coast
+  if (landEdgeCells && landEdgeCells.length > 0) {
+    const cell = landEdgeCells[Math.floor(Math.random() * landEdgeCells.length)];
+    return {
+      x: originX + cell.gx * TILE_W + TILE_W / 2,
+      y: originY + cell.gy * TILE_H + TILE_H / 2,
+    };
+  }
+  // Fallback: random edge of bbox
   const side = Math.floor(Math.random() * 4);
   let gx: number, gy: number;
-  const margin = 3; // tiles outside the island
   switch (side) {
-    case 0: // top
-      gx = islandBbox.minGx + Math.random() * (islandBbox.maxGx - islandBbox.minGx);
-      gy = islandBbox.minGy - margin;
-      break;
-    case 1: // right
-      gx = islandBbox.maxGx + margin;
-      gy = islandBbox.minGy + Math.random() * (islandBbox.maxGy - islandBbox.minGy);
-      break;
-    case 2: // bottom
-      gx = islandBbox.minGx + Math.random() * (islandBbox.maxGx - islandBbox.minGx);
-      gy = islandBbox.maxGy + margin;
-      break;
-    default: // left
-      gx = islandBbox.minGx - margin;
-      gy = islandBbox.minGy + Math.random() * (islandBbox.maxGy - islandBbox.minGy);
-      break;
+    case 0: gx = islandBbox.minGx + Math.random() * (islandBbox.maxGx - islandBbox.minGx); gy = islandBbox.minGy; break;
+    case 1: gx = islandBbox.maxGx; gy = islandBbox.minGy + Math.random() * (islandBbox.maxGy - islandBbox.minGy); break;
+    case 2: gx = islandBbox.minGx + Math.random() * (islandBbox.maxGx - islandBbox.minGx); gy = islandBbox.maxGy; break;
+    default: gx = islandBbox.minGx; gy = islandBbox.minGy + Math.random() * (islandBbox.maxGy - islandBbox.minGy); break;
   }
-  return {
-    x: originX + gx * TILE_W + TILE_W / 2,
-    y: originY + gy * TILE_H + TILE_H / 2,
-  };
+  return { x: originX + gx * TILE_W + TILE_W / 2, y: originY + gy * TILE_H + TILE_H / 2 };
 }
 
 /** How many enemies to spawn for this camp. */
@@ -228,7 +228,7 @@ function tickSpawn(
       const target = targetBuildings[Math.floor(Math.random() * targetBuildings.length)];
       if (!target) return;
 
-      const pos = randomEdgePosition(originX, originY, islandBbox);
+      const pos = randomEdgePosition(originX, originY, islandBbox, state.landEdgeCells);
       const fp = { w: 1, h: 1 }; // simplified
       const targetX = originX + (target.gx + fp.w / 2) * TILE_W;
       const targetY = originY + (target.gy + fp.h / 2) * TILE_H;

@@ -3,31 +3,30 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 /**
  * Combat sprite loader for on-island battles.
  *
- * Uses Tiny Swords unit sprites (192×192 frames) for:
- * - Blue archers (defenders, spawned from towers/archery buildings)
- * - Red warriors (attackers/enemies, walk toward buildings)
- * - Arrow projectile (64×64 single sprite)
- * - Particle FX: explosion, fire
+ * Each camp has its own enemy type (color + unit class) from Tiny Swords:
+ *   Bandiet  → Yellow Pawn    (192px frames)
+ *   Wolven   → Yellow Warrior (192px frames)
+ *   Fort     → Purple Warrior (192px frames)
+ *   Goblin   → Red Lancer    (320px frames)
+ *   Draak    → Black Lancer  (320px frames)
  *
- * Monsters reuse minifolks (wolf, bear, boar) from minifolks.ts.
+ * Defenders are Blue Archers (always).
  */
 
 const UNITS = '/assets/topdown/units';
 const FX = '/assets/topdown/fx';
 
-// ---- Slice helper (same pattern as minifolks.ts) ----
+// ---- Slice helper ----
 
 function sliceRow(tex: Texture, frameW: number, frameH: number, count: number): Texture[] {
   const maxFrames = Math.floor(tex.width / frameW);
   const n = Math.min(count, maxFrames);
   const out: Texture[] = [];
   for (let i = 0; i < n; i++) {
-    out.push(
-      new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * frameW, 0, frameW, frameH),
-      }),
-    );
+    out.push(new Texture({
+      source: tex.source,
+      frame: new Rectangle(i * frameW, 0, frameW, frameH),
+    }));
   }
   return out;
 }
@@ -36,73 +35,102 @@ function setNearest(t: Texture) {
   if (t.source) t.source.scaleMode = 'nearest';
 }
 
-// ---- Blue Archer (defender) ----
+// ---- Types ----
 
-export interface ArcherSprites {
-  idle: Texture[];   // 6 frames, 192×192
-  shoot: Texture[];  // 8 frames, 192×192
+export interface UnitFrames {
+  idle: Texture[];
+  run: Texture[];
+  attack: Texture[];
+  frameH: number; // 192 or 320 — needed for scaling
 }
 
-// ---- Red Warrior (attacker) ----
-
-export interface EnemyWarriorSprites {
-  idle: Texture[];   // 8 frames, 192×192
-  run: Texture[];    // 6 frames, 192×192
-  attack: Texture[]; // 4 frames, 192×192
+export interface ArcherFrames {
+  idle: Texture[];
+  shoot: Texture[];
 }
 
-// ---- FX ----
-
-export interface FxSprites {
-  explosion: Texture[];  // 8 frames, 192×192
-  fireSmall: Texture[];  // 8 frames, 64×64
-  fireLarge: Texture[];  // 12 frames, 64×64
+export interface FxFrames {
+  explosion: Texture[];
+  fireSmall: Texture[];
+  fireLarge: Texture[];
 }
 
-// ---- Combined ----
-
+/** All camp enemy types keyed by camp id. */
 export interface CombatSprites {
-  archer: ArcherSprites;
-  enemy: EnemyWarriorSprites;
-  arrow: Texture;          // single 64×64 sprite
-  fx: FxSprites;
+  enemies: Record<string, UnitFrames>; // keyed by camp id
+  archer: ArcherFrames;
+  arrow: Texture;
+  fx: FxFrames;
 }
+
+// ---- Loader ----
 
 let cache: CombatSprites | null = null;
+
+async function loadUnit(
+  color: string,
+  unit: string,
+  frameH: number,
+): Promise<UnitFrames> {
+  const base = `${UNITS}/${color}/${unit}`;
+  const [idle, run, attack] = await Promise.all([
+    Assets.load<Texture>(`${base}/idle.png`),
+    Assets.load<Texture>(`${base}/run.png`),
+    Assets.load<Texture>(`${base}/attack.png`).catch(() => null),
+  ]);
+  for (const t of [idle, run, attack]) { if (t) setNearest(t); }
+
+  const frameW = frameH; // Tiny Swords units are square frames (192×192 or 320×320)
+  // Pawns don't have attack — use idle as fallback
+  const attackFrames = attack
+    ? sliceRow(attack, frameW, frameH, 12)
+    : sliceRow(idle, frameW, frameH, 8);
+
+  return {
+    idle: sliceRow(idle, frameW, frameH, 12),
+    run: sliceRow(run, frameW, frameH, 6),
+    attack: attackFrames,
+    frameH,
+  };
+}
 
 export async function loadCombatSprites(): Promise<CombatSprites> {
   if (cache) return cache;
 
+  // Load all enemy types in parallel
   const [
-    archerIdle, archerShoot,
-    enemyIdle, enemyRun, enemyAttack,
-    arrowTex,
+    bandiet, wolven, fort, goblin, draak,
+    archerIdle, archerShoot, arrowTex,
     explosion, fireSmall, fireLarge,
   ] = await Promise.all([
+    loadUnit('yellow', 'pawn', 192),
+    loadUnit('yellow', 'warrior', 192),
+    loadUnit('purple', 'warrior', 192),
+    loadUnit('red', 'lancer', 320),
+    loadUnit('black', 'lancer', 320),
     Assets.load<Texture>(`${UNITS}/blue/archer/idle.png`),
     Assets.load<Texture>(`${UNITS}/blue/archer/shoot.png`),
-    Assets.load<Texture>(`${UNITS}/red/warrior/idle.png`),
-    Assets.load<Texture>(`${UNITS}/red/warrior/run.png`),
-    Assets.load<Texture>(`${UNITS}/red/warrior/attack.png`),
     Assets.load<Texture>(`${UNITS}/blue/archer/arrow.png`),
     Assets.load<Texture>(`${FX}/explosion.png`),
     Assets.load<Texture>(`${FX}/fire_small.png`),
     Assets.load<Texture>(`${FX}/fire_large.png`),
   ]);
 
-  for (const t of [archerIdle, archerShoot, enemyIdle, enemyRun, enemyAttack, arrowTex, explosion, fireSmall, fireLarge]) {
+  for (const t of [archerIdle, archerShoot, arrowTex, explosion, fireSmall, fireLarge]) {
     setNearest(t);
   }
 
   cache = {
+    enemies: {
+      bandiet,
+      wolven,
+      fort,
+      goblin,
+      draak,
+    },
     archer: {
       idle: sliceRow(archerIdle, 192, 192, 6),
       shoot: sliceRow(archerShoot, 192, 192, 8),
-    },
-    enemy: {
-      idle: sliceRow(enemyIdle, 192, 192, 8),
-      run: sliceRow(enemyRun, 192, 192, 6),
-      attack: sliceRow(enemyAttack, 192, 192, 4),
     },
     arrow: arrowTex,
     fx: {
