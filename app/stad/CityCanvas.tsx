@@ -355,8 +355,9 @@ export default function CityCanvas({
 
       // ---- Layer 4: Grass tiles + grass→sand transition ----
       for (const cell of grassCells) {
-        // Base grass fill
-        const sprite = new Sprite(terrain.grass[0]);
+        // Base grass fill — pick from variants using hash for consistency
+        const grassIdx = Math.floor(hash(cell.gx, cell.gy, 42) * terrain.grass.length);
+        const sprite = new Sprite(terrain.grass[grassIdx]);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
@@ -405,61 +406,88 @@ export default function CityCanvas({
 
       // ================================================================
       // DECORATION SCATTER — flowers, tufts, mushrooms on GRASS cells
+      // Much denser for a lush, lived-in feel
       // ================================================================
       for (const cell of grassCells) {
         const centerDist = Math.hypot(cell.gx - CITY_CENTER.gx, cell.gy - CITY_CENTER.gy);
         const r = hash(cell.gx, cell.gy, 100);
         const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
 
-        // Grass tufts ~10%
-        if (r < 0.10 && terrain.grassTufts.length > 0) {
+        // Grass tufts ~22%
+        if (r < 0.22 && terrain.grassTufts.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 101) * terrain.grassTufts.length);
           const sprite = new Sprite(terrain.grassTufts[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.5,
-                              sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.5);
-          sprite.width = TILE_W * 0.6;
-          sprite.height = TILE_H * 0.6;
-          sprite.alpha = 0.75;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.6,
+                              sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.6);
+          sprite.width = TILE_W * 0.65;
+          sprite.height = TILE_H * 0.65;
+          sprite.alpha = 0.8;
           sprite.zIndex = Math.floor(sprite.position.y) - 1;
           decorLayer.addChild(sprite);
-          continue;
+          // Don't continue — allow flowers on top of tufts sometimes
+          if (hash(cell.gx, cell.gy, 104) > 0.3) continue;
         }
-        // White flowers ~4%
-        if (r < 0.14 && terrain.flowersWhite.length > 0) {
+        // White flowers ~10%
+        if (r < 0.32 && r >= 0.22 && terrain.flowersWhite.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 201) * terrain.flowersWhite.length);
           const sprite = new Sprite(terrain.flowersWhite[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.3, sy);
-          sprite.width = TILE_W * 0.55;
-          sprite.height = TILE_H * 0.55;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.4, sy);
+          sprite.width = TILE_W * 0.6;
+          sprite.height = TILE_H * 0.6;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
         }
-        // Purple flowers ~2%
-        if (r < 0.16 && terrain.flowersPurple.length > 0) {
+        // Purple flowers ~5%
+        if (r < 0.37 && r >= 0.32 && terrain.flowersPurple.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 301) * terrain.flowersPurple.length);
           const sprite = new Sprite(terrain.flowersPurple[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx, sy);
-          sprite.width = TILE_W * 0.55;
-          sprite.height = TILE_H * 0.55;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 302) - 0.5) * TILE_W * 0.3, sy);
+          sprite.width = TILE_W * 0.6;
+          sprite.height = TILE_H * 0.6;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
         }
-        // Mushrooms ~1%, far from center
-        if (r < 0.17 && terrain.mushrooms.length > 0 && centerDist > 18) {
+        // Mushrooms ~3%, further from center
+        if (r < 0.40 && r >= 0.37 && terrain.mushrooms.length > 0 && centerDist > 14) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 401) * terrain.mushrooms.length);
           const sprite = new Sprite(terrain.mushrooms[idx]);
           sprite.anchor.set(0.5, 0.9);
-          sprite.position.set(sx, sy);
-          sprite.width = TILE_W * 0.45;
-          sprite.height = TILE_H * 0.45;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 402) - 0.5) * TILE_W * 0.3, sy);
+          sprite.width = TILE_W * 0.5;
+          sprite.height = TILE_H * 0.5;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
+        }
+      }
+
+      // ================================================================
+      // CATTAILS / REEDS — along grass cells that touch water/river
+      // ================================================================
+      if (terrain.cattails.length > 0) {
+        for (const cell of grassCells) {
+          // Check if this grass cell borders water or river
+          const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+          const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+          const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+          const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+          const touchesWater = (n <= 1 || n === 4) || (s <= 1 || s === 4) || (w <= 1 || w === 4) || (e <= 1 || e === 4);
+          if (!touchesWater) continue;
+          if (hash(cell.gx, cell.gy, 2000) > 0.25) continue; // ~25% of water-edge grass
+          const idx = Math.floor(hash(cell.gx, cell.gy, 2001) * terrain.cattails.length);
+          const sprite = new Sprite(terrain.cattails[idx]);
+          sprite.anchor.set(0.5, 0.9);
+          const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 2002) - 0.5) * TILE_W * 0.5, sy);
+          sprite.width = TILE_W * 0.55;
+          sprite.height = TILE_H * 0.7;
+          sprite.zIndex = Math.floor(sy);
+          decorLayer.addChild(sprite);
         }
       }
 
@@ -499,11 +527,14 @@ export default function CityCanvas({
             break;
           case 'pine':
             if (terrain.trees.length > 0) {
-              // Pine is the last tree sheet (index 4)
               const pineIdx = Math.min(4, terrain.trees.length - 1);
               const sheet = terrain.trees[pineIdx];
               tex = sheet.frames[0] ?? null;
             }
+            break;
+          case 'bush':
+            if (terrain.bushes.length > 0)
+              tex = terrain.bushes[tp.sheetIndex % terrain.bushes.length];
             break;
         }
 
@@ -1046,8 +1077,10 @@ export default function CityCanvas({
         continue;
       }
       if (b.type === 'path') {
-        const sprite = new Sprite(Texture.WHITE);
-        sprite.tint = 0xc8a878;
+        // Use sand path texture from the farm tileset if available
+        const pathTex = terrainRef?.sandFill;
+        const sprite = new Sprite(pathTex || Texture.WHITE);
+        if (!pathTex) sprite.tint = 0xc8a878;
         sprite.width = TILE_W * fp.w;
         sprite.height = TILE_H * fp.h;
         sprite.position.set(b.gx * TILE_W, b.gy * TILE_H);

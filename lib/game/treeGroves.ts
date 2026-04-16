@@ -7,7 +7,7 @@
  * and orchards near the center.
  */
 
-export type GroveType = 'dense' | 'light' | 'orchard' | 'cherry';
+export type GroveType = 'dense' | 'light' | 'orchard' | 'cherry' | 'mixed';
 
 export interface TreePlacement {
   gx: number;
@@ -15,7 +15,7 @@ export interface TreePlacement {
   /** Sub-tile offset for natural look (-0.3 to 0.3). */
   offsetX: number;
   offsetY: number;
-  type: 'basic' | 'large' | 'cherry' | 'fruit' | 'pine';
+  type: 'basic' | 'large' | 'cherry' | 'fruit' | 'pine' | 'bush';
   /** Index into the corresponding terrain array. */
   sheetIndex: number;
   /** Scale multiplier. */
@@ -93,9 +93,9 @@ export function generateGroves(
 
   // ---- Step 1: Pick grove centers using Poisson-disk-like sampling ----
   const groves: GroveCenter[] = [];
-  const minSpacing = 7;
-  const maxGroves = 16;
-  const attempts = 200;
+  const minSpacing = 4;
+  const maxGroves = 40;
+  const attempts = 600;
 
   for (let i = 0; i < attempts && groves.length < maxGroves; i++) {
     const idx = Math.floor(rand() * grassCells.length);
@@ -103,10 +103,10 @@ export function generateGroves(
     const cd = centerDist(cell.gx, cell.gy);
     const ed = distFromEdge(cell.rx, cell.ry);
 
-    // Must be far enough from center (keep build area clear)
-    if (cd < 10) continue;
-    // Must be at least 3 tiles from edge (not on beach)
-    if (ed < 3) continue;
+    // Keep core build area clear but trees close around it
+    if (cd < 8) continue;
+    // Must be at least 2 tiles from edge (not on beach)
+    if (ed < 2) continue;
 
     // Check spacing from existing groves
     const tooClose = groves.some(g =>
@@ -114,25 +114,36 @@ export function generateGroves(
     );
     if (tooClose) continue;
 
-    // Determine grove type based on position
+    // Determine grove type based on position — lush everywhere
     let type: GroveType;
-    if (cd > 28) {
-      type = 'dense'; // outer ring = dense forest
-    } else if (cd > 20) {
-      type = rand() < 0.3 ? 'cherry' : 'light'; // mid ring = light woodland or cherry
+    if (cd > 25) {
+      type = rand() < 0.7 ? 'dense' : 'mixed'; // outer ring = thick forest
+    } else if (cd > 18) {
+      const r = rand();
+      if (r < 0.25) type = 'cherry';
+      else if (r < 0.5) type = 'dense';
+      else if (r < 0.75) type = 'mixed';
+      else type = 'light';
+    } else if (cd > 12) {
+      const r = rand();
+      if (r < 0.35) type = 'orchard';
+      else if (r < 0.55) type = 'cherry';
+      else type = 'light';
     } else {
-      type = rand() < 0.5 ? 'orchard' : 'light'; // inner ring = orchard or light
+      type = rand() < 0.6 ? 'orchard' : 'light'; // near center = orchard
     }
 
-    const radius = type === 'dense' ? 4 + rand() * 3
-                 : type === 'cherry' ? 3 + rand() * 2
-                 : type === 'orchard' ? 4 + rand() * 2
-                 : 3 + rand() * 3;
+    const radius = type === 'dense' ? 5 + rand() * 5
+                 : type === 'mixed' ? 4 + rand() * 4
+                 : type === 'cherry' ? 3 + rand() * 3
+                 : type === 'orchard' ? 4 + rand() * 3
+                 : 3 + rand() * 4;
 
-    const treeCount = type === 'dense' ? 12 + Math.floor(rand() * 10)
-                    : type === 'cherry' ? 3 + Math.floor(rand() * 3)
-                    : type === 'orchard' ? 6 + Math.floor(rand() * 5)
-                    : 5 + Math.floor(rand() * 6);
+    const treeCount = type === 'dense' ? 22 + Math.floor(rand() * 16)
+                    : type === 'mixed' ? 15 + Math.floor(rand() * 12)
+                    : type === 'cherry' ? 6 + Math.floor(rand() * 6)
+                    : type === 'orchard' ? 10 + Math.floor(rand() * 8)
+                    : 8 + Math.floor(rand() * 10);
 
     groves.push({ gx: cell.gx, gy: cell.gy, radius, type, treeCount });
   }
@@ -166,54 +177,135 @@ export function generateGroves(
 
       switch (grove.type) {
         case 'dense':
-          if (rand() < 0.15) { type = 'large'; scale = 2.5 + rand() * 0.8; }
-          else if (rand() < 0.2) { type = 'pine'; scale = 2.0 + rand() * 0.6; }
-          else { type = 'basic'; scale = 2.0 + rand() * 1.0; }
+          {
+            const r = rand();
+            if (r < 0.12) { type = 'large'; scale = 3.0 + rand() * 1.0; }
+            else if (r < 0.25) { type = 'pine'; scale = 2.2 + rand() * 0.8; }
+            else if (r < 0.35) { type = 'bush'; scale = 1.2 + rand() * 0.6; }
+            else { type = 'basic'; scale = 2.2 + rand() * 1.2; }
+          }
+          break;
+        case 'mixed':
+          {
+            const r = rand();
+            if (r < 0.15) { type = 'large'; scale = 2.8 + rand() * 0.8; }
+            else if (r < 0.25) { type = 'cherry'; scale = 3.0 + rand() * 0.6; }
+            else if (r < 0.35) { type = 'fruit'; scale = 2.4 + rand() * 0.5; }
+            else if (r < 0.45) { type = 'pine'; scale = 2.0 + rand() * 0.6; }
+            else if (r < 0.55) { type = 'bush'; scale = 1.0 + rand() * 0.5; }
+            else { type = 'basic'; scale = 2.0 + rand() * 1.0; }
+          }
           break;
         case 'cherry':
-          type = 'cherry';
-          scale = 2.8 + rand() * 0.5;
+          if (rand() < 0.15) { type = 'bush'; scale = 1.0 + rand() * 0.4; }
+          else { type = 'cherry'; scale = 3.2 + rand() * 0.8; }
           break;
         case 'orchard':
-          type = 'fruit';
-          scale = 2.2 + rand() * 0.5;
+          if (rand() < 0.1) { type = 'bush'; scale = 1.0 + rand() * 0.4; }
+          else { type = 'fruit'; scale = 2.5 + rand() * 0.6; }
           break;
         case 'light':
         default:
-          if (rand() < 0.3) { type = 'pine'; scale = 1.8 + rand() * 0.5; }
-          else { type = 'basic'; scale = 2.0 + rand() * 0.8; }
+          {
+            const r = rand();
+            if (r < 0.2) { type = 'pine'; scale = 2.0 + rand() * 0.6; }
+            else if (r < 0.35) { type = 'bush'; scale = 1.0 + rand() * 0.5; }
+            else { type = 'basic'; scale = 2.2 + rand() * 1.0; }
+          }
           break;
       }
 
       placements.push({
         gx, gy,
-        offsetX: (rand() - 0.5) * 0.3,
-        offsetY: (rand() - 0.5) * 0.3,
+        offsetX: (rand() - 0.5) * 0.45,
+        offsetY: (rand() - 0.5) * 0.45,
         type,
-        sheetIndex: Math.floor(rand() * 100), // will be modulo'd by array length
+        sheetIndex: Math.floor(rand() * 100),
         scale,
       });
     }
   }
 
   // ---- Step 3: Add sparse individual trees outside groves ----
-  // A few lone trees scattered around for natural feel
   for (const cell of grassCells) {
     const cd = centerDist(cell.gx, cell.gy);
-    if (cd < 12) continue; // keep center clear
+    if (cd < 8) continue; // keep core build area clear
     const ed = distFromEdge(cell.rx, cell.ry);
-    if (ed < 3) continue; // not near coast
+    if (ed < 2) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.008) continue; // very sparse (~0.8%)
+    if (rand() > 0.05) continue; // ~5% of remaining cells
+
+    const r = rand();
+    placements.push({
+      gx: cell.gx, gy: cell.gy,
+      offsetX: (rand() - 0.5) * 0.3,
+      offsetY: (rand() - 0.5) * 0.3,
+      type: r < 0.15 ? 'pine' : r < 0.3 ? 'fruit' : r < 0.4 ? 'cherry' : 'basic',
+      sheetIndex: Math.floor(rand() * 100),
+      scale: 2.0 + rand() * 1.0,
+    });
+    usedCells.add(`${cell.gx},${cell.gy}`);
+  }
+
+  // ---- Step 4: Fill outer ring — dense forest border ----
+  // Any grass cell far from center that's not occupied gets a tree
+  for (const cell of grassCells) {
+    const cd = centerDist(cell.gx, cell.gy);
+    if (cd < 20) continue; // only outer ring
+    const ed = distFromEdge(cell.rx, cell.ry);
+    if (ed < 3) continue; // not too close to coast
+    if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
+    if (rand() > 0.35) continue; // ~35% fill rate for dense border
+
+    const r = rand();
+    placements.push({
+      gx: cell.gx, gy: cell.gy,
+      offsetX: (rand() - 0.5) * 0.4,
+      offsetY: (rand() - 0.5) * 0.4,
+      type: r < 0.1 ? 'large' : r < 0.2 ? 'cherry' : r < 0.3 ? 'fruit' : r < 0.4 ? 'pine' : 'basic',
+      sheetIndex: Math.floor(rand() * 100),
+      scale: 2.0 + rand() * 1.2,
+    });
+    usedCells.add(`${cell.gx},${cell.gy}`);
+  }
+
+  // ---- Step 5: Edge bushes — line of bushes near the coast ----
+  for (const cell of grassCells) {
+    const ed = distFromEdge(cell.rx, cell.ry);
+    if (ed < 2 || ed > 5) continue;
+    if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
+    if (rand() > 0.22) continue; // ~22% of edge cells get bushes
 
     placements.push({
       gx: cell.gx, gy: cell.gy,
-      offsetX: (rand() - 0.5) * 0.2,
-      offsetY: (rand() - 0.5) * 0.2,
-      type: rand() < 0.2 ? 'pine' : 'basic',
+      offsetX: (rand() - 0.5) * 0.4,
+      offsetY: (rand() - 0.5) * 0.4,
+      type: 'bush',
       sheetIndex: Math.floor(rand() * 100),
-      scale: 1.8 + rand() * 0.8,
+      scale: 1.0 + rand() * 0.6,
     });
+    usedCells.add(`${cell.gx},${cell.gy}`);
+  }
+
+  // ---- Step 6: Mid-ring fill — lighter tree coverage ----
+  for (const cell of grassCells) {
+    const cd = centerDist(cell.gx, cell.gy);
+    if (cd < 12 || cd > 20) continue; // mid ring only
+    const ed = distFromEdge(cell.rx, cell.ry);
+    if (ed < 3) continue;
+    if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
+    if (rand() > 0.12) continue; // ~12% fill rate
+
+    const r = rand();
+    placements.push({
+      gx: cell.gx, gy: cell.gy,
+      offsetX: (rand() - 0.5) * 0.3,
+      offsetY: (rand() - 0.5) * 0.3,
+      type: r < 0.2 ? 'fruit' : r < 0.35 ? 'cherry' : r < 0.5 ? 'bush' : 'basic',
+      sheetIndex: Math.floor(rand() * 100),
+      scale: r < 0.5 ? 1.0 + rand() * 0.5 : 2.0 + rand() * 0.8,
+    });
+    usedCells.add(`${cell.gx},${cell.gy}`);
   }
 
   return placements;

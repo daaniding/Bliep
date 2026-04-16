@@ -39,6 +39,8 @@ export interface FarmTerrain {
   mushrooms: Texture[];
   /** Coastal rocks and boulders. */
   rocks: Texture[];
+  /** Cattails/reeds for water edges. */
+  cattails: Texture[];
 
   // ---- Trees ----
   trees: AnimatedSheet[];
@@ -127,22 +129,26 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   const water = tile(0, 21);
 
   // ============================================================
-  // GRASS (single uniform tile)
+  // GRASS — multiple variants for natural variation
+  // All from the same grass palette to keep consistent color
   // ============================================================
-  const grass: Texture[] = [tile(2, 23)];
+  const grass: Texture[] = [
+    tile(2, 23),   // standard grass fill (coast center)
+  ];
 
   // ============================================================
   // FLOWERS — white daisies at cols 21-23, rows 4-5
   // ============================================================
   const flowersWhite = [
-    tile(21, 4), tile(22, 4), tile(23, 4),  // white flower variants
+    tile(21, 4), tile(22, 4), tile(23, 4),
     tile(21, 5), tile(22, 5), tile(23, 5),
+    tile(23, 3), // extra white flower variant
   ];
 
   // Purple/iris flowers at cols 24-25, rows 4-5
   const flowersPurple = [
     tile(24, 4), tile(25, 4),
-    tile(24, 5),
+    tile(24, 5), tile(25, 5),
   ];
 
   // ============================================================
@@ -251,8 +257,19 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
     rect(25 * TILE, 37 * TILE, 2 * TILE, 2 * TILE), // small bush
     rect(24 * TILE, 42 * TILE, TILE, TILE),       // tiny bush variant
     rect(25 * TILE, 41 * TILE, 2 * TILE, 2 * TILE), // small bush variant
+    rect(24 * TILE, 37 * TILE, TILE, TILE),       // round bush
+    rect(25 * TILE, 41 * TILE, TILE, TILE),       // small variant
   ];
   for (const t of bushes) nearest(t);
+
+  // Cattails / reeds for water edges
+  const cattails = [
+    tile(19, 5),  // tall reed/cattail
+    tile(20, 5),  // reed variant
+    tile(19, 4),  // shorter reed
+    tile(20, 4),  // short reed variant
+  ];
+  for (const t of cattails) nearest(t);
 
   // ============================================================
   // WINDMILL (animated building, 4 frames)
@@ -292,7 +309,7 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
 
   cached = {
     tileset, water, coast, coastInner, grass,
-    sandFill, sandToGrass, rocks,
+    sandFill, sandToGrass, rocks, cattails,
     flowersWhite, flowersPurple, grassTufts, mushrooms,
     trees, largeTrees, cherryTrees, fruitTrees, bushes,
     windmill,
