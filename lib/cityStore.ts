@@ -1,4 +1,4 @@
-import { BUILDINGS, buildTimeSec, farmRateFor, footprintOf, footprintsOverlap, type BuildingType } from './game/buildings';
+import { BUILDINGS, buildTimeSec, farmRateFor, footprintOf, footprintsOverlap, populationFor, populationCostOf, type BuildingType } from './game/buildings';
 import { inBuildZone } from './game/iso';
 
 const STORAGE_KEY = 'bliep:city:v2';
@@ -122,6 +122,34 @@ function normalize(parsed: Partial<CityState>): CityState {
     lastProductionTickAt: parsed.lastProductionTickAt ?? Date.now(),
     updatedAt: parsed.updatedAt ?? Date.now(),
   };
+}
+
+// ---- Population ----
+
+/** Total population provided by all houses. */
+export function totalPopulation(state: CityState): number {
+  return state.buildings
+    .filter(b => b.type === 'house')
+    .reduce((sum, b) => sum + populationFor(b.level), 0);
+}
+
+/** Population used by all non-house buildings. */
+export function usedPopulation(state: CityState): number {
+  return state.buildings
+    .filter(b => b.type !== 'house' && b.type !== 'tree' && b.type !== 'path')
+    .reduce((sum, b) => sum + populationCostOf(b.type), 0);
+}
+
+/** Available population (total - used). */
+export function availablePopulation(state: CityState): number {
+  return totalPopulation(state) - usedPopulation(state);
+}
+
+/** Check if there's enough population to build a new building of this type. */
+export function canAffordPopulation(state: CityState, type: BuildingType): boolean {
+  const cost = populationCostOf(type);
+  if (cost === 0) return true;
+  return availablePopulation(state) >= cost;
 }
 
 function migrateV1(v1: LegacyV1): CityState {

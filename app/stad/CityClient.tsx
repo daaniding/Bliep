@@ -20,6 +20,9 @@ import {
   isChestReady,
   chestReadyAt,
   farmPendingCoins,
+  totalPopulation,
+  usedPopulation,
+  canAffordPopulation,
   type CityState,
   type PlacedBuilding,
 } from '@/lib/cityStore';
@@ -203,10 +206,15 @@ export default function CityClient() {
       return;
     }
 
-    // New building (costs coins)
+    // New building (costs coins + population)
     const cost = buildCost(type);
     if (state.coins < cost) {
       showFlash('Niet genoeg coins');
+      playSfx('fail');
+      return;
+    }
+    if (!canAffordPopulation(state, type)) {
+      showFlash('Niet genoeg inwoners — bouw meer huizen');
       playSfx('fail');
       return;
     }
@@ -318,6 +326,10 @@ export default function CityClient() {
           <div className="bg-[#0d0a06]/85 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-[#9bdbff]/40 shadow-md">
             <span className="text-base">⚡</span>
             <span className="font-display text-[#9bdbff] text-base tabular-nums">{state.speedTokens}</span>
+          </div>
+          <div className="bg-[#0d0a06]/85 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-[#88dd88]/40 shadow-md">
+            <span className="text-base">👤</span>
+            <span className="font-display text-[#88dd88] text-base tabular-nums">{usedPopulation(state)}/{totalPopulation(state)}</span>
           </div>
         </div>
         <Link
@@ -463,7 +475,12 @@ function BuildDrawer({
                   />
                 </div>
                 <p className="font-display text-[#fdd069] text-[11px] leading-tight text-center">{def.name}</p>
-                <p className="font-display text-[#fdd069]/80 text-[10px] flex items-center gap-0.5">{cost}🪙</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-display text-[#fdd069]/80 text-[10px]">{cost}🪙</span>
+                  {(def.populationCost ?? 0) > 0 && (
+                    <span className="font-display text-[#88dd88]/80 text-[10px]">{def.populationCost}👤</span>
+                  )}
+                </div>
               </button>
             );
           })}

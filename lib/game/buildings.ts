@@ -23,10 +23,12 @@ export interface BuildingDef {
   spriteYOffset?: number;
   /** Sprite scale factor on canvas. */
   spriteScale?: number;
-  /** Grid footprint in tiles (default 1×1). Buildings with a bigger
-   *  footprint occupy multiple adjacent cells; their (gx,gy) is the
-   *  top-left corner of the rectangle. */
+  /** Grid footprint in tiles (default 1×1). */
   footprint?: { w: number; h: number };
+  /** Population provided per level (houses only). */
+  populationPerLevel?: number[];
+  /** Population cost to build/operate this building. 0 for houses/decorative. */
+  populationCost?: number;
 }
 
 export const MAX_LEVEL = 10;
@@ -79,6 +81,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     ),
     spriteScale: 1.0,
     footprint: { w: 2, h: 2 },
+    populationPerLevel: [3, 5, 8, 12, 16, 21, 27, 34, 42, 50],
+    populationCost: 0, // houses PROVIDE population, don't cost it
   },
   farm: {
     type: 'farm',
@@ -98,6 +102,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     productionPerMin: [1, 2, 4, 7, 11, 16, 23, 32, 44, 60],
     spriteScale: 1.0,
     footprint: { w: 2, h: 2 },
+    populationCost: 2,
   },
   barracks: {
     type: 'barracks',
@@ -117,6 +122,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     troopsPerLevel: [2, 4, 7, 11, 16, 22, 30, 40, 52, 70],
     spriteScale: 1.1,
     footprint: { w: 3, h: 3 },
+    populationCost: 5,
   },
   wall: {
     type: 'wall',
@@ -134,6 +140,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
       ts('black', 'tower'),
     ),
     spriteScale: 0.85,
+    populationCost: 1,
   },
   tower: {
     type: 'tower',
@@ -152,6 +159,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     ),
     spriteScale: 1.1,
     footprint: { w: 2, h: 2 },
+    populationCost: 4,
   },
   fountain: {
     type: 'fountain',
@@ -171,6 +179,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     ),
     spriteScale: 1.05,
     footprint: { w: 2, h: 2 },
+    populationCost: 1,
   },
   tree: {
     type: 'tree',
@@ -233,6 +242,18 @@ export function farmRateFor(level: number): number {
 
 export function troopsFor(level: number): number {
   return BUILDINGS.barracks.troopsPerLevel?.[level - 1] ?? 0;
+}
+
+// ---- Population ----
+
+/** How many inhabitants a house provides at a given level. */
+export function populationFor(level: number): number {
+  return BUILDINGS.house.populationPerLevel?.[level - 1] ?? 0;
+}
+
+/** Population cost for building a specific type. */
+export function populationCostOf(type: BuildingType): number {
+  return BUILDINGS[type].populationCost ?? 0;
 }
 
 /** Footprint dimensions for a building type, defaulting to 1×1. */
