@@ -1102,22 +1102,21 @@ export default function CityCanvas({
         continue;
       }
 
-      // Start-house always shows castle sprite
-      const slug = b.id === 'start-house' ? 'ts:yellow:castle' : spriteForLevel(b.type, b.level);
+      // Start-house always shows castle sprite — bigger and higher
+      const isCastle = b.id === 'start-house';
+      const slug = isCastle ? 'ts:yellow:castle' : spriteForLevel(b.type, b.level);
       const tex = getTopdownTexture(atlas, slug);
       if (!tex || tex === Texture.EMPTY) continue;
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.95);
-      // Scale the building sprite to fill its footprint with some head-
-      // room so the building sits noticeably above its grass base. 1.4×
-      // the footprint span feels right for Tiny Swords buildings.
       const longSide = Math.max(tex.width, tex.height);
       const footprintSpan = Math.max(fp.w, fp.h);
-      const targetTiles = footprintSpan * 1.4;
+      const targetTiles = footprintSpan * (isCastle ? 2.5 : 1.4); // castle much bigger
       const baseScale = (TILE_W * targetTiles * (def.spriteScale ?? 1)) / longSide;
       sprite.scale.set(baseScale);
       const { sx, sy } = gridToScreen(centerGx, centerGy, 0, 0);
-      sprite.position.set(sx, sy + TILE_H * 0.4);
+      const yOffset = isCastle ? -TILE_H * 0.3 : TILE_H * 0.4; // castle higher up
+      sprite.position.set(sx, sy + yOffset);
       sprite.zIndex = Math.floor(sy + TILE_H * 0.4);
       layer.addChild(sprite);
 

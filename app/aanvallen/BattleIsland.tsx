@@ -210,13 +210,14 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
         sprite.anchor.set(0.5, 0.95);
         const cx = (b.gx + fp.w / 2) * TILE_W;
         const cy = (b.gy + fp.h / 2) * TILE_H;
-        sprite.x = cx; sprite.y = cy;
         const bdef = BUILDINGS[b.type];
         const isCastle = b.id === 'start-house';
-        const baseScale = (bdef.spriteScale ?? 1) * (isCastle ? 2.2 : 1.4); // castle 2.2× bigger
+        const baseScale = (bdef.spriteScale ?? 1) * (isCastle ? 2.8 : 1.4);
         const span = Math.max(fp.w, fp.h) * TILE_W;
         sprite.width = span * baseScale;
         sprite.height = (tex.height / tex.width) * span * baseScale;
+        sprite.x = cx;
+        sprite.y = cy + (isCastle ? -TILE_H * 0.5 : 0); // castle higher
         sprite.zIndex = Math.floor(cy + TILE_H * 0.4);
         buildingLayer.addChild(sprite);
         buildingSpriteMap.set(b.id, sprite);
