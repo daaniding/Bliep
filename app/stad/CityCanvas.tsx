@@ -18,7 +18,7 @@ import {
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-// autotile imports removed — no sand/coast tiles needed
+import { autotileCoastIndex } from '@/lib/game/autotile';
 import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
@@ -327,13 +327,30 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Grass tiles — clean edge, no sand, no cliffs ----
+      // ---- Grass tiles — tint variation + coast autotile edges ----
+      const grassTints = [
+        0xFFFFFF, // natural (no tint)
+        0xE5FFDD, // cool meadow
+        0xFFF0C8, // warm sunlit patch
+        0xD5ECC8, // shaded undergrowth
+        0xEEFFE0, // bright clearing
+      ];
       for (const cell of grassCells) {
-        const sprite = new Sprite(terrain.grass[0]);
+        // Check if this grass cell borders water — use coast autotile edge
+        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
+        const isEdge = coastIdx !== null && coastIdx !== 4;
+
+        const tex = isEdge ? terrain.coast[coastIdx] : terrain.grass[0];
+        const sprite = new Sprite(tex);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
+        // Only tint interior grass, not coast edges
+        if (!isEdge) {
+          const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
+          sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
+        }
         tileLayer.addChild(sprite);
       }
 
@@ -1009,8 +1026,8 @@ export default function CityCanvas({
         continue;
       }
       if (b.type === 'path') {
-        // Use sand path texture from the farm tileset if available
-        const pathTex = terrainRef?.sandFill;
+        // Use stone path tiles from the farm tileset
+        const pathTex = terrainRef?.stonePath?.[0] ?? terrainRef?.sandFill;
         const sprite = new Sprite(pathTex || Texture.WHITE);
         if (!pathTex) sprite.tint = 0xc8a878;
         sprite.width = TILE_W * fp.w;

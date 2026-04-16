@@ -41,6 +41,8 @@ export interface FarmTerrain {
   rocks: Texture[];
   /** Cattails/reeds for water edges. */
   cattails: Texture[];
+  /** Stone/cobblestone path center fill tiles. */
+  stonePath: Texture[];
 
   // ---- Trees ----
   trees: AnimatedSheet[];
@@ -129,11 +131,10 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   const water = tile(0, 21);
 
   // ============================================================
-  // GRASS — multiple variants for natural variation
-  // All from the same grass palette to keep consistent color
+  // GRASS — single confirmed tile, variation via tinting in renderer
   // ============================================================
   const grass: Texture[] = [
-    tile(2, 23),   // standard grass fill (coast center)
+    tile(2, 23),   // confirmed solid grass fill (coast center)
   ];
 
   // ============================================================
@@ -192,6 +193,16 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
     tile(16, 5), // fallen mushrooms
     tile(17, 5), // dark mushroom
   ];
+
+  // ============================================================
+  // STONE PATHS — cobblestone center fill tiles
+  // ============================================================
+  const stonePath = [
+    tile(18, 9),   // cobblestone fill variant 1
+    tile(18, 13),  // cobblestone fill variant 2
+    tile(18, 17),  // cobblestone fill variant 3
+  ];
+  for (const t of stonePath) nearest(t);
 
   // ============================================================
   // TREES — from separate spritesheet files
@@ -309,7 +320,7 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
 
   cached = {
     tileset, water, coast, coastInner, grass,
-    sandFill, sandToGrass, rocks, cattails,
+    sandFill, sandToGrass, rocks, cattails, stonePath,
     flowersWhite, flowersPurple, grassTufts, mushrooms,
     trees, largeTrees, cherryTrees, fruitTrees, bushes,
     windmill,
