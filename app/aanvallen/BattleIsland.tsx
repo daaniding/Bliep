@@ -495,6 +495,83 @@ export default function BattleIsland({ camp, cityState, onComplete }: Props) {
           vignette.rect(0, 0, W, H).fill({ color: 0xff0000, alpha: 0.15 });
         }
 
+        // ---- Unit HP bars ----
+        const unitHpBars = (app as any)._uhp ??= new Map<number, Graphics>();
+        const allUnits = [
+          ...battle.enemies.map(e => ({ id: e.id, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHp, dead: e.state === 'dead', color: 0xc75b3d })),
+          ...battle.defenders.map(d => ({ id: d.id + 90000, x: d.x, y: d.y, hp: d.hp, maxHp: d.maxHp, dead: d.state === 'dead', color: 0x4a9bb8 })),
+        ];
+        for (const u of allUnits) {
+          if (u.dead || u.hp >= u.maxHp) {
+            const bar = unitHpBars.get(u.id);
+            if (bar) { battleLayer.removeChild(bar); unitHpBars.delete(u.id); }
+            continue;
+          }
+          let bar = unitHpBars.get(u.id);
+          if (!bar) { bar = new Graphics(); battleLayer.addChild(bar); unitHpBars.set(u.id, bar); }
+          bar.clear();
+          const bw = 30, bh = 4, r = u.hp / u.maxHp;
+          bar.rect(u.x - bw / 2, u.y - TILE_W * 1.5, bw, bh).fill({ color: 0x000000, alpha: 0.5 });
+          bar.rect(u.x - bw / 2 + 1, u.y - TILE_W * 1.5 + 1, (bw - 2) * r, bh - 2).fill({ color: u.color });
+          bar.zIndex = 999998;
+        }
+
+        // ---- Damage numbers (float up and fade) ----
+        const dmgTexts = (app as any)._dmg ??= new Map<number, Text>();
+        for (const evt of battle.damageEvents) {
+          const t = new Text({
+            text: `-${evt.amount}`,
+            style: new TextStyle({
+              fontFamily: '"Lilita One", sans-serif', fontSize: 18,
+              fill: evt.color, stroke: { color: 0x000000, width: 3 },
+            }),
+          });
+          t.anchor.set(0.5); t.x = evt.x + (Math.random() - 0.5) * 20; t.y = evt.y;
+          t.zIndex = 999999;
+          battleLayer.addChild(t);
+          dmgTexts.set(evt.id, t);
+        }
+        battle.damageEvents = []; // consumed
+        for (const [id, t] of dmgTexts) {
+          t.y -= rawDt * 80; t.alpha -= rawDt * 1.5;
+          if (t.alpha <= 0) { battleLayer.removeChild(t); dmgTexts.delete(id); }
+        }
+
+        // ---- Wave announcement ----
+        const waveText = (app as any)._waveText ??= (() => {
+          const t = new Text({ text: '', style: new TextStyle({
+            fontFamily: '"Lilita One", sans-serif', fontSize: 36,
+            fill: 0xff6b35, stroke: { color: 0x0d0a06, width: 6 },
+            dropShadow: { color: 0x000000, blur: 10, distance: 3, angle: Math.PI / 4, alpha: 0.7 },
+          })});
+          t.anchor.set(0.5); t.x = W / 2; t.y = H * 0.25; t.alpha = 0;
+          uiLayer.addChild(t);
+          return t;
+        })() as Text;
+        if (battle.waveAnnouncement) {
+          waveText.text = battle.waveAnnouncement;
+          waveText.alpha = Math.min(waveText.alpha + rawDt * 4, 1);
+          waveText.scale.set(1 + Math.sin(battle.waveAnnouncementTimer * 3) * 0.05);
+        } else {
+          waveText.alpha = Math.max(waveText.alpha - rawDt * 3, 0);
+        }
+
+        // ---- Smoke on damaged buildings ----
+        for (const [bid, bhp] of battle.buildingHp) {
+          const bs = buildingSpriteMap.get(bid);
+          if (!bs || bhp.destroyed) continue;
+          const ratio = bhp.hp / bhp.maxHp;
+          if (ratio < 0.5 && Math.random() < rawDt * 3) {
+            // Spawn small fire particle on building
+            battle.fx.push({
+              id: battle.nextId++,
+              x: bs.x + (Math.random() - 0.5) * 40,
+              y: bs.y - bs.height * 0.3 - Math.random() * 20,
+              type: 'fire', done: false,
+            });
+          }
+        }
+
         // ---- Camera shake (only during attacks, scaled by timeScale) ----
         if (battle.phase === 'battle' && battle.enemies.some(e => e.state === 'attack')) {
           const intensity = battle.timeScale < 0.5 ? 5 : 3; // stronger shake in slow-mo
