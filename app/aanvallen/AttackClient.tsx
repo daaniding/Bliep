@@ -6,8 +6,9 @@ import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, r
 import { loadCity, saveCity, addCoins, spendCoins } from '@/lib/cityStore';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
-import BattleCanvas from './BattleCanvas';
+import BattleIsland from './BattleIsland';
 import type { EnemySpriteKey } from '@/lib/pveCamps';
+import type { CityState } from '@/lib/cityStore';
 
 /** Sprite preview: shows first frame of a sprite strip via CSS crop. */
 function SpritePreview({ spriteKey, size = 40 }: { spriteKey: EnemySpriteKey; size?: number }) {
@@ -61,7 +62,7 @@ export default function AttackClient() {
   const [pveState, setPveState] = useState<Record<string, number>>(() => loadPveState());
   const [, setNow] = useState(Date.now());
   const [confirmCamp, setConfirmCamp] = useState<PveCamp | null>(null);
-  const [battling, setBattling] = useState<{ camp: PveCamp; result: BattleResult } | null>(null);
+  const [battling, setBattling] = useState<{ camp: PveCamp; result: BattleResult; cityState: CityState } | null>(null);
   const [result, setResult] = useState<{ camp: PveCamp; result: BattleResult } | null>(null);
   const [kazerneLvl, setKazerneLvl] = useState(0);
   const [totalWallLevel, setTotalWallLevel] = useState(0);
@@ -99,8 +100,9 @@ export default function AttackClient() {
     // Pre-compute battle result before showing animation
     const battleResult = resolveBattle(confirmCamp, kazerneLvl, totalWallLevel);
 
-    // Show the battle animation
-    setBattling({ camp: confirmCamp, result: battleResult });
+    // Show the battle animation with current city state
+    const citySnapshot = loadCity();
+    setBattling({ camp: confirmCamp, result: battleResult, cityState: citySnapshot });
     setConfirmCamp(null);
   }, [confirmCamp, kazerneLvl, totalWallLevel]);
 
@@ -264,20 +266,15 @@ export default function AttackClient() {
         </div>
       )}
 
-      {/* Battle animation */}
+      {/* Battle animation — fullscreen island view */}
       {battling && (
-        <div className="fixed inset-0 z-30 bg-black/70 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(4px)' }}>
-          <div className="w-full max-w-lg">
-            <p className="text-center text-white/80 font-serif text-lg italic mb-3">
-              ⚔️ {battling.camp.name}
-            </p>
-            <BattleCanvas
-              camp={battling.camp}
-              kazerneLvl={kazerneLvl}
-              won={battling.result.won}
-              onComplete={handleBattleComplete}
-            />
-          </div>
+        <div className="fixed inset-0 z-30">
+          <BattleIsland
+            camp={battling.camp}
+            cityState={battling.cityState}
+            won={battling.result.won}
+            onComplete={handleBattleComplete}
+          />
         </div>
       )}
 

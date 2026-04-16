@@ -1,12 +1,19 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
 /**
- * Combat sprite loader for battle animations.
+ * Combat sprite loader for on-island battles.
  *
- * Knight sprites: side-view pixel art with idle/run/attack strips.
- * Bandit sprites: walkers3 pack with .meta frame info.
- * Monster sprites: reuse minifolks (wolf, bear, boar) via loadMinifolks().
+ * Uses Tiny Swords unit sprites (192×192 frames) for:
+ * - Blue archers (defenders, spawned from towers/archery buildings)
+ * - Red warriors (attackers/enemies, walk toward buildings)
+ * - Arrow projectile (64×64 single sprite)
+ * - Particle FX: explosion, fire
+ *
+ * Monsters reuse minifolks (wolf, bear, boar) from minifolks.ts.
  */
+
+const UNITS = '/assets/topdown/units';
+const FX = '/assets/topdown/fx';
 
 // ---- Slice helper (same pattern as minifolks.ts) ----
 
@@ -25,80 +32,84 @@ function sliceRow(tex: Texture, frameW: number, frameH: number, count: number): 
   return out;
 }
 
-// ---- Knight sprites (/assets/knight/) ----
-
-export interface KnightSprites {
-  idle: Texture[];   // 8 frames, 84×84 (672/84=8)
-  run: Texture[];    // 8 frames, 96×84 (768/96=8)
-  attack: Texture[]; // 6 frames, 96×84 (576/96=6)
+function setNearest(t: Texture) {
+  if (t.source) t.source.scaleMode = 'nearest';
 }
 
-let knightCache: KnightSprites | null = null;
+// ---- Blue Archer (defender) ----
 
-export async function loadKnightSprites(): Promise<KnightSprites> {
-  if (knightCache) return knightCache;
-
-  const [idle, run, attack] = await Promise.all([
-    Assets.load<Texture>('/assets/knight/idle-strip.png'),
-    Assets.load<Texture>('/assets/knight/run-strip.png'),
-    Assets.load<Texture>('/assets/knight/attack1-strip.png'),
-  ]);
-
-  for (const t of [idle, run, attack]) {
-    if (t.source) t.source.scaleMode = 'nearest';
-  }
-
-  knightCache = {
-    idle: sliceRow(idle, 84, 84, 8),
-    run: sliceRow(run, 96, 84, 8),
-    attack: sliceRow(attack, 96, 84, 6),
-  };
-  return knightCache;
+export interface ArcherSprites {
+  idle: Texture[];   // 6 frames, 192×192
+  shoot: Texture[];  // 8 frames, 192×192
 }
 
-// ---- Bandit sprites (/assets/walkers3/) ----
+// ---- Red Warrior (attacker) ----
 
-export interface BanditSprites {
-  light: Texture[];  // 8 frames, 48×48
-  heavy: Texture[];  // 8 frames, 48×48
+export interface EnemyWarriorSprites {
+  idle: Texture[];   // 8 frames, 192×192
+  run: Texture[];    // 6 frames, 192×192
+  attack: Texture[]; // 4 frames, 192×192
 }
 
-let banditCache: BanditSprites | null = null;
+// ---- FX ----
 
-export async function loadBanditSprites(): Promise<BanditSprites> {
-  if (banditCache) return banditCache;
-
-  const [light, heavy] = await Promise.all([
-    Assets.load<Texture>('/assets/walkers3/light-bandit.png'),
-    Assets.load<Texture>('/assets/walkers3/heavy-bandit.png'),
-  ]);
-
-  for (const t of [light, heavy]) {
-    if (t.source) t.source.scaleMode = 'nearest';
-  }
-
-  banditCache = {
-    light: sliceRow(light, 48, 48, 8),
-    heavy: sliceRow(heavy, 48, 48, 8),
-  };
-  return banditCache;
+export interface FxSprites {
+  explosion: Texture[];  // 8 frames, 192×192
+  fireSmall: Texture[];  // 8 frames, 64×64
+  fireLarge: Texture[];  // 12 frames, 64×64
 }
 
-// ---- All combat sprites bundled ----
+// ---- Combined ----
 
 export interface CombatSprites {
-  knight: KnightSprites;
-  bandit: BanditSprites;
+  archer: ArcherSprites;
+  enemy: EnemyWarriorSprites;
+  arrow: Texture;          // single 64×64 sprite
+  fx: FxSprites;
 }
 
-let allCache: CombatSprites | null = null;
+let cache: CombatSprites | null = null;
 
 export async function loadCombatSprites(): Promise<CombatSprites> {
-  if (allCache) return allCache;
-  const [knight, bandit] = await Promise.all([
-    loadKnightSprites(),
-    loadBanditSprites(),
+  if (cache) return cache;
+
+  const [
+    archerIdle, archerShoot,
+    enemyIdle, enemyRun, enemyAttack,
+    arrowTex,
+    explosion, fireSmall, fireLarge,
+  ] = await Promise.all([
+    Assets.load<Texture>(`${UNITS}/blue/archer/idle.png`),
+    Assets.load<Texture>(`${UNITS}/blue/archer/shoot.png`),
+    Assets.load<Texture>(`${UNITS}/red/warrior/idle.png`),
+    Assets.load<Texture>(`${UNITS}/red/warrior/run.png`),
+    Assets.load<Texture>(`${UNITS}/red/warrior/attack.png`),
+    Assets.load<Texture>(`${UNITS}/blue/archer/arrow.png`),
+    Assets.load<Texture>(`${FX}/explosion.png`),
+    Assets.load<Texture>(`${FX}/fire_small.png`),
+    Assets.load<Texture>(`${FX}/fire_large.png`),
   ]);
-  allCache = { knight, bandit };
-  return allCache;
+
+  for (const t of [archerIdle, archerShoot, enemyIdle, enemyRun, enemyAttack, arrowTex, explosion, fireSmall, fireLarge]) {
+    setNearest(t);
+  }
+
+  cache = {
+    archer: {
+      idle: sliceRow(archerIdle, 192, 192, 6),
+      shoot: sliceRow(archerShoot, 192, 192, 8),
+    },
+    enemy: {
+      idle: sliceRow(enemyIdle, 192, 192, 8),
+      run: sliceRow(enemyRun, 192, 192, 6),
+      attack: sliceRow(enemyAttack, 192, 192, 4),
+    },
+    arrow: arrowTex,
+    fx: {
+      explosion: sliceRow(explosion, 192, 192, 8),
+      fireSmall: sliceRow(fireSmall, 64, 64, 8),
+      fireLarge: sliceRow(fireLarge, 64, 64, 12),
+    },
+  };
+  return cache;
 }
