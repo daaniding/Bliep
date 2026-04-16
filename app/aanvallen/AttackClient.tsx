@@ -167,6 +167,20 @@ export default function AttackClient() {
             </div>
           )}
 
+          {/* DEV: test coins */}
+          {process.env.NODE_ENV === 'development' || true ? (
+            <button
+              className="mb-4 text-[10px] text-faint underline"
+              onClick={() => {
+                const city = loadCity();
+                saveCity(addCoins(city, 5000));
+                window.location.reload();
+              }}
+            >
+              +5000 coins (test)
+            </button>
+          ) : null}
+
           <div className="space-y-3">
             {CAMPS.map(camp => {
               const cooldownLeft = cooldownRemainingMs(camp, pveState);
