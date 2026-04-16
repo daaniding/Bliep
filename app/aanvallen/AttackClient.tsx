@@ -6,6 +6,44 @@ import { CAMPS, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, r
 import { loadCity, saveCity, addCoins, spendCoins } from '@/lib/cityStore';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
+import BattleCanvas from './BattleCanvas';
+import type { EnemySpriteKey } from '@/lib/pveCamps';
+
+/** Sprite preview: shows first frame of a sprite strip via CSS crop. */
+function SpritePreview({ spriteKey, size = 40 }: { spriteKey: EnemySpriteKey; size?: number }) {
+  // frame dimensions per sprite type
+  const info: Record<EnemySpriteKey, { src: string; fw: number; fh: number; frames: number }> = {
+    'light-bandit': { src: '/assets/walkers3/light-bandit.png', fw: 48, fh: 48, frames: 8 },
+    'heavy-bandit': { src: '/assets/walkers3/heavy-bandit.png', fw: 48, fh: 48, frames: 8 },
+    'wolf': { src: '/assets/topdown/minifolks/wolf.png', fw: 32, fh: 32, frames: 4 },
+    'bear': { src: '/assets/topdown/minifolks/bear.png', fw: 32, fh: 32, frames: 4 },
+    'boar': { src: '/assets/topdown/minifolks/boar.png', fw: 32, fh: 32, frames: 4 },
+  };
+  const s = info[spriteKey];
+  const scale = size / s.fh;
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      <img
+        src={s.src}
+        alt=""
+        style={{
+          imageRendering: 'pixelated',
+          width: s.fw * s.frames * scale,
+          height: size,
+          objectFit: 'cover',
+          objectPosition: '0 0',
+        }}
+      />
+    </div>
+  );
+}
 
 function fmtCooldown(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
@@ -23,7 +61,7 @@ export default function AttackClient() {
   const [pveState, setPveState] = useState<Record<string, number>>(() => loadPveState());
   const [, setNow] = useState(Date.now());
   const [confirmCamp, setConfirmCamp] = useState<PveCamp | null>(null);
-  const [battling, setBattling] = useState(false);
+  const [battling, setBattling] = useState<{ camp: PveCamp; result: BattleResult } | null>(null);
   const [result, setResult] = useState<{ camp: PveCamp; result: BattleResult } | null>(null);
   const [kazerneLvl, setKazerneLvl] = useState(0);
   const [totalWallLevel, setTotalWallLevel] = useState(0);
@@ -51,38 +89,43 @@ export default function AttackClient() {
     setConfirmCamp(camp);
   }, [coins, pveState]);
 
-  const startBattle = useCallback(async () => {
+  const startBattle = useCallback(() => {
     if (!confirmCamp) return;
-    setBattling(true);
 
     // Spend the hire cost up front
     const city = loadCity();
     saveCity(spendCoins(city, confirmCamp.hireCost));
 
-    // Dramatic pause
-    await new Promise(res => setTimeout(res, 1400));
-
+    // Pre-compute battle result before showing animation
     const battleResult = resolveBattle(confirmCamp, kazerneLvl, totalWallLevel);
+
+    // Show the battle animation
+    setBattling({ camp: confirmCamp, result: battleResult });
+    setConfirmCamp(null);
+  }, [confirmCamp, kazerneLvl, totalWallLevel]);
+
+  const handleBattleComplete = useCallback(() => {
+    if (!battling) return;
+    const { camp: battleCamp, result: battleResult } = battling;
 
     if (battleResult.won) {
       const after = loadCity();
       saveCity(addCoins(after, battleResult.coinsGained));
-      const next = { ...pveState, [confirmCamp.id]: Date.now() };
+      const next = { ...pveState, [battleCamp.id]: Date.now() };
       savePveState(next);
       setPveState(next);
-      awardTrophies(battleResult.trophiesDelta, `${confirmCamp.name} verslagen`);
+      awardTrophies(battleResult.trophiesDelta, `${battleCamp.name} verslagen`);
     } else {
       if (battleResult.refunded > 0) {
         const after = loadCity();
         saveCity(addCoins(after, battleResult.refunded));
       }
-      awardTrophies(battleResult.trophiesDelta, `${confirmCamp.name} verloren`);
+      awardTrophies(battleResult.trophiesDelta, `${battleCamp.name} verloren`);
     }
 
-    setBattling(false);
-    setResult({ camp: confirmCamp, result: battleResult });
-    setConfirmCamp(null);
-  }, [confirmCamp, kazerneLvl, totalWallLevel, pveState, awardTrophies]);
+    setResult({ camp: battleCamp, result: battleResult });
+    setBattling(null);
+  }, [battling, pveState, awardTrophies]);
 
   return (
     <div className="min-h-dvh bg-surface relative pb-16">
@@ -139,7 +182,7 @@ export default function AttackClient() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl">{camp.emoji}</span>
+                      <SpritePreview spriteKey={camp.spriteKey} size={40} />
                       <div>
                         <p className="font-serif text-lg text-ink italic">{camp.name}</p>
                         <p className="text-faint text-[11px]">Verdediging {camp.defense}</p>
@@ -187,7 +230,9 @@ export default function AttackClient() {
         <div className="fixed inset-0 z-30 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setConfirmCamp(null)}>
           <div className="bg-surface rounded-3xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="text-center">
-              <div className="text-5xl mb-2">{confirmCamp.emoji}</div>
+              <div className="flex justify-center mb-1">
+                <SpritePreview spriteKey={confirmCamp.spriteKey} size={64} />
+              </div>
               <h3 className="font-serif text-xl text-ink italic mb-1">Aanval starten?</h3>
               <p className="text-muted text-sm mb-4">{confirmCamp.name}</p>
               <div className="bg-subtle rounded-2xl p-4 mb-5 space-y-2">
@@ -219,12 +264,19 @@ export default function AttackClient() {
         </div>
       )}
 
-      {/* Battle in progress */}
+      {/* Battle animation */}
       {battling && (
-        <div className="fixed inset-0 z-30 bg-black/60 flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-6xl mb-4 animate-soft-pulse">⚔️</div>
-            <p className="text-white font-serif text-xl italic">In gevecht…</p>
+        <div className="fixed inset-0 z-30 bg-black/70 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-lg">
+            <p className="text-center text-white/80 font-serif text-lg italic mb-3">
+              ⚔️ {battling.camp.name}
+            </p>
+            <BattleCanvas
+              camp={battling.camp}
+              kazerneLvl={kazerneLvl}
+              won={battling.result.won}
+              onComplete={handleBattleComplete}
+            />
           </div>
         </div>
       )}

@@ -2,6 +2,8 @@
 
 const STORAGE_KEY = 'bliep:pve:v1';
 
+export type EnemySpriteKey = 'light-bandit' | 'heavy-bandit' | 'wolf' | 'bear' | 'boar';
+
 export interface PveCamp {
   id: string;
   name: string;
@@ -12,6 +14,9 @@ export interface PveCamp {
   rewardCoins: number;
   rewardTrophies: number;
   cooldownMs: number;
+  spriteKey: EnemySpriteKey;
+  spriteCount: number;
+  spriteScale?: number;
 }
 
 export const CAMPS: PveCamp[] = [
@@ -25,6 +30,8 @@ export const CAMPS: PveCamp[] = [
     rewardCoins: 60,
     rewardTrophies: 2,
     cooldownMs: 60 * 60_000, // 1u
+    spriteKey: 'light-bandit',
+    spriteCount: 2,
   },
   {
     id: 'wolven',
@@ -36,6 +43,8 @@ export const CAMPS: PveCamp[] = [
     rewardCoins: 150,
     rewardTrophies: 4,
     cooldownMs: 2 * 60 * 60_000, // 2u
+    spriteKey: 'wolf',
+    spriteCount: 3,
   },
   {
     id: 'fort',
@@ -47,6 +56,8 @@ export const CAMPS: PveCamp[] = [
     rewardCoins: 350,
     rewardTrophies: 8,
     cooldownMs: 4 * 60 * 60_000, // 4u
+    spriteKey: 'heavy-bandit',
+    spriteCount: 3,
   },
   {
     id: 'goblin',
@@ -58,6 +69,8 @@ export const CAMPS: PveCamp[] = [
     rewardCoins: 750,
     rewardTrophies: 15,
     cooldownMs: 8 * 60 * 60_000, // 8u
+    spriteKey: 'light-bandit',
+    spriteCount: 5,
   },
   {
     id: 'draak',
@@ -69,6 +82,9 @@ export const CAMPS: PveCamp[] = [
     rewardCoins: 2000,
     rewardTrophies: 30,
     cooldownMs: 24 * 60 * 60_000, // 24u
+    spriteKey: 'bear',
+    spriteCount: 1,
+    spriteScale: 3,
   },
 ];
 
