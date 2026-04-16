@@ -51,6 +51,8 @@ export default function CityClient() {
   const [tileTarget, setTileTarget] = useState<TileTarget>(null);
   const [buildingTarget, setBuildingTarget] = useState<PlacedBuilding | null>(null);
   const [placingType, setPlacingType] = useState<BuildingType | null>(null);
+  const [rotated, setRotated] = useState(false);
+  const [movingBuildingId, setMovingBuildingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -159,10 +161,22 @@ export default function CityClient() {
       playSfx('fail');
       return;
     }
-    // Footprint overlap check — any existing building whose rectangle
-    // intersects the proposed footprint blocks placement.
-    const newFp = BUILDINGS[type].footprint ?? { w: 1, h: 1 };
+    const baseFp = BUILDINGS[type].footprint ?? { w: 1, h: 1 };
+    const newFp = rotated ? { w: baseFp.h, h: baseFp.w } : baseFp;
+
+    // Check all footprint tiles are on land + not occupied
+    for (let dy = 0; dy < newFp.h; dy++) {
+      for (let dx = 0; dx < newFp.w; dx++) {
+        if (!inBuildZone(gx + dx, gy + dy)) {
+          showFlash('Past niet op het eiland');
+          playSfx('fail');
+          return;
+        }
+      }
+    }
+
     const overlap = state.buildings.some(b => {
+      if (b.id === movingBuildingId) return false; // skip the building being moved
       const bFp = BUILDINGS[b.type].footprint ?? { w: 1, h: 1 };
       return gx < b.gx + bFp.w && gx + newFp.w > b.gx && gy < b.gy + bFp.h && gy + newFp.h > b.gy;
     });
@@ -171,6 +185,25 @@ export default function CityClient() {
       playSfx('fail');
       return;
     }
+
+    // Moving an existing building (free)
+    if (movingBuildingId) {
+      setState(s => ({
+        ...s,
+        buildings: s.buildings.map(b =>
+          b.id === movingBuildingId ? { ...b, gx, gy } : b
+        ),
+      }));
+      setPlacingType(null);
+      setMovingBuildingId(null);
+      setRotated(false);
+      showFlash('Verplaatst!');
+      playSfx('build');
+      vibrate(15);
+      return;
+    }
+
+    // New building (costs coins)
     const cost = buildCost(type);
     if (state.coins < cost) {
       showFlash('Niet genoeg coins');
@@ -184,6 +217,7 @@ export default function CityClient() {
     }
     setState(s => placeBuilding(spendCoins(s, cost), type, gx, gy));
     setPlacingType(null);
+    setRotated(false);
     showFlash(`${BUILDINGS[type].name} gebouwd!`);
     playSfx('build');
     vibrate(20);
@@ -224,6 +258,15 @@ export default function CityClient() {
     vibrate(20);
   }
 
+  function handleMoveBuilding() {
+    if (!buildingTarget) return;
+    setMovingBuildingId(buildingTarget.id);
+    setPlacingType(buildingTarget.type);
+    setRotated(false);
+    setBuildingTarget(null);
+    showFlash('Sleep naar nieuwe plek');
+  }
+
   function handleSpeedToken(queueId: string) {
     if (state.speedTokens <= 0) {
       showFlash('Geen speed tokens — voltooi een taak');
@@ -248,6 +291,8 @@ export default function CityClient() {
           state={state}
           mode="interactive"
           placingType={placingType}
+          rotated={rotated}
+          movingBuildingId={movingBuildingId}
           onTapTile={handleTapTile}
           onTapBuilding={handleTapBuilding}
           onTapChest={handleTapChest}
@@ -304,18 +349,32 @@ export default function CityClient() {
         </div>
       )}
 
-      {/* Cancel placement banner */}
+      {/* Placement controls */}
       {placingType && (
         <div className="fixed bottom-5 left-0 right-0 z-20 flex flex-col items-center pointer-events-none gap-2">
           <div className="bg-[#0d0a06]/85 backdrop-blur rounded-2xl px-4 py-2 text-[#fdd069] font-display text-sm border border-[#fdd069]/40 pointer-events-auto">
-            Tap een tegel om {BUILDINGS[placingType].name.toLowerCase()} te plaatsen
+            {movingBuildingId ? 'Tap om te verplaatsen' : `Tap om ${BUILDINGS[placingType].name.toLowerCase()} te plaatsen`}
           </div>
-          <button
-            onClick={() => setPlacingType(null)}
-            className="pointer-events-auto bg-[#7a2a1a] text-white font-display text-sm px-5 py-2 rounded-xl shadow-md border-2 border-[#1a0f05]"
-          >
-            Annuleren
-          </button>
+          <div className="flex gap-2 pointer-events-auto">
+            {/* Rotate button — only show for buildings > 1×1 */}
+            {(() => {
+              const fp = BUILDINGS[placingType].footprint ?? { w: 1, h: 1 };
+              return fp.w !== fp.h ? (
+                <button
+                  onClick={() => setRotated(r => !r)}
+                  className="bg-[#0d0a06]/85 backdrop-blur text-[#fdd069] font-display text-sm px-4 py-2 rounded-xl shadow-md border-2 border-[#fdd069]/40 active:scale-95"
+                >
+                  🔄 Draai
+                </button>
+              ) : null;
+            })()}
+            <button
+              onClick={() => { setPlacingType(null); setMovingBuildingId(null); setRotated(false); }}
+              className="bg-[#7a2a1a] text-white font-display text-sm px-5 py-2 rounded-xl shadow-md border-2 border-[#1a0f05] active:scale-95"
+            >
+              Annuleren
+            </button>
+          </div>
         </div>
       )}
 
@@ -354,6 +413,7 @@ export default function CityClient() {
           onUpgrade={handleUpgrade}
           onCollect={() => { handleCollectFarm(buildingTarget); setBuildingTarget(null); }}
           onRemove={handleRemoveBuilding}
+          onMove={handleMoveBuilding}
         />
       )}
     </div>
@@ -423,6 +483,7 @@ function BuildingInfoSheet({
   onUpgrade,
   onCollect,
   onRemove,
+  onMove,
 }: {
   building: PlacedBuilding;
   state: CityState;
@@ -430,6 +491,7 @@ function BuildingInfoSheet({
   onUpgrade: () => void;
   onCollect: () => void;
   onRemove: () => void;
+  onMove: () => void;
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const def = BUILDINGS[building.type];
@@ -508,9 +570,15 @@ function BuildingInfoSheet({
           </button>
         )}
 
-        {/* Remove button */}
+        {/* Move + Remove buttons */}
         <div className="mt-3 flex items-center gap-2">
           <button onClick={onClose} className="flex-1 text-center font-display text-[#fdd069]/70 text-xs uppercase tracking-wider py-2">Sluiten</button>
+          <button
+            onClick={onMove}
+            className="text-[#9bdbff] font-display text-[10px] uppercase tracking-wider px-3 py-2 bg-[#9bdbff]/10 rounded-lg border border-[#9bdbff]/40 active:scale-95"
+          >
+            📦 Verplaats
+          </button>
           {confirmRemove ? (
             <button
               onClick={onRemove}

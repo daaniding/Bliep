@@ -61,6 +61,10 @@ interface Props {
   mode?: CanvasMode;
   showBuildZone?: boolean;
   placingType?: BuildingType | null;
+  /** If true, the footprint is rotated 90° (w↔h swapped). */
+  rotated?: boolean;
+  /** Building being moved (shows ghost + hides original). */
+  movingBuildingId?: string | null;
   /** When true, host fills its container instead of the viewport. */
   contained?: boolean;
   onTapTile?: (gx: number, gy: number) => void;
@@ -100,6 +104,8 @@ export default function CityCanvas({
   mode = 'interactive',
   showBuildZone = true,
   placingType = null,
+  rotated = false,
+  movingBuildingId = null,
   contained = false,
   onTapTile,
   onTapBuilding,
@@ -124,10 +130,15 @@ export default function CityCanvas({
   const originRef = useRef<{ originX: number; originY: number }>({ originX: 0, originY: 0 });
   const stateRef = useRef<CityState>(state);
   const placingRef = useRef<BuildingType | null>(placingType);
+  const rotatedRef = useRef(rotated);
+  const movingRef = useRef<string | null>(movingBuildingId);
+  const footprintOverlayRef = useRef<Graphics | null>(null);
   const callbacksRef = useRef({ onTapTile, onTapBuilding, onTapChest, onCollectFarm });
 
   useEffect(() => { stateRef.current = state; });
   useEffect(() => { placingRef.current = placingType; }, [placingType]);
+  useEffect(() => { rotatedRef.current = rotated; }, [rotated]);
+  useEffect(() => { movingRef.current = movingBuildingId; }, [movingBuildingId]);
   useEffect(() => {
     callbacksRef.current = { onTapTile, onTapBuilding, onTapChest, onCollectFarm };
   }, [onTapTile, onTapBuilding, onTapChest, onCollectFarm]);
@@ -1005,6 +1016,11 @@ export default function CityCanvas({
       ghostRef.current.destroy();
       ghostRef.current = null;
     }
+    if (footprintOverlayRef.current) {
+      layer.removeChild(footprintOverlayRef.current);
+      footprintOverlayRef.current.destroy();
+      footprintOverlayRef.current = null;
+    }
     if (placingType) {
       const slug = spriteForLevel(placingType, 1);
       const tex = getTopdownTexture(atlas, slug);
@@ -1024,17 +1040,58 @@ export default function CityCanvas({
 
   function updateGhost(gx: number, gy: number) {
     const ghost = ghostRef.current;
-    if (!ghost) return;
-    if (!inBuildZone(gx, gy)) {
-      ghost.alpha = 0.3;
-      ghost.tint = 0xff7070;
-    } else {
-      const occupied = stateRef.current.buildings.some(b => b.gx === gx && b.gy === gy);
-      ghost.alpha = occupied ? 0.3 : 0.6;
-      ghost.tint = occupied ? 0xff7070 : 0xc0ffc0;
+    const overlay = overlayLayerRef.current;
+    if (!ghost || !overlay) return;
+
+    const type = placingRef.current;
+    if (!type) return;
+    const baseFp = BUILDINGS[type].footprint ?? { w: 1, h: 1 };
+    const fp = rotatedRef.current ? { w: baseFp.h, h: baseFp.w } : baseFp;
+
+    // Check if ALL footprint tiles are valid
+    let canPlace = true;
+    for (let dy = 0; dy < fp.h; dy++) {
+      for (let dx = 0; dx < fp.w; dx++) {
+        const tx = gx + dx, ty = gy + dy;
+        if (!inBuildZone(tx, ty)) { canPlace = false; break; }
+        // Check overlap with other buildings (skip the one being moved)
+        const overlap = stateRef.current.buildings.some(b => {
+          if (b.id === movingRef.current) return false;
+          const bfp = BUILDINGS[b.type].footprint ?? { w: 1, h: 1 };
+          return tx >= b.gx && tx < b.gx + bfp.w && ty >= b.gy && ty < b.gy + bfp.h;
+        });
+        if (overlap) { canPlace = false; break; }
+      }
+      if (!canPlace) break;
     }
+
+    ghost.alpha = canPlace ? 0.7 : 0.3;
+    ghost.tint = canPlace ? 0xc0ffc0 : 0xff7070;
+
     const { sx, sy } = gridToScreen(gx, gy, 0, 0);
-    ghost.position.set(sx, sy + TILE_H * 0.4);
+    ghost.position.set(sx + (fp.w - 1) * TILE_W / 2, sy + (fp.h - 1) * TILE_H / 2 + TILE_H * 0.4);
+
+    // Draw footprint overlay
+    if (!footprintOverlayRef.current) {
+      footprintOverlayRef.current = new Graphics();
+      footprintOverlayRef.current.zIndex = 99998;
+      overlay.addChild(footprintOverlayRef.current);
+    }
+    const g = footprintOverlayRef.current;
+    g.clear();
+    for (let dy = 0; dy < fp.h; dy++) {
+      for (let dx = 0; dx < fp.w; dx++) {
+        const tx = gx + dx, ty = gy + dy;
+        const valid = inBuildZone(tx, ty) && !stateRef.current.buildings.some(b => {
+          if (b.id === movingRef.current) return false;
+          const bfp = BUILDINGS[b.type].footprint ?? { w: 1, h: 1 };
+          return tx >= b.gx && tx < b.gx + bfp.w && ty >= b.gy && ty < b.gy + bfp.h;
+        });
+        g.rect(tx * TILE_W + 2, ty * TILE_H + 2, TILE_W - 4, TILE_H - 4);
+        g.fill({ color: valid ? 0x44ff44 : 0xff4444, alpha: 0.3 });
+        g.stroke({ color: valid ? 0x44ff44 : 0xff4444, width: 2, alpha: 0.6 });
+      }
+    }
   }
 
   function syncBuildings() {
