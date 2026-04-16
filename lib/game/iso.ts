@@ -31,10 +31,32 @@ export function centerOrigin(viewW: number, viewH: number): { originX: number; o
 }
 
 export const CITY_CENTER = { gx: Math.floor(GRID_SIZE / 2), gy: Math.floor(GRID_SIZE / 2) };
-export const BUILD_ZONE_RADIUS = 18; // roughly matches island size
+export const BUILD_ZONE_RADIUS = 18;
 
+// ---- Land-based build zone (uses elevation data) ----
+
+import { parseElevation, MAP_COLS, MAP_ROWS } from './staticMap';
+
+let _landTiles: Set<string> | null = null;
+
+/** Get the set of all land tiles in world grid coords. Cached. */
+export function getLandTiles(): Set<string> {
+  if (_landTiles) return _landTiles;
+  const elev = parseElevation();
+  const offsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
+  const offsetGy = CITY_CENTER.gy - Math.floor(MAP_ROWS / 2);
+  _landTiles = new Set<string>();
+  for (let ry = 0; ry < MAP_ROWS; ry++) {
+    for (let rx = 0; rx < MAP_COLS; rx++) {
+      if (elev[ry][rx] > 0) {
+        _landTiles.add(`${offsetGx + rx},${offsetGy + ry}`);
+      }
+    }
+  }
+  return _landTiles;
+}
+
+/** Can only build on land tiles of the island. */
 export function inBuildZone(gx: number, gy: number): boolean {
-  const dx = gx - CITY_CENTER.gx;
-  const dy = gy - CITY_CENTER.gy;
-  return inBounds(gx, gy) && Math.max(Math.abs(dx), Math.abs(dy)) <= BUILD_ZONE_RADIUS;
+  return getLandTiles().has(`${gx},${gy}`);
 }
