@@ -267,60 +267,73 @@ function isLand(px: number, py: number, landSet: Set<string>): boolean {
   return landSet.has(`${Math.floor(px / TILE_W)},${Math.floor(py / TILE_H)}`);
 }
 
-/** Check if position collides with any building rect (except skipId). */
-function hitsBuilding(px: number, py: number, rects: BattleState['buildingRects'], skipId?: string): boolean {
-  const margin = TILE_W * 0.5;
+/** Get alive building rects (filters out destroyed). */
+function aliveRects(state: BattleState, skipId?: string): BattleState['buildingRects'] {
+  return state.buildingRects.filter(r => {
+    if (r.id === skipId) return false;
+    const hp = state.buildingHp.get(r.id);
+    return hp && !hp.destroyed;
+  });
+}
+
+/** Check if position collides with any building rect. */
+function hitsBuilding(px: number, py: number, rects: BattleState['buildingRects']): boolean {
+  const m = TILE_W * 0.6; // generous margin
   for (const r of rects) {
-    if (r.id === skipId) continue;
-    if (px > r.left - margin && px < r.right + margin && py > r.top - margin && py < r.bottom + margin) return true;
+    if (px > r.left - m && px < r.right + m && py > r.top - m && py < r.bottom + m) return true;
   }
   return false;
 }
 
-/** Move unit toward (dx,dy) direction, avoiding buildings and water. */
+/** Check if a straight line from (x,y) to (x+mx, y+my) crosses a building. */
+function lineHitsBuilding(x: number, y: number, mx: number, my: number, rects: BattleState['buildingRects']): boolean {
+  // Check 3 points along the path
+  for (let t = 0.33; t <= 1; t += 0.33) {
+    if (hitsBuilding(x + mx * t, y + my * t, rects)) return true;
+  }
+  return false;
+}
+
+/** Try to move in direction (dx,dy). Avoids buildings and water. */
 function steer(
   x: number, y: number, dx: number, dy: number, speed: number, dt: number,
-  rects: BattleState['buildingRects'], landSet: Set<string>, skipId?: string,
+  allRects: BattleState['buildingRects'], landSet: Set<string>, state: BattleState, skipId?: string,
 ): { mx: number; my: number } {
+  const rects = aliveRects(state, skipId);
   const step = speed * dt;
+  const s = step; // shorthand
 
-  // Try full movement first
-  const fx = x + dx * step, fy = y + dy * step;
-  if (!hitsBuilding(fx, fy, rects, skipId) && isLand(fx, fy, landSet)) {
-    return { mx: dx * step, my: dy * step };
+  // 1. Try direct path
+  if (!lineHitsBuilding(x, y, dx * s, dy * s, rects) && isLand(x + dx * s, y + dy * s, landSet)) {
+    return { mx: dx * s, my: dy * s };
   }
 
-  // Try X only (slide horizontally)
-  const sx = x + dx * step;
-  if (!hitsBuilding(sx, y, rects, skipId) && isLand(sx, y, landSet)) {
-    return { mx: dx * step, my: 0 };
+  // 2. Try X-only slide
+  if (Math.abs(dx) > 0.01 && !lineHitsBuilding(x, y, dx * s, 0, rects) && isLand(x + dx * s, y, landSet)) {
+    return { mx: dx * s, my: 0 };
   }
 
-  // Try Y only (slide vertically)
-  const sy = y + dy * step;
-  if (!hitsBuilding(x, sy, rects, skipId) && isLand(x, sy, landSet)) {
-    return { mx: 0, my: dy * step };
+  // 3. Try Y-only slide
+  if (Math.abs(dy) > 0.01 && !lineHitsBuilding(x, y, 0, dy * s, rects) && isLand(x, y + dy * s, landSet)) {
+    return { mx: 0, my: dy * s };
   }
 
-  // Try perpendicular directions to go around
-  const perp1x = x - dy * step, perp1y = y + dx * step;
-  if (!hitsBuilding(perp1x, perp1y, rects, skipId) && isLand(perp1x, perp1y, landSet)) {
-    return { mx: -dy * step, my: dx * step };
+  // 4. Try perpendicular (go around the building)
+  if (!lineHitsBuilding(x, y, -dy * s, dx * s, rects) && isLand(x - dy * s, y + dx * s, landSet)) {
+    return { mx: -dy * s, my: dx * s };
   }
-  const perp2x = x + dy * step, perp2y = y - dx * step;
-  if (!hitsBuilding(perp2x, perp2y, rects, skipId) && isLand(perp2x, perp2y, landSet)) {
-    return { mx: dy * step, my: -dx * step };
+  if (!lineHitsBuilding(x, y, dy * s, -dx * s, rects) && isLand(x + dy * s, y - dx * s, landSet)) {
+    return { mx: dy * s, my: -dx * s };
   }
 
-  // Stuck — push away from nearest building
+  // 5. Push away from nearest building if stuck inside one
   for (const r of rects) {
-    if (r.id === skipId) continue;
     const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
     const d = Math.hypot(x - cx, y - cy);
-    if (d < TILE_W * 2 && d > 0) {
-      const pushX = ((x - cx) / d) * step * 0.5;
-      const pushY = ((y - cy) / d) * step * 0.5;
-      if (isLand(x + pushX, y + pushY, landSet)) return { mx: pushX, my: pushY };
+    if (d < TILE_W * 3 && d > 1) {
+      const px = ((x - cx) / d) * s * 0.6;
+      const py = ((y - cy) / d) * s * 0.6;
+      if (isLand(x + px, y + py, landSet)) return { mx: px, my: py };
     }
   }
 
@@ -522,7 +535,7 @@ function tickEnemies(state: BattleState, dt: number, buildings: PlacedBuilding[]
         e.state = 'attack'; e.attackTimer = 0;
       } else {
         const ndx = dx / dist, ndy = dy / dist;
-        const { mx, my } = steer(e.x, e.y, ndx, ndy, e.speed, dt, state.buildingRects, state.landSet, e.targetBuildingId);
+        const { mx, my } = steer(e.x, e.y, ndx, ndy, e.speed, dt, state.buildingRects, state.landSet, state, e.targetBuildingId);
         e.x += mx; e.y += my;
         e.facingLeft = mx < 0;
       }
@@ -623,7 +636,7 @@ function tickDefenders(state: BattleState, dt: number, buildings: PlacedBuilding
       d.facingLeft = dx < 0;
       if (dist < TILE_W * 0.9) { d.state = 'attack'; d.attackTimer = 0; }
       else {
-        const { mx, my } = steer(d.x, d.y, dx / dist, dy / dist, d.speed, dt, state.buildingRects, state.landSet);
+        const { mx, my } = steer(d.x, d.y, dx / dist, dy / dist, d.speed, dt, state.buildingRects, state.landSet, state);
         d.x += mx; d.y += my;
       }
     }
