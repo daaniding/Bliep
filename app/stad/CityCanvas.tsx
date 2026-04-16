@@ -255,7 +255,7 @@ export default function CityCanvas({
         const rx = wgx - mapOffsetGx;
         const ry = wgy - mapOffsetGy;
         if (rx < 0 || rx >= MAP_COLS || ry < 0 || ry >= MAP_ROWS) return false;
-        return elevation[ry][rx] >= 2; // sand or grass
+        return elevation[ry][rx] === 3; // grass
       };
 
       // ---- Bake water tile to a 2×2 block for seamless tiling ----
@@ -302,7 +302,6 @@ export default function CityCanvas({
 
       // Collect cells by type for rendering + preview bbox
       const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
-      const sandCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const landCells: Array<{ gx: number; gy: number }> = [];
 
       for (let ry = 0; ry < MAP_ROWS; ry++) {
@@ -311,10 +310,6 @@ export default function CityCanvas({
           const gx = worldGx(rx), gy = worldGy(ry);
           if (v === 3) {
             grassCells.push({ gx, gy, rx, ry });
-            landCells.push({ gx, gy });
-          }
-          if (v === 2) {
-            sandCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           }
         }
@@ -351,18 +346,6 @@ export default function CityCanvas({
         }
       }
       tileLayer.addChild(waterOverlay);
-
-      // ---- Sand beach strip (1 tile wide) ----
-      for (const cell of sandCells) {
-        const sprite = new Sprite(terrain.sandFill);
-        sprite.anchor.set(0, 0);
-        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
-        sprite.width = TILE_W;
-        sprite.height = TILE_H;
-        // Warm sandy tint
-        sprite.tint = 0xFFF5E0;
-        tileLayer.addChild(sprite);
-      }
 
       // ---- Grass tiles — tint variation + coast autotile edges ----
       const grassTints = [
@@ -556,15 +539,15 @@ export default function CityCanvas({
       }
 
       // ---- Wave foam along coastline ----
-      // Collect sand cells that border water for foam placement
+      // Collect grass cells that border water for foam placement
       const foamCells: Array<{ px: number; py: number; phase: number }> = [];
-      for (const cell of sandCells) {
-        // Only place foam on sand cells touching water
+      for (const cell of grassCells) {
         const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
         const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
         const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
         const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-        if (n > 1 && s > 1 && w > 1 && e > 1) continue; // fully surrounded by land
+        const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1;
+        if (!touchesWater) continue;
         const px = cell.gx * TILE_W + TILE_W / 2;
         const py = cell.gy * TILE_H + TILE_H / 2;
         foamCells.push({ px, py, phase: hash(cell.gx, cell.gy, 777) * Math.PI * 2 });

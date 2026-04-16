@@ -135,7 +135,7 @@ export function parseElevation(): number[][] {
  * Adds a thin 1-tile sand beach + shallow water gradient for island feel.
  *   0 = deep water
  *   1 = shallow water (2-3 tiles from coast)
- *   2 = sand/beach (1-tile strip at water edge)
+ *   2 = (unused)
  *   3 = grass (buildable land)
  */
 export function processElevation(raw: number[][]): number[][] {
@@ -143,39 +143,6 @@ export function processElevation(raw: number[][]): number[][] {
   const cols = raw[0]?.length ?? 0;
 
   const grid: number[][] = raw.map(r => [...r]);
-
-  // ---- BFS: distance from every cell to nearest water ----
-  const distToWater: number[][] = Array.from({ length: rows }, () =>
-    new Array(cols).fill(999)
-  );
-  const q1: Array<[number, number]> = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (raw[r][c] === 0) { distToWater[r][c] = 0; q1.push([r, c]); }
-    }
-  }
-  let i1 = 0;
-  while (i1 < q1.length) {
-    const [r, c] = q1[i1++];
-    const d = distToWater[r][c];
-    if (d >= 2) continue;
-    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      if (distToWater[nr][nc] <= d + 1) continue;
-      distToWater[nr][nc] = d + 1;
-      q1.push([nr, nc]);
-    }
-  }
-
-  // Thin sand beach: grass cells exactly 1 tile from water → sand
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === 3 && distToWater[r][c] === 1) {
-        grid[r][c] = 2; // sand
-      }
-    }
-  }
 
   // ---- BFS: distance from every cell to nearest land ----
   const distToLand: number[][] = Array.from({ length: rows }, () =>
