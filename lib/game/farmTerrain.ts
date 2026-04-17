@@ -19,6 +19,16 @@ export interface AnimatedSheet {
 export interface FarmTerrain {
   tileset: Texture;
   water: Texture;
+  /** 4 animation frames of the base water tile (rows 21,26,31,36 col 0). */
+  waterFrames: Texture[];
+  /** Animated rocks sitting in water (4 variants, 16 frames each). */
+  waterRocks: AnimatedSheet[];
+  /** Foam/splash animation (16 frames of 192×192). */
+  waterFoam: AnimatedSheet | null;
+  /** Fish sprites. */
+  fishes: Texture[];
+  /** Animated duck (3 frames). */
+  duck: AnimatedSheet | null;
 
   /** 3×3 coastline (sand→water): [NW,N,NE, W,C,E, SW,S,SE] */
   coast: Texture[];
@@ -339,6 +349,68 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   }
 
   // ============================================================
+  // ANIMATED WATER FILL (4 frames — same base rows as waterEdge)
+  // The water fill tile at col 2, row base+1 is the center water.
+  // ============================================================
+  const waterFrames = baseRows.map(b => {
+    // The water fill tile is at col 0, base row (same position as main water)
+    // Each frame block has a slightly different version for animation
+    const t = tile(0, b);
+    nearest(t);
+    return t;
+  });
+
+  // ============================================================
+  // WATER ROCKS (4 variants × 16 frames of 64×64)
+  // ============================================================
+  const waterRocks: AnimatedSheet[] = [];
+  for (let i = 1; i <= 4; i++) {
+    const tex = await safeLoad(`/assets/topdown/tinyswords-terrain/water/water_rock${i}.png`);
+    if (tex) {
+      nearest(tex);
+      const fw = 64, fh = 64;
+      const count = Math.floor(tex.frame.width / fw);
+      if (count > 0) waterRocks.push({ frames: sliceFrames(tex, fw, fh, count), frameW: fw, frameH: fh });
+    }
+  }
+
+  // ============================================================
+  // WATER FOAM (16 frames of 192×192)
+  // ============================================================
+  let waterFoam: AnimatedSheet | null = null;
+  const foamTex = await safeLoad('/assets/topdown/tinyswords-terrain/water_foam.png');
+  if (foamTex) {
+    nearest(foamTex);
+    const fw = 192, fh = 192;
+    const count = Math.floor(foamTex.frame.width / fw);
+    if (count > 0) waterFoam = { frames: sliceFrames(foamTex, fw, fh, count), frameW: fw, frameH: fh };
+  }
+
+  // ============================================================
+  // FISHES (from fishes.png — 64×32, 4 columns × 2 rows of 16×16)
+  // ============================================================
+  const fishTex = await safeLoad(`${BASE}/fishes.png`);
+  const fishes: Texture[] = [];
+  if (fishTex) {
+    nearest(fishTex);
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 4; c++) {
+        fishes.push(new Texture({ source: fishTex.source, frame: new Rectangle(c * 16, r * 16, 16, 16) }));
+      }
+    }
+  }
+
+  // ============================================================
+  // DUCK (3 frames of 32×32)
+  // ============================================================
+  let duck: AnimatedSheet | null = null;
+  const duckTex = await safeLoad('/assets/topdown/tinyswords-terrain/water/duck.png');
+  if (duckTex) {
+    nearest(duckTex);
+    duck = { frames: sliceFrames(duckTex, 32, 32, 3), frameW: 32, frameH: 32 };
+  }
+
+  // ============================================================
   // CLOUDS
   // ============================================================
   const clouds: Texture[] = [];
@@ -364,7 +436,8 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   for (const [, tex] of buildings) nearest(tex);
 
   cached = {
-    tileset, water, coast, coastInner, grass,
+    tileset, water, waterFrames, waterRocks, waterFoam, fishes, duck,
+    coast, coastInner, grass,
     sandFill, sandToGrass, rocks, cattails, stonePath,
     flowersWhite, flowersPurple, grassTufts, mushrooms,
     trees, largeTrees, cherryTrees, fruitTrees, bushes,

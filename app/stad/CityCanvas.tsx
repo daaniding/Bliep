@@ -258,16 +258,13 @@ export default function CityCanvas({
         return elevation[ry][rx] === 3; // grass
       };
 
-      // ---- Bake water tile to a 2×2 block for seamless tiling ----
-      // Single 16px→64px tiles show seams at certain zoom levels.
-      // Using a 2×2 block (128×128) eliminates visible tile edges.
-      const bakedWater = (() => {
+      // ---- Bake water frames to 2×2 blocks for seamless tiling ----
+      const bakeWaterTile = (tex: Texture) => {
         const c = new Container();
         for (let dy = 0; dy < 2; dy++) {
           for (let dx = 0; dx < 2; dx++) {
-            const s = new Sprite(terrain.water);
-            s.width = TILE_W;
-            s.height = TILE_H;
+            const s = new Sprite(tex);
+            s.width = TILE_W; s.height = TILE_H;
             s.position.set(dx * TILE_W, dy * TILE_H);
             c.addChild(s);
           }
@@ -276,20 +273,82 @@ export default function CityCanvas({
         if (t.source) t.source.scaleMode = 'nearest';
         c.destroy({ children: true });
         return t;
-      })();
+      };
+      const bakedWater = bakeWaterTile(terrain.water);
+      const bakedWaterFrames = terrain.waterFrames.map(f => bakeWaterTile(f));
 
-      // ---- Water backdrop ----
+      // ---- Animated water backdrop ----
       const waterLeft = -WATER_MARGIN * TILE_W;
       const waterTop = -WATER_MARGIN * TILE_H;
       const waterW = (GRID_SIZE + WATER_MARGIN * 2) * TILE_W;
       const waterH = (GRID_SIZE + WATER_MARGIN * 2) * TILE_H;
       const water = new TilingSprite({
-        texture: bakedWater,
+        texture: bakedWaterFrames[0] || bakedWater,
         width: waterW,
         height: waterH,
       });
       water.position.set(waterLeft, waterTop);
       tileLayer.addChild(water);
+
+      // Animate water by cycling through 4 frames
+      let waterFrame = 0;
+      let waterFrameTimer = 0;
+
+      // ---- Water rocks — animated rocks scattered in the ocean ----
+      const rockSprites: AnimatedSprite[] = [];
+      if (terrain.waterRocks.length > 0) {
+        const rng = (i: number, s: number) => {
+          let h = (i * 374761393 + s * 668265263) | 0;
+          h = (h ^ (h >>> 13)) * 1274126177;
+          return ((h >>> 0) % 10000) / 10000;
+        };
+        // Place rocks around the island edges (in shallow/deep water)
+        for (let i = 0; i < 25; i++) {
+          const sheet = terrain.waterRocks[Math.floor(rng(i, 0) * terrain.waterRocks.length)];
+          const rock = new AnimatedSprite(sheet.frames);
+          rock.anchor.set(0.5, 0.7);
+          // Random position in the water area around center
+          const angle = rng(i, 1) * Math.PI * 2;
+          const dist = 30 + rng(i, 2) * 40; // 30-70 tiles from center
+          const cx = GRID_SIZE / 2 * TILE_W;
+          const cy = GRID_SIZE / 2 * TILE_H;
+          rock.position.set(cx + Math.cos(angle) * dist * TILE_W, cy + Math.sin(angle) * dist * TILE_H);
+          const rockScale = (TILE_W * (1.2 + rng(i, 3) * 0.8)) / sheet.frameW;
+          rock.scale.set(rockScale);
+          rock.animationSpeed = 0.08 + rng(i, 4) * 0.04;
+          rock.currentFrame = Math.floor(rng(i, 5) * sheet.frames.length);
+          rock.play();
+          rock.zIndex = Math.floor(rock.position.y);
+          tileLayer.addChild(rock);
+          rockSprites.push(rock);
+        }
+      }
+
+      // ---- Foam patches — scattered on ocean surface ----
+      if (terrain.waterFoam) {
+        const foamSheet = terrain.waterFoam;
+        for (let i = 0; i < 12; i++) {
+          const foam = new AnimatedSprite(foamSheet.frames);
+          foam.anchor.set(0.5);
+          const rng = (s: number) => {
+            let h = (i * 1664525 + s * 1013904223) | 0;
+            h = (h ^ (h >>> 13)) * 1274126177;
+            return ((h >>> 0) % 10000) / 10000;
+          };
+          const angle = rng(10) * Math.PI * 2;
+          const dist = 25 + rng(11) * 50;
+          const cx = GRID_SIZE / 2 * TILE_W;
+          const cy = GRID_SIZE / 2 * TILE_H;
+          foam.position.set(cx + Math.cos(angle) * dist * TILE_W, cy + Math.sin(angle) * dist * TILE_H);
+          const foamScale = (TILE_W * (0.6 + rng(12) * 0.5)) / foamSheet.frameW;
+          foam.scale.set(foamScale);
+          foam.animationSpeed = 0.06 + rng(13) * 0.03;
+          foam.currentFrame = Math.floor(rng(14) * foamSheet.frames.length);
+          foam.alpha = 0.5 + rng(15) * 0.3;
+          foam.play();
+          tileLayer.addChild(foam);
+        }
+      }
 
       // ---- Multi-layer terrain rendering ----
       const seed = state.npcSeed || 1;
@@ -700,6 +759,14 @@ export default function CityCanvas({
         const dt = ticker.deltaTime ?? 1;
         waterT += 0.25 * dt;
         water.tilePosition.set(waterT, waterT * 0.5);
+
+        // Cycle water animation frames (~every 20 ticks = ~0.33s at 60fps)
+        waterFrameTimer += dt;
+        if (waterFrameTimer > 20 && bakedWaterFrames.length > 1) {
+          waterFrameTimer = 0;
+          waterFrame = (waterFrame + 1) % bakedWaterFrames.length;
+          water.texture = bakedWaterFrames[waterFrame];
+        }
         for (const c of cloudSprites) {
           c.sprite.position.x += c.speed * dt;
           if (c.sprite.position.x > cloudWrapX) c.sprite.position.x = -200;
