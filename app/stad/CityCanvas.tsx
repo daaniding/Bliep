@@ -351,13 +351,15 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Sand tiles — plain fill (coast tiles are cliff/rock, not beach) ----
+      // ---- Sand tiles — flat colour (tileset has no clean beach tiles) ----
+      const sandTints = [0xd4c090, 0xcdb888, 0xd0bc8a, 0xc8b480];
       for (const cell of sandCells) {
-        const sprite = new Sprite(terrain.sandFill);
+        const sprite = new Sprite(Texture.WHITE);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
+        sprite.tint = sandTints[((cell.gx * 7 + cell.gy * 13) >>> 0) % sandTints.length];
         tileLayer.addChild(sprite);
       }
 
