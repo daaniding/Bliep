@@ -63,35 +63,58 @@ export function parseElevation(): number[][] {
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // Cayo Perico stijl: gebogen langwerpig eiland
-      // Curved spine van linksboven naar rechtsonder
-      // met variërende breedte langs de lengte
+      // Cayo Perico reference: breed bovenaan met landingsbaan-schiereiland,
+      // smal middenstuk, breed onderlichaam, kleine eilandjes onderaan.
+      // Grotere schaal zodat het minder blokkerig is.
 
-      // Punt op de spine (parametrisch, t=0 linksboven, t=1 rechtsonder)
-      // Spine is een gebogen lijn
-      const spineX0 = cx - 30, spineY0 = cy - 18;
-      const spineX1 = cx + 5,  spineY1 = cy - 5;  // midpoint (buigt naar rechts)
-      const spineX2 = cx + 28, spineY2 = cy + 20;
+      // Spine loopt van boven naar beneden met een S-curve
+      // We gebruiken meerdere bezier segmenten
+      const spines = [
+        // Segment 1: breed bovenstuk (NW naar midden)
+        { x0: cx - 8, y0: cy - 38, x1: cx + 10, y1: cy - 25, x2: cx + 5, y2: cy - 10 },
+        // Segment 2: smal middenstuk
+        { x0: cx + 5, y0: cy - 10, x1: cx - 5, y1: cy + 2, x2: cx - 2, y2: cy + 12 },
+        // Segment 3: breed onderstuk
+        { x0: cx - 2, y0: cy + 12, x1: cx + 8, y1: cy + 25, x2: cx + 2, y2: cy + 38 },
+      ];
 
-      // Vind dichtstbijzijnde punt op de quadratic bezier spine
       let minDistToSpine = 999;
       let bestT = 0;
-      for (let ti = 0; ti <= 40; ti++) {
-        const t = ti / 40;
-        const it = 1 - t;
-        const sx = it * it * spineX0 + 2 * it * t * spineX1 + t * t * spineX2;
-        const sy = it * it * spineY0 + 2 * it * t * spineY1 + t * t * spineY2;
-        const d = Math.hypot(c - sx, r - sy);
-        if (d < minDistToSpine) { minDistToSpine = d; bestT = t; }
+      let bestSeg = 0;
+      for (let si = 0; si < spines.length; si++) {
+        const s = spines[si];
+        for (let ti = 0; ti <= 30; ti++) {
+          const t = ti / 30;
+          const it = 1 - t;
+          const sx = it * it * s.x0 + 2 * it * t * s.x1 + t * t * s.x2;
+          const sy = it * it * s.y0 + 2 * it * t * s.y1 + t * t * s.y2;
+          const d = Math.hypot(c - sx, r - sy);
+          if (d < minDistToSpine) { minDistToSpine = d; bestT = t; bestSeg = si; }
+        }
       }
 
-      // Breedte varieert langs de spine: dik in het midden, dunner aan de uiteinden
-      const widthAtT = 14 + Math.sin(bestT * Math.PI) * 10; // 14-24 tiles breed
+      // Breedte per segment — breed boven en onder, smal in het midden
+      const globalT = (bestSeg + bestT) / spines.length; // 0-1 over hele eiland
+      // Breed boven (25), smal midden (14), breed onder (22)
+      const widthAtT = 14 + Math.sin(globalT * Math.PI) * 6
+                      + (globalT < 0.35 ? (0.35 - globalT) * 30 : 0)  // extra breed boven
+                      + (globalT > 0.65 ? (globalT - 0.65) * 25 : 0); // extra breed onder
 
-      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 3;
-      const n2 = fbm(noise2, c * 0.09, r * 0.09, 3) * 2;
+      // NW schiereiland (landingsbaan area)
+      const nwPenDist = Math.hypot(c - (cx - 25), r - (cy - 30)) / 15;
 
-      if (minDistToSpine + n + n2 < widthAtT) {
+      // SW schiereiland
+      const swPenDist = Math.hypot(c - (cx - 15), r - (cy + 25)) / 12;
+
+      // Oost bump bovenaan
+      const eBumpDist = Math.hypot(c - (cx + 20), r - (cy - 20)) / 13;
+
+      const landDist = Math.min(minDistToSpine / Math.max(widthAtT, 1), nwPenDist, swPenDist, eBumpDist);
+
+      const n = fbm(noise, c * 0.035, r * 0.035, 5) * 0.12;
+      const n2 = fbm(noise2, c * 0.08, r * 0.08, 3) * 0.06;
+
+      if (landDist + n + n2 < 1.0) {
         grid[r][c] = 3;
       }
     }
