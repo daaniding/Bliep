@@ -612,19 +612,71 @@ export default function CityCanvas({
       };
       const grassColorA = 0xFCFFF8, grassColorB = 0xECF4E0, grassColorC = 0xE0ECDA;
 
+      // ---- Distance from edge for each grass cell (for biome zones) ----
+      const grassDistFromEdge = new Map<string, number>();
+      const maxGrassDist = 20;
+      {
+        const dq: Array<[number, number, number]> = [];
+        const dVisited = new Set<string>();
+        // Start BFS from grass cells that touch water
+        for (const cell of grassCells) {
+          const rv = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+          const sv = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+          const wv = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+          const ev = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+          const isW = (v: number) => v === 0 || v === 1 || v === 4;
+          if (isW(rv) || isW(sv) || isW(wv) || isW(ev)) {
+            const key = `${cell.rx},${cell.ry}`;
+            grassDistFromEdge.set(key, 0);
+            dVisited.add(key);
+            dq.push([cell.rx, cell.ry, 0]);
+          }
+        }
+        let di = 0;
+        while (di < dq.length) {
+          const [x, y, d] = dq[di++];
+          if (d >= maxGrassDist) continue;
+          for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+            const nx = x + dx, ny = y + dy;
+            const key = `${nx},${ny}`;
+            if (dVisited.has(key)) continue;
+            if (ny < 0 || ny >= MAP_ROWS || nx < 0 || nx >= MAP_COLS) continue;
+            if (elevation[ny][nx] !== 3) continue;
+            dVisited.add(key);
+            grassDistFromEdge.set(key, d + 1);
+            dq.push([nx, ny, d + 1]);
+          }
+        }
+      }
+
       for (const cell of grassCells) {
-        // Plain grass only — coast tiles komen later als aparte layer
-        const r = hash(cell.gx, cell.gy, 50);
-        const tex = r < 0.85 ? terrain.grass[0]
-            : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
+        const distFromEdge = grassDistFromEdge.get(`${cell.rx},${cell.ry}`) ?? maxGrassDist;
+        const edgeT = Math.min(1, distFromEdge / maxGrassDist);
+
+        // Eén tile type — variatie komt van tint, niet van texture wisselen
+        const tex = terrain.grass[0];
         const sprite = new Sprite(tex);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W; sprite.height = TILE_H;
-        const n1 = smoothNoise(cell.gx, cell.gy);
-        const n2 = smoothNoise(cell.gx * 2.3 + 100, cell.gy * 2.3 + 100) * 0.3;
-        const combined = Math.min(1, Math.max(0, n1 + n2));
-        sprite.tint = combined < 0.5 ? lerpColor(grassColorA, grassColorB, combined * 2) : lerpColor(grassColorB, grassColorC, (combined - 0.5) * 2);
+
+        // Smooth biome blending: donkerder aan randen, lichter in centrum
+        // Twee noise lagen op lage frequentie = grote zachte vlekken
+        const biome1 = smoothNoise(cell.gx, cell.gy); // grote patches
+        const biome2 = smoothNoise(cell.gx * 1.7 + 200, cell.gy * 1.7 + 200); // medium patches
+
+        // Combineer edge distance + noise voor smooth gradient
+        const t = Math.min(1, Math.max(0, edgeT * 0.5 + biome1 * 0.3 + biome2 * 0.2));
+
+        // 3 kleuren: donker rand → medium → licht centrum
+        const darkGreen  = 0xc0d4a8; // bosrand
+        const medGreen   = 0xd8e8c0; // standaard weide
+        const lightGreen = 0xeaf4d8; // open veld centrum
+
+        sprite.tint = t < 0.45
+          ? lerpColor(darkGreen, medGreen, t / 0.45)
+          : lerpColor(medGreen, lightGreen, (t - 0.45) / 0.55);
+
         tileLayer.addChild(sprite);
       }
 

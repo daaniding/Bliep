@@ -35,8 +35,12 @@ export interface FarmTerrain {
   /** Inner corners: [NW,NE,SW,SE] */
   coastInner: Texture[];
 
-  /** Single grass fill tile. */
+  /** Medium grass fill tiles. */
   grass: Texture[];
+  /** Light meadow grass. */
+  grassLight: Texture[];
+  /** Dark forest-floor grass. */
+  grassDark: Texture[];
   /** Sand fill tile. */
   sandFill: Texture;
   /** 3×3 sand-on-grass transition (path autotile). */
@@ -163,11 +167,22 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   // GRASS — textured tiles, all similar medium-green base
   // Tint variation provides colour patches; tiles provide texture.
   // ============================================================
+  // 4 grass color variants from tileset (light → dark)
   const grass: Texture[] = [
-    tile(19, 1),  // medium green, clean
+    tile(19, 1),  // medium green, clean — primary fill
     tile(20, 1),  // medium green, grass blade details
     tile(21, 1),  // medium green, sprout details
-    tile(20, 0),  // slightly lighter, subtle dots (for variety)
+    tile(20, 0),  // lighter, subtle dots
+  ];
+  // Light meadow grass (for open center areas)
+  const grassLight: Texture[] = [
+    tile(19, 0),  // lightest yellow-green
+    tile(20, 0),  // light with dots
+  ];
+  // Dark forest-floor grass (for edges near trees)
+  const grassDark: Texture[] = [
+    tile(21, 0),  // dark teal-green
+    tile(21, 1),  // dark with sprout details
   ];
 
   // ============================================================
@@ -437,7 +452,7 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
 
   cached = {
     tileset, water, waterFrames, waterRocks, waterFoam, fishes, duck,
-    coast, coastInner, grass,
+    coast, coastInner, grass, grassLight, grassDark,
     sandFill, sandToGrass, rocks, cattails, stonePath,
     flowersWhite, flowersPurple, grassTufts, mushrooms,
     trees, largeTrees, cherryTrees, fruitTrees, bushes,
