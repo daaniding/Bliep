@@ -314,61 +314,151 @@ export default function CityCanvas({
       let waterFrame = 0;
       let waterFrameTimer = 0;
 
-      // ---- Water rocks — animated rocks scattered in the ocean ----
-      const rockSprites: AnimatedSprite[] = [];
+      // ---- Ocean detail layer (above water, below terrain) ----
+      const oceanDetailLayer = new Container();
+      oceanDetailLayer.sortableChildren = true;
+      tileLayer.addChild(oceanDetailLayer);
+
+      const oceanRng = (i: number, s: number) => {
+        let h = (i * 374761393 + s * 668265263) | 0;
+        h = (h ^ (h >>> 13)) * 1274126177;
+        return ((h >>> 0) % 10000) / 10000;
+      };
+      const oceanCX = GRID_SIZE / 2 * TILE_W;
+      const oceanCY = GRID_SIZE / 2 * TILE_H;
+
+      // ---- Depth zones — darker center, lighter near edges ----
+      const depthOverlay = new Graphics();
+      // Dark deep center
+      depthOverlay.circle(oceanCX, oceanCY, 60 * TILE_W);
+      depthOverlay.fill({ color: 0x1a3a5c, alpha: 0.15 });
+      depthOverlay.circle(oceanCX, oceanCY, 35 * TILE_W);
+      depthOverlay.fill({ color: 0x0d2844, alpha: 0.12 });
+      oceanDetailLayer.addChild(depthOverlay);
+
+      // ---- Water rocks — animated, scattered throughout ----
       if (terrain.waterRocks.length > 0) {
-        const rng = (i: number, s: number) => {
-          let h = (i * 374761393 + s * 668265263) | 0;
-          h = (h ^ (h >>> 13)) * 1274126177;
-          return ((h >>> 0) % 10000) / 10000;
-        };
-        // Place rocks around the island edges (in shallow/deep water)
-        for (let i = 0; i < 25; i++) {
-          const sheet = terrain.waterRocks[Math.floor(rng(i, 0) * terrain.waterRocks.length)];
+        for (let i = 0; i < 40; i++) {
+          const sheet = terrain.waterRocks[Math.floor(oceanRng(i, 0) * terrain.waterRocks.length)];
           const rock = new AnimatedSprite(sheet.frames);
           rock.anchor.set(0.5, 0.7);
-          // Random position in the water area around center
-          const angle = rng(i, 1) * Math.PI * 2;
-          const dist = 30 + rng(i, 2) * 40; // 30-70 tiles from center
-          const cx = GRID_SIZE / 2 * TILE_W;
-          const cy = GRID_SIZE / 2 * TILE_H;
-          rock.position.set(cx + Math.cos(angle) * dist * TILE_W, cy + Math.sin(angle) * dist * TILE_H);
-          const rockScale = (TILE_W * (1.2 + rng(i, 3) * 0.8)) / sheet.frameW;
+          // Spread across visible area — some close, some far
+          const angle = oceanRng(i, 1) * Math.PI * 2;
+          const dist = 8 + oceanRng(i, 2) * 55;
+          rock.position.set(oceanCX + Math.cos(angle) * dist * TILE_W, oceanCY + Math.sin(angle) * dist * TILE_H);
+          const rockScale = (TILE_W * (0.8 + oceanRng(i, 3) * 1.2)) / sheet.frameW;
           rock.scale.set(rockScale);
-          rock.animationSpeed = 0.08 + rng(i, 4) * 0.04;
-          rock.currentFrame = Math.floor(rng(i, 5) * sheet.frames.length);
+          rock.animationSpeed = 0.08 + oceanRng(i, 4) * 0.04;
+          rock.currentFrame = Math.floor(oceanRng(i, 5) * sheet.frames.length);
           rock.play();
           rock.zIndex = Math.floor(rock.position.y);
-          tileLayer.addChild(rock);
-          rockSprites.push(rock);
+          oceanDetailLayer.addChild(rock);
         }
       }
 
-      // ---- Foam patches — scattered on ocean surface ----
+      // ---- Foam patches — various sizes scattered on surface ----
       if (terrain.waterFoam) {
         const foamSheet = terrain.waterFoam;
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 25; i++) {
           const foam = new AnimatedSprite(foamSheet.frames);
           foam.anchor.set(0.5);
-          const rng = (s: number) => {
-            let h = (i * 1664525 + s * 1013904223) | 0;
-            h = (h ^ (h >>> 13)) * 1274126177;
-            return ((h >>> 0) % 10000) / 10000;
-          };
-          const angle = rng(10) * Math.PI * 2;
-          const dist = 25 + rng(11) * 50;
-          const cx = GRID_SIZE / 2 * TILE_W;
-          const cy = GRID_SIZE / 2 * TILE_H;
-          foam.position.set(cx + Math.cos(angle) * dist * TILE_W, cy + Math.sin(angle) * dist * TILE_H);
-          const foamScale = (TILE_W * (0.6 + rng(12) * 0.5)) / foamSheet.frameW;
+          const angle = oceanRng(i + 100, 10) * Math.PI * 2;
+          const dist = 5 + oceanRng(i + 100, 11) * 60;
+          foam.position.set(oceanCX + Math.cos(angle) * dist * TILE_W, oceanCY + Math.sin(angle) * dist * TILE_H);
+          const foamScale = (TILE_W * (0.3 + oceanRng(i + 100, 12) * 0.8)) / foamSheet.frameW;
           foam.scale.set(foamScale);
-          foam.animationSpeed = 0.06 + rng(13) * 0.03;
-          foam.currentFrame = Math.floor(rng(14) * foamSheet.frames.length);
-          foam.alpha = 0.5 + rng(15) * 0.3;
+          foam.animationSpeed = 0.04 + oceanRng(i + 100, 13) * 0.04;
+          foam.currentFrame = Math.floor(oceanRng(i + 100, 14) * foamSheet.frames.length);
+          foam.alpha = 0.35 + oceanRng(i + 100, 15) * 0.35;
           foam.play();
-          tileLayer.addChild(foam);
+          oceanDetailLayer.addChild(foam);
         }
       }
+
+      // ---- Swimming fish — slow movement across the water ----
+      type SwimmingFish = { sprite: Sprite; x: number; y: number; vx: number; vy: number; homeX: number; homeY: number };
+      const swimmingFish: SwimmingFish[] = [];
+      if (terrain.fishes.length > 0) {
+        for (let i = 0; i < 15; i++) {
+          const tex = terrain.fishes[Math.floor(oceanRng(i + 200, 0) * terrain.fishes.length)];
+          const sprite = new Sprite(tex);
+          sprite.anchor.set(0.5);
+          const angle = oceanRng(i + 200, 1) * Math.PI * 2;
+          const dist = 10 + oceanRng(i + 200, 2) * 50;
+          const x = oceanCX + Math.cos(angle) * dist * TILE_W;
+          const y = oceanCY + Math.sin(angle) * dist * TILE_H;
+          sprite.position.set(x, y);
+          const fishScale = (TILE_W * (0.6 + oceanRng(i + 200, 3) * 0.5)) / Math.max(tex.width, tex.height);
+          sprite.scale.set(fishScale);
+          sprite.alpha = 0.6 + oceanRng(i + 200, 4) * 0.3;
+          sprite.zIndex = Math.floor(y);
+          oceanDetailLayer.addChild(sprite);
+          const speed = 0.15 + oceanRng(i + 200, 5) * 0.25;
+          const dir = oceanRng(i + 200, 6) * Math.PI * 2;
+          swimmingFish.push({ sprite, x, y, vx: Math.cos(dir) * speed, vy: Math.sin(dir) * speed, homeX: x, homeY: y });
+        }
+      }
+
+      // ---- Floating ducks — animated, wandering slowly ----
+      type FloatingDuck = { sprite: AnimatedSprite; x: number; y: number; vx: number; vy: number; homeX: number; homeY: number };
+      const floatingDucks: FloatingDuck[] = [];
+      if (terrain.duck) {
+        const duckSheet = terrain.duck;
+        for (let i = 0; i < 5; i++) {
+          const duck = new AnimatedSprite(duckSheet.frames);
+          duck.anchor.set(0.5);
+          const angle = oceanRng(i + 300, 1) * Math.PI * 2;
+          const dist = 12 + oceanRng(i + 300, 2) * 30;
+          const x = oceanCX + Math.cos(angle) * dist * TILE_W;
+          const y = oceanCY + Math.sin(angle) * dist * TILE_H;
+          duck.position.set(x, y);
+          const duckScale = (TILE_W * (1.0 + oceanRng(i + 300, 3) * 0.4)) / duckSheet.frameW;
+          duck.scale.set(duckScale);
+          duck.animationSpeed = 0.04 + oceanRng(i + 300, 4) * 0.02;
+          duck.currentFrame = Math.floor(oceanRng(i + 300, 5) * duckSheet.frames.length);
+          duck.play();
+          duck.zIndex = Math.floor(y) + 10;
+          oceanDetailLayer.addChild(duck);
+          const speed = 0.08 + oceanRng(i + 300, 6) * 0.12;
+          const dir = oceanRng(i + 300, 7) * Math.PI * 2;
+          floatingDucks.push({ sprite: duck, x, y, vx: Math.cos(dir) * speed, vy: Math.sin(dir) * speed, homeX: x, homeY: y });
+        }
+      }
+
+      // ---- Cloud shadows — dark patches drifting over the water ----
+      const cloudShadows: { g: Graphics; speed: number }[] = [];
+      for (let i = 0; i < 8; i++) {
+        const g = new Graphics();
+        const size = 80 + oceanRng(i + 400, 0) * 200;
+        g.ellipse(0, 0, size, size * 0.6);
+        g.fill({ color: 0x000000, alpha: 0.06 + oceanRng(i + 400, 1) * 0.06 });
+        const x = oceanRng(i + 400, 2) * GRID_SIZE * TILE_W;
+        const y = oceanRng(i + 400, 3) * GRID_SIZE * TILE_H;
+        g.position.set(x, y);
+        oceanDetailLayer.addChild(g);
+        cloudShadows.push({ g, speed: 0.12 + oceanRng(i + 400, 4) * 0.15 });
+      }
+
+      // ---- Sparkle/glint effects — light flashes on the surface ----
+      type Sparkle = { g: Graphics; x: number; y: number; phase: number; speed: number };
+      const sparkles: Sparkle[] = [];
+      for (let i = 0; i < 30; i++) {
+        const g = new Graphics();
+        g.star(0, 0, 4, 3, 1.5);
+        g.fill({ color: 0xffffff, alpha: 0.8 });
+        const x = oceanRng(i + 500, 0) * GRID_SIZE * TILE_W;
+        const y = oceanRng(i + 500, 1) * GRID_SIZE * TILE_H;
+        g.position.set(x, y);
+        g.scale.set(0.5 + oceanRng(i + 500, 2) * 0.5);
+        g.alpha = 0;
+        oceanDetailLayer.addChild(g);
+        sparkles.push({ g, x, y, phase: oceanRng(i + 500, 3) * Math.PI * 2, speed: 0.3 + oceanRng(i + 500, 4) * 0.5 });
+      }
+
+      // ---- Bubble particles — small circles rising gently ----
+      type Bubble = { g: Graphics; x: number; y: number; vy: number; life: number; maxLife: number; baseAlpha: number };
+      const bubbles: Bubble[] = [];
+      let bubbleTimer = 0;
 
       // ---- Multi-layer terrain rendering ----
       // TEMP: hide island to focus on ocean only
@@ -816,6 +906,84 @@ export default function CityCanvas({
         // Animate tree sway — subtle horizontal oscillation
         for (const ts of swayTrees) {
           ts.sprite.position.x = ts.baseX + Math.sin(t * 0.6 + ts.phase) * 1.8;
+        }
+
+        // ---- OCEAN LIFE ANIMATIONS ----
+        // Swimming fish — gentle wandering with direction changes
+        for (const f of swimmingFish) {
+          f.x += f.vx * dt;
+          f.y += f.vy * dt;
+          // Steer back toward home if too far
+          const dx = f.homeX - f.x, dy = f.homeY - f.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 200) { f.vx += (dx / dist) * 0.01 * dt; f.vy += (dy / dist) * 0.01 * dt; }
+          // Random drift
+          f.vx += (Math.sin(t * 0.3 + f.homeX * 0.001) * 0.005) * dt;
+          f.vy += (Math.cos(t * 0.25 + f.homeY * 0.001) * 0.003) * dt;
+          // Clamp speed
+          const spd = Math.hypot(f.vx, f.vy);
+          if (spd > 0.4) { f.vx *= 0.4 / spd; f.vy *= 0.4 / spd; }
+          f.sprite.position.set(f.x, f.y);
+          f.sprite.scale.x = f.vx >= 0 ? Math.abs(f.sprite.scale.x) : -Math.abs(f.sprite.scale.x);
+        }
+
+        // Floating ducks — gentle bobbing + wandering
+        for (const d of floatingDucks) {
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+          const dx = d.homeX - d.x, dy = d.homeY - d.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 300) { d.vx += (dx / dist) * 0.008 * dt; d.vy += (dy / dist) * 0.008 * dt; }
+          d.vx += (Math.sin(t * 0.15 + d.homeX * 0.002) * 0.003) * dt;
+          d.vy += (Math.cos(t * 0.12 + d.homeY * 0.002) * 0.002) * dt;
+          const spd = Math.hypot(d.vx, d.vy);
+          if (spd > 0.2) { d.vx *= 0.2 / spd; d.vy *= 0.2 / spd; }
+          d.sprite.position.set(d.x, d.y + Math.sin(t * 1.5 + d.homeX) * 2); // bobbing
+          d.sprite.scale.x = d.vx >= 0 ? Math.abs(d.sprite.scale.x) : -Math.abs(d.sprite.scale.x);
+        }
+
+        // Cloud shadows — drift across the water
+        for (const cs of cloudShadows) {
+          cs.g.position.x += cs.speed * dt;
+          if (cs.g.position.x > GRID_SIZE * TILE_W + 300) cs.g.position.x = -300;
+        }
+
+        // Sparkles — pulse in and out
+        for (const sp of sparkles) {
+          const pulse = Math.sin(t * sp.speed + sp.phase);
+          sp.g.alpha = Math.max(0, pulse * 0.7);
+          sp.g.scale.set(0.3 + Math.max(0, pulse) * 0.7);
+        }
+
+        // Bubbles — spawn and rise
+        bubbleTimer += dt;
+        if (bubbleTimer > 40 && bubbles.length < 20) {
+          bubbleTimer = 0;
+          const bx = oceanCX + (Math.random() - 0.5) * 80 * TILE_W;
+          const by = oceanCY + (Math.random() - 0.5) * 60 * TILE_H;
+          const g = new Graphics();
+          const size = 1.5 + Math.random() * 2.5;
+          g.circle(0, 0, size);
+          g.fill({ color: 0xc0e8ff, alpha: 0.6 });
+          g.circle(-size * 0.3, -size * 0.3, size * 0.3);
+          g.fill({ color: 0xffffff, alpha: 0.4 });
+          g.position.set(bx, by);
+          oceanDetailLayer.addChild(g);
+          bubbles.push({ g, x: bx, y: by, vy: -0.3 - Math.random() * 0.4, life: 0, maxLife: 60 + Math.random() * 40, baseAlpha: 0.4 + Math.random() * 0.3 });
+        }
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+          const b = bubbles[i];
+          b.life += dt;
+          b.y += b.vy * dt;
+          b.x += Math.sin(b.life * 0.1 + b.x * 0.01) * 0.2;
+          b.g.position.set(b.x, b.y);
+          b.g.alpha = b.baseAlpha * Math.max(0, 1 - b.life / b.maxLife);
+          b.g.scale.set(0.8 + (b.life / b.maxLife) * 0.4);
+          if (b.life >= b.maxLife) {
+            oceanDetailLayer.removeChild(b.g);
+            b.g.destroy();
+            bubbles.splice(i, 1);
+          }
         }
 
         // Fish splash — occasional jump in shallow water
