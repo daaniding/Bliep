@@ -68,48 +68,63 @@ export function parseElevation(): number[][] {
       // inham rechts-midden, smal taille, breed onderstuk met
       // SW schiereiland, puntig onderaan.
 
-      // Outline als polygon punten (kloksgewijs vanaf top-midden)
+      // Cayo Perico silhouette — preciezer nagebouwd
       const poly: Array<[number, number]> = [
-        // Top — breed plateau
-        [cx - 5,  cy - 38],
-        [cx + 18, cy - 36],
-        [cx + 22, cy - 30],
-        [cx + 20, cy - 22],
-        // Rechts boven — lichte inham
-        [cx + 24, cy - 16],
-        [cx + 18, cy - 10],
-        // Rechts — diepe inham (baai)
-        [cx + 12, cy - 6],
-        [cx + 8,  cy - 2],
-        // Rechts midden — taille
-        [cx + 10, cy + 4],
-        [cx + 14, cy + 10],
-        // Rechts onder — breed onderstuk
-        [cx + 22, cy + 16],
-        [cx + 24, cy + 22],
-        [cx + 20, cy + 28],
-        // Onderkant — puntig
-        [cx + 12, cy + 34],
-        [cx + 4,  cy + 38],
-        [cx - 4,  cy + 36],
-        // Links onder
-        [cx - 14, cy + 30],
-        // SW schiereiland
-        [cx - 22, cy + 24],
-        [cx - 26, cy + 18],
-        [cx - 22, cy + 12],
-        // Links midden
-        [cx - 16, cy + 6],
-        [cx - 14, cy - 2],
-        // Links boven
-        [cx - 18, cy - 8],
-        [cx - 20, cy - 14],
-        // NW schiereiland (landingsbaan)
-        [cx - 30, cy - 22],
-        [cx - 34, cy - 30],
-        [cx - 28, cy - 34],
-        [cx - 18, cy - 36],
-        [cx - 10, cy - 38],
+        // === TOP: breed plateau met NW airstrip ===
+        [cx - 6,  cy - 38],  // top midden
+        [cx + 8,  cy - 39],  // top rechts van midden
+        [cx + 16, cy - 36],  // rechtsboven hoek
+        [cx + 22, cy - 32],  // oost-bovenkant
+        [cx + 24, cy - 26],  // rechts boven — buikt uit
+
+        // === RECHTS BOVEN: inham/baai ===
+        [cx + 20, cy - 20],  // begint naar binnen
+        [cx + 14, cy - 16],  // diepste punt inham
+        [cx + 16, cy - 12],  // terug naar buiten
+
+        // === RECHTS MIDDEN: smalle taille ===
+        [cx + 12, cy - 6],   // naar binnen
+        [cx + 8,  cy - 1],   // smalste punt
+        [cx + 10, cy + 4],   // begint breder
+
+        // === RECHTS ONDER: breed onderstuk ===
+        [cx + 18, cy + 10],  // uitbuiking
+        [cx + 22, cy + 16],  // breedste punt rechts
+        [cx + 24, cy + 22],  // oost-onderkant
+        [cx + 20, cy + 28],  // begint te versmallen
+
+        // === ONDERKANT: puntig naar zuiden ===
+        [cx + 14, cy + 33],  // rechts-onder
+        [cx + 6,  cy + 37],  // zuidpunt rechts
+        [cx - 2,  cy + 40],  // zuidelijkste punt
+        [cx - 10, cy + 38],  // zuidpunt links
+
+        // === LINKS ONDER ===
+        [cx - 16, cy + 34],  // ZW hoek
+        [cx - 20, cy + 28],  // links-onderkant
+
+        // === SW SCHIEREILAND ===
+        [cx - 28, cy + 22],  // uitstekend naar westen
+        [cx - 32, cy + 16],  // punt van schiereiland
+        [cx - 28, cy + 10],  // terug naar boven
+
+        // === LINKS MIDDEN ===
+        [cx - 20, cy + 4],   // links taille
+        [cx - 16, cy - 2],   // smalste punt links
+        [cx - 18, cy - 8],   // naar boven
+
+        // === LINKS BOVEN ===
+        [cx - 16, cy - 14],  // links-boven
+        [cx - 20, cy - 18],  // begint NW schiereiland
+
+        // === NW SCHIEREILAND (airstrip) ===
+        [cx - 28, cy - 22],  // naar NW
+        [cx - 36, cy - 28],  // airstrip punt NW
+        [cx - 38, cy - 32],  // noordelijkste punt airstrip
+        [cx - 34, cy - 35],  // bocht naar oost
+        [cx - 26, cy - 36],  // terug richting top
+        [cx - 18, cy - 38],  // bijna terug
+        [cx - 12, cy - 39],  // top-links
       ];
 
       // Point-in-polygon test (ray casting)
