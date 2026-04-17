@@ -1,5 +1,8 @@
 /**
- * Island shape — simple, natural, no gimmicks.
+ * Island shape for Bliep — cozy farm island.
+ *
+ * Portrait-oriented, gentle curves, inviting.
+ * Like a pebble smoothed by the ocean.
  *
  * Grid values:
  *   0 = deep water
@@ -55,109 +58,35 @@ export function parseElevation(): number[][] {
     new Array(MAP_COLS).fill(0)
   );
 
-  const noise = makeNoise2D(77);
-  const noise2 = makeNoise2D(333);
+  const noise = makeNoise2D(88);
 
   const cx = MAP_COLS / 2;
   const cy = MAP_ROWS / 2;
 
+  // Radius varieert per hoek — zachte onregelmatige vorm
+  // Niet rond, niet hoekig, gewoon... een eiland
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // Cayo Perico — polygon outline nabouwen van de reference
-      // Reference: breed boven met NW landingsbaan-schiereiland,
-      // inham rechts-midden, smal taille, breed onderstuk met
-      // SW schiereiland, puntig onderaan.
+      const angle = Math.atan2(r - cy, c - cx);
 
-      // Cayo Perico silhouette — preciezer nagebouwd
-      const poly: Array<[number, number]> = [
-        // === TOP: breed plateau met NW airstrip ===
-        [cx - 6,  cy - 38],  // top midden
-        [cx + 8,  cy - 39],  // top rechts van midden
-        [cx + 16, cy - 36],  // rechtsboven hoek
-        [cx + 22, cy - 32],  // oost-bovenkant
-        [cx + 24, cy - 26],  // rechts boven — buikt uit
+      // Base radius: iets hoger dan breed (portrait)
+      const rx = 30; // horizontaal
+      const ry = 36; // verticaal — hoger dan breed
 
-        // === RECHTS BOVEN: inham/baai ===
-        [cx + 20, cy - 20],  // begint naar binnen
-        [cx + 14, cy - 16],  // diepste punt inham
-        [cx + 16, cy - 12],  // terug naar buiten
+      // Zachte variatie per richting (geen scherpe hoeken)
+      const shape = Math.sin(angle * 1.0 + 0.8) * 3    // grote zachte deuk
+                  + Math.sin(angle * 2.0 - 0.5) * 2    // subtiele tweede golf
+                  + Math.cos(angle * 3.0 + 1.5) * 1.5; // klein detail
 
-        // === RECHTS MIDDEN: smalle taille ===
-        [cx + 12, cy - 6],   // naar binnen
-        [cx + 8,  cy - 1],   // smalste punt
-        [cx + 10, cy + 4],   // begint breder
+      const dx = (c - cx) / (rx + shape);
+      const dy = (r - cy) / (ry + shape * 0.7);
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // === RECHTS ONDER: breed onderstuk ===
-        [cx + 18, cy + 10],  // uitbuiking
-        [cx + 22, cy + 16],  // breedste punt rechts
-        [cx + 24, cy + 22],  // oost-onderkant
-        [cx + 20, cy + 28],  // begint te versmallen
+      // Fijne noise voor natuurlijke kustlijn
+      const n = fbm(noise, c * 0.05, r * 0.05, 4) * 0.12;
 
-        // === ONDERKANT: puntig naar zuiden ===
-        [cx + 14, cy + 33],  // rechts-onder
-        [cx + 6,  cy + 37],  // zuidpunt rechts
-        [cx - 2,  cy + 40],  // zuidelijkste punt
-        [cx - 10, cy + 38],  // zuidpunt links
-
-        // === LINKS ONDER ===
-        [cx - 16, cy + 34],  // ZW hoek
-        [cx - 20, cy + 28],  // links-onderkant
-
-        // === SW SCHIEREILAND ===
-        [cx - 28, cy + 22],  // uitstekend naar westen
-        [cx - 32, cy + 16],  // punt van schiereiland
-        [cx - 28, cy + 10],  // terug naar boven
-
-        // === LINKS MIDDEN ===
-        [cx - 20, cy + 4],   // links taille
-        [cx - 16, cy - 2],   // smalste punt links
-        [cx - 18, cy - 8],   // naar boven
-
-        // === LINKS BOVEN ===
-        [cx - 16, cy - 14],  // links-boven
-        [cx - 20, cy - 18],  // begint NW schiereiland
-
-        // === NW SCHIEREILAND (airstrip) ===
-        [cx - 28, cy - 22],  // naar NW
-        [cx - 36, cy - 28],  // airstrip punt NW
-        [cx - 38, cy - 32],  // noordelijkste punt airstrip
-        [cx - 34, cy - 35],  // bocht naar oost
-        [cx - 26, cy - 36],  // terug richting top
-        [cx - 18, cy - 38],  // bijna terug
-        [cx - 12, cy - 39],  // top-links
-      ];
-
-      // Point-in-polygon test (ray casting)
-      let inside = false;
-      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-        const [xi, yi] = poly[i];
-        const [xj, yj] = poly[j];
-        if (((yi > r) !== (yj > r)) && (c < (xj - xi) * (r - yi) / (yj - yi) + xi)) {
-          inside = !inside;
-        }
-      }
-
-      // Noise voor organische kustlijn (niet te veel — vorm moet herkenbaar blijven)
-      if (inside) {
-        // Check of we dicht bij de rand zijn — alleen daar noise toepassen
-        let minEdgeDist = 999;
-        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-          const [x1, y1] = poly[i];
-          const [x2, y2] = poly[j];
-          const dx = x2 - x1, dy = y2 - y1;
-          const len2 = dx * dx + dy * dy;
-          let t = len2 > 0 ? ((c - x1) * dx + (r - y1) * dy) / len2 : 0;
-          t = Math.max(0, Math.min(1, t));
-          const px = x1 + t * dx, py = y1 + t * dy;
-          const d = Math.hypot(c - px, r - py);
-          if (d < minEdgeDist) minEdgeDist = d;
-        }
-
-        const n = fbm(noise, c * 0.06, r * 0.06, 4) * 4;
-        // Alleen near de rand subtracteren voor organische kust
-        if (minEdgeDist > 2 + n) {
-          grid[r][c] = 3;
-        }
+      if (dist + n < 0.95) {
+        grid[r][c] = 3;
       }
     }
   }
@@ -185,7 +114,7 @@ export function parseElevation(): number[][] {
     }
   }
 
-  // Kleine gaatjes dicht
+  // Gaatjes dicht
   const visitedW = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
@@ -218,7 +147,6 @@ export function processElevation(raw: number[][]): number[][] {
   const cols = raw[0]?.length ?? 0;
   const grid: number[][] = raw.map(r => [...r]);
 
-  // Shallow water
   const distToLand: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(999));
   const queue: Array<[number, number]> = [];
   for (let r = 0; r < rows; r++) {
