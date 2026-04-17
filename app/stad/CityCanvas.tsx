@@ -18,7 +18,7 @@ import {
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { autotileCoastIndex } from '@/lib/game/autotile';
+import { autotileCoastIndex, grassToSandIndex } from '@/lib/game/autotile';
 import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
@@ -302,6 +302,7 @@ export default function CityCanvas({
 
       // Collect cells by type for rendering + preview bbox
       const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
+      const sandCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const landCells: Array<{ gx: number; gy: number }> = [];
 
       for (let ry = 0; ry < MAP_ROWS; ry++) {
@@ -310,6 +311,9 @@ export default function CityCanvas({
           const gx = worldGx(rx), gy = worldGy(ry);
           if (v === 3) {
             grassCells.push({ gx, gy, rx, ry });
+            landCells.push({ gx, gy });
+          } else if (v === 2) {
+            sandCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           }
         }
@@ -347,7 +351,20 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Grass tiles — tint variation + coast autotile edges ----
+      // ---- Sand tiles — coast autotile for water border, plain fill interior ----
+      for (const cell of sandCells) {
+        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
+        const isCoastEdge = coastIdx !== null && coastIdx !== 4;
+        const tex = isCoastEdge ? terrain.coast[coastIdx] : terrain.sandFill;
+        const sprite = new Sprite(tex);
+        sprite.anchor.set(0, 0);
+        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+        sprite.width = TILE_W;
+        sprite.height = TILE_H;
+        tileLayer.addChild(sprite);
+      }
+
+      // ---- Grass tiles — sand-to-grass transition edges + tint variation ----
       const grassTints = [
         0xFFFFFF, // natural (no tint)
         0xE5FFDD, // cool meadow
@@ -356,17 +373,19 @@ export default function CityCanvas({
         0xEEFFE0, // bright clearing
       ];
       for (const cell of grassCells) {
-        // Check if this grass cell borders sand/water — use coast autotile edge
-        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
-        const isEdge = coastIdx !== null && coastIdx !== 4;
+        // Check if this grass cell borders sand — use sand-to-grass autotile
+        const sandIdx = grassToSandIndex(elevation, cell.rx, cell.ry);
+        const hasSandEdge = sandIdx !== null;
 
-        const tex = isEdge ? terrain.coast[coastIdx] : terrain.grass[0];
+        const tex = hasSandEdge
+          ? (terrain.sandToGrass[sandIdx] ?? terrain.grass[0])
+          : terrain.grass[0];
         const sprite = new Sprite(tex);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
-        if (!isEdge) {
+        if (!hasSandEdge) {
           const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
           sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
         }
@@ -436,10 +455,10 @@ export default function CityCanvas({
       }
 
       // ================================================================
-      // CATTAILS / REEDS — along grass cells that touch water
+      // CATTAILS / REEDS — along sand cells that touch water (beach edge)
       // ================================================================
       if (terrain.cattails.length > 0) {
-        for (const cell of grassCells) {
+        for (const cell of sandCells) {
           const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
           const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
           const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
@@ -462,6 +481,7 @@ export default function CityCanvas({
       // ================================================================
       // TREE GROVES — clustered, not random
       // ================================================================
+      const swayTrees: { sprite: Sprite; baseX: number; phase: number }[] = [];
       const groveplacements = generateGroves(
         elevation, MAP_COLS, MAP_ROWS,
         CITY_CENTER.gx, CITY_CENTER.gy,
@@ -514,6 +534,10 @@ export default function CityCanvas({
         sprite.position.set(px, py);
         sprite.zIndex = Math.floor(py);
         decorLayer.addChild(sprite);
+        // Track for sway animation (limit to 100 for performance)
+        if (swayTrees.length < 100 && tp.type !== 'bush') {
+          swayTrees.push({ sprite, baseX: px, phase: hash(tp.gx, tp.gy, 4000) * Math.PI * 2 });
+        }
       }
 
       // No ambient wandering animals — NPCs appear when buildings are placed.
@@ -539,9 +563,9 @@ export default function CityCanvas({
       }
 
       // ---- Wave foam along coastline ----
-      // Collect grass cells that border water for foam placement
+      // Collect sand cells that border water for foam placement
       const foamCells: Array<{ px: number; py: number; phase: number }> = [];
-      for (const cell of grassCells) {
+      for (const cell of sandCells) {
         const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
         const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
         const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
@@ -556,7 +580,49 @@ export default function CityCanvas({
       const foamLayer = new Graphics();
       tileLayer.addChild(foamLayer);
 
-      // ---- Animated water + cloud drift + foam ----
+      // ---- Butterflies — small animated particles over flower areas ----
+      type ButterflyData = { g: Graphics; baseX: number; baseY: number; phase: number; speed: number; amp: number };
+      const butterflies: ButterflyData[] = [];
+      const butterflyColors = [0xffd4ef, 0xffe8a0, 0x9bdbff, 0xd5ecc8, 0xf0c8ff];
+      for (let i = 0; i < 14; i++) {
+        const g = new Graphics();
+        const color = butterflyColors[i % butterflyColors.length];
+        g.circle(-2.5, -1, 2.5).fill({ color, alpha: 0.85 });
+        g.circle(2.5, -1, 2.5).fill({ color, alpha: 0.85 });
+        g.circle(0, 1, 1.2).fill({ color: 0x3a2a18 });
+        const cellIdx = Math.floor(hash(i, 0, 3000) * grassCells.length);
+        const cell = grassCells[cellIdx];
+        const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
+        g.position.set(sx, sy - 20);
+        g.zIndex = 999990;
+        g.alpha = 0.75;
+        decorLayer.addChild(g);
+        butterflies.push({
+          g, baseX: sx, baseY: sy - 20,
+          phase: hash(i, 1, 3000) * Math.PI * 2,
+          speed: 0.25 + hash(i, 2, 3000) * 0.35,
+          amp: 25 + hash(i, 3, 3000) * 35,
+        });
+      }
+
+      // ---- Fish splash particles in water ----
+      type FishSplash = { g: Graphics; x: number; y: number; life: number; maxLife: number; vy: number };
+      const fishSplashes: FishSplash[] = [];
+      // Collect shallow water positions for fish spawning
+      const shallowWaterPos: Array<{ px: number; py: number }> = [];
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          if (elevation[ry][rx] === 1 && hash(worldGx(rx), worldGy(ry), 5000) < 0.03) {
+            shallowWaterPos.push({
+              px: worldGx(rx) * TILE_W + TILE_W / 2,
+              py: worldGy(ry) * TILE_H + TILE_H / 2,
+            });
+          }
+        }
+      }
+      let fishTimer = 0;
+
+      // ---- Animated water + cloud drift + foam + ambient ----
       let waterT = 0;
       const cloudWrapX = GRID_SIZE * TILE_W + 400;
       app.ticker.add((ticker) => {
@@ -572,11 +638,67 @@ export default function CityCanvas({
         const t = Date.now() / 1000;
         foamLayer.clear();
         for (const f of foamCells) {
-          const wave = Math.sin(t * 1.2 + f.phase) * 0.5 + 0.5; // 0-1 pulse
+          const wave = Math.sin(t * 1.2 + f.phase) * 0.5 + 0.5;
           const alpha = 0.15 + wave * 0.25;
           const radius = TILE_W * 0.25 + wave * TILE_W * 0.1;
           foamLayer.circle(f.px, f.py, radius);
           foamLayer.fill({ color: 0xFFFFFF, alpha });
+        }
+
+        // Animate butterflies — figure-8 flight + wing flap
+        for (const b of butterflies) {
+          b.g.position.set(
+            b.baseX + Math.sin(t * b.speed + b.phase) * b.amp,
+            b.baseY + Math.cos(t * b.speed * 0.7 + b.phase) * b.amp * 0.5 - 15,
+          );
+          const wingFlap = Math.sin(t * 8 + b.phase);
+          b.g.scale.set(1, 0.3 + Math.abs(wingFlap) * 0.7);
+        }
+
+        // Animate tree sway — subtle horizontal oscillation
+        for (const ts of swayTrees) {
+          ts.sprite.position.x = ts.baseX + Math.sin(t * 0.6 + ts.phase) * 1.8;
+        }
+
+        // Fish splash — occasional jump in shallow water
+        fishTimer += dt;
+        if (fishTimer > 180 && shallowWaterPos.length > 0) { // ~3 seconds
+          fishTimer = 0;
+          if (Math.random() < 0.4) {
+            const pos = shallowWaterPos[Math.floor(Math.random() * shallowWaterPos.length)];
+            const g = new Graphics();
+            // Splash ring
+            g.circle(0, 0, 3).fill({ color: 0xFFFFFF, alpha: 0.9 });
+            g.position.set(pos.px, pos.py);
+            particleLayer.addChild(g);
+            fishSplashes.push({ g, x: pos.px, y: pos.py, life: 0, maxLife: 40, vy: -2 });
+            // Droplets
+            for (let d = 0; d < 4; d++) {
+              const drop = new Graphics();
+              drop.circle(0, 0, 1.5).fill({ color: 0x9bdbff, alpha: 0.8 });
+              drop.position.set(pos.px, pos.py);
+              particleLayer.addChild(drop);
+              const angle = (d / 4) * Math.PI * 2 + Math.random() * 0.5;
+              fishSplashes.push({
+                g: drop, x: pos.px, y: pos.py,
+                life: 0, maxLife: 30, vy: -1.5 + Math.sin(angle) * 1.5,
+              });
+            }
+          }
+        }
+        // Animate fish splashes
+        for (let i = fishSplashes.length - 1; i >= 0; i--) {
+          const fs = fishSplashes[i];
+          fs.life += dt;
+          fs.g.position.y += fs.vy * dt;
+          fs.vy += 0.1 * dt; // gravity
+          fs.g.alpha = Math.max(0, 1 - fs.life / fs.maxLife);
+          fs.g.scale.set(1 + fs.life / fs.maxLife * 0.5);
+          if (fs.life >= fs.maxLife) {
+            particleLayer.removeChild(fs.g);
+            fs.g.destroy();
+            fishSplashes.splice(i, 1);
+          }
         }
       });
 

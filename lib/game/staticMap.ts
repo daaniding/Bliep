@@ -132,10 +132,10 @@ export function parseElevation(): number[][] {
 /**
  * Post-process the raw elevation grid.
  *
- * Adds a thin 1-tile sand beach + shallow water gradient for island feel.
+ * Adds shallow water gradient + sand beach band for island feel.
  *   0 = deep water
  *   1 = shallow water (2-3 tiles from coast)
- *   2 = (unused)
+ *   2 = sand/beach (1-2 tile band around coastline)
  *   3 = grass (buildable land)
  */
 export function processElevation(raw: number[][]): number[][] {
@@ -173,6 +173,35 @@ export function processElevation(raw: number[][]): number[][] {
     for (let c = 0; c < cols; c++) {
       if (grid[r][c] === 0 && distToLand[r][c] <= 3) {
         grid[r][c] = 1;
+      }
+    }
+  }
+
+  // ---- Sand beach band: 2 tiles wide around coastline ----
+  const dirs: Array<[number, number]> = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+  // Pass 1: grass cells directly adjacent to water/shallow → sand
+  const snap1 = grid.map(r => [...r]);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (snap1[r][c] !== 3) continue;
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) { grid[r][c] = 2; break; }
+        if (snap1[nr][nc] <= 1) { grid[r][c] = 2; break; }
+      }
+    }
+  }
+
+  // Pass 2: grass cells adjacent to new sand → also sand (2-tile band)
+  const snap2 = grid.map(r => [...r]);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (snap2[r][c] !== 3) continue;
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        if (snap2[nr][nc] === 2) { grid[r][c] = 2; break; }
       }
     }
   }

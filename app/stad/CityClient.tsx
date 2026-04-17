@@ -316,31 +316,37 @@ export default function CityClient() {
         </div>
       )}
 
-      {/* Top bar: coins + tokens + back */}
-      <div className="fixed top-0 left-0 right-0 z-20 pt-3 px-3 flex items-center justify-between pointer-events-none">
-        <div className="pointer-events-auto flex gap-2">
-          <div className="bg-[#0d0a06]/85 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-[#fdd069]/40 shadow-md">
-            <span className="text-base">🪙</span>
-            <span className="font-display text-[#fdd069] text-base tabular-nums">{state.coins}</span>
+      {/* Top bar: premium resource pills + back */}
+      <div className="fixed top-0 left-0 right-0 z-20 pointer-events-none" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 10px)', paddingLeft: 10, paddingRight: 10 }}>
+        <div className="flex items-center justify-between">
+          <div className="pointer-events-auto flex gap-1.5">
+            {/* Coins pill */}
+            <div className="flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border-2 border-[#5a3a10] shadow-[inset_0_2px_0_rgba(255,230,160,0.35),0_3px_0_#0d0a06,0_5px_10px_rgba(0,0,0,0.45)]" style={{ background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#0d0a06] text-sm" style={{ background: 'radial-gradient(circle at 35% 30%, #fff3c6 0%, #fdd069 30%, #b8791f 80%)' }}>🪙</div>
+              <span className="font-display text-[#fdd069] text-sm tabular-nums" style={{ textShadow: '0 1px 0 #0d0a06' }}>{state.coins}</span>
+            </div>
+            {/* Speed tokens pill */}
+            <div className="flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border-2 border-[#1e5a7a] shadow-[inset_0_2px_0_rgba(155,219,255,0.2),0_3px_0_#0d0a06,0_5px_10px_rgba(0,0,0,0.45)]" style={{ background: 'linear-gradient(180deg, #1a2a3a 0%, #0d1520 100%)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#0d0a06] text-sm" style={{ background: 'radial-gradient(circle at 35% 30%, #c0e8ff 0%, #4fa3d9 40%, #1e6fa8 100%)' }}>⚡</div>
+              <span className="font-display text-[#9bdbff] text-sm tabular-nums" style={{ textShadow: '0 1px 0 #0d0a06' }}>{state.speedTokens}</span>
+            </div>
+            {/* Population pill */}
+            <div className="flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border-2 border-[#1e4a26] shadow-[inset_0_2px_0_rgba(94,160,92,0.2),0_3px_0_#0d0a06,0_5px_10px_rgba(0,0,0,0.45)]" style={{ background: 'linear-gradient(180deg, #1a2a18 0%, #0d150a 100%)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#0d0a06] text-sm" style={{ background: 'radial-gradient(circle at 35% 30%, #c0ffc0 0%, #5ea05c 40%, #2a6a2a 100%)' }}>👤</div>
+              <span className="font-display text-[#88dd88] text-sm tabular-nums" style={{ textShadow: '0 1px 0 #0d0a06' }}>{usedPopulation(state)}/{totalPopulation(state)}</span>
+            </div>
           </div>
-          <div className="bg-[#0d0a06]/85 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-[#9bdbff]/40 shadow-md">
-            <span className="text-base">⚡</span>
-            <span className="font-display text-[#9bdbff] text-base tabular-nums">{state.speedTokens}</span>
-          </div>
-          <div className="bg-[#0d0a06]/85 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-[#88dd88]/40 shadow-md">
-            <span className="text-base">👤</span>
-            <span className="font-display text-[#88dd88] text-base tabular-nums">{usedPopulation(state)}/{totalPopulation(state)}</span>
-          </div>
+          <Link
+            href="/"
+            className="pointer-events-auto w-11 h-11 rounded-full flex items-center justify-center text-[#fdd069] border-2 border-[#5a3a10] active:translate-y-[1px] active:scale-95 transition-transform"
+            style={{ background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)', boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.35), 0 3px 0 #0d0a06, 0 5px 10px rgba(0,0,0,0.45)' }}
+            aria-label="Terug naar home"
+          >
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
         </div>
-        <Link
-          href="/"
-          className="pointer-events-auto w-10 h-10 rounded-full bg-[#0d0a06]/85 backdrop-blur flex items-center justify-center text-[#fdd069] border border-[#fdd069]/40 hover:bg-[#1a0f05] active:scale-95 shadow-md"
-          aria-label="Terug naar home"
-        >
-          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
       </div>
 
       {/* Build queue bar */}
@@ -349,12 +355,19 @@ export default function CityClient() {
       {/* Daily chest readiness label */}
       <ChestStatus state={state} />
 
-      {/* Bottom build button */}
+      {/* Bottom build button — premium 3D style */}
       {!placingType && (
         <div className="fixed bottom-5 left-0 right-0 z-20 flex items-center justify-center pointer-events-none">
           <button
             onClick={() => { setDrawerOpen(true); playSfx('tap'); }}
-            className="pointer-events-auto bg-gradient-to-b from-[#fdd069] to-[#c08828] text-[#1a0f05] font-display text-lg px-7 py-3 rounded-2xl shadow-[0_6px_0_#1a0f05,0_10px_30px_rgba(0,0,0,0.6)] border-2 border-[#1a0f05] active:translate-y-[2px] active:shadow-[0_4px_0_#1a0f05] transition-transform"
+            className="pointer-events-auto font-display text-xl px-8 py-3.5 rounded-2xl border-4 border-[#0d0a06] active:translate-y-[3px] transition-transform"
+            style={{
+              background: 'linear-gradient(180deg, #ffec8c 0%, #fdd069 25%, #d19225 65%, #6e4c10 100%)',
+              color: '#2a1508',
+              textShadow: '0 1px 0 rgba(255,240,190,0.6)',
+              boxShadow: 'inset 0 3px 0 rgba(255,255,255,0.65), inset 0 -5px 0 rgba(90,50,8,0.7), 0 6px 0 #0d0a06, 0 10px 24px rgba(255,190,80,0.35), 0 10px 22px rgba(0,0,0,0.55)',
+              letterSpacing: '0.04em',
+            }}
           >
             🏗 BOUWEN
           </button>
@@ -364,17 +377,20 @@ export default function CityClient() {
       {/* Placement controls */}
       {placingType && (
         <div className="fixed bottom-5 left-0 right-0 z-20 flex flex-col items-center pointer-events-none gap-2">
-          <div className="bg-[#0d0a06]/85 backdrop-blur rounded-2xl px-4 py-2 text-[#fdd069] font-display text-sm border border-[#fdd069]/40 pointer-events-auto">
+          <div
+            className="font-display text-sm px-5 py-2.5 rounded-2xl border-2 border-[#3a2718] pointer-events-auto"
+            style={{ background: 'linear-gradient(180deg, #2a1a0a 0%, #0d0a06 100%)', color: '#fdd069', textShadow: '0 1px 0 #0d0a06', boxShadow: 'inset 0 1px 0 rgba(255,230,160,0.2), 0 3px 0 #0d0a06' }}
+          >
             {movingBuildingId ? 'Tap om te verplaatsen' : `Tap om ${BUILDINGS[placingType].name.toLowerCase()} te plaatsen`}
           </div>
           <div className="flex gap-2 pointer-events-auto">
-            {/* Rotate button — only show for buildings > 1×1 */}
             {(() => {
               const fp = BUILDINGS[placingType].footprint ?? { w: 1, h: 1 };
               return fp.w !== fp.h ? (
                 <button
                   onClick={() => setRotated(r => !r)}
-                  className="bg-[#0d0a06]/85 backdrop-blur text-[#fdd069] font-display text-sm px-4 py-2 rounded-xl shadow-md border-2 border-[#fdd069]/40 active:scale-95"
+                  className="font-display text-sm px-4 py-2 rounded-xl border-2 border-[#5a3a10] active:scale-95 transition-transform"
+                  style={{ background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)', color: '#fdd069', textShadow: '0 1px 0 #0d0a06', boxShadow: 'inset 0 1px 0 rgba(255,230,160,0.25), 0 3px 0 #0d0a06' }}
                 >
                   🔄 Draai
                 </button>
@@ -382,7 +398,8 @@ export default function CityClient() {
             })()}
             <button
               onClick={() => { setPlacingType(null); setMovingBuildingId(null); setRotated(false); }}
-              className="bg-[#7a2a1a] text-white font-display text-sm px-5 py-2 rounded-xl shadow-md border-2 border-[#1a0f05] active:scale-95"
+              className="font-display text-sm px-5 py-2 rounded-xl border-2 border-[#0d0a06] active:scale-95 transition-transform"
+              style={{ background: 'linear-gradient(180deg, #7a1e0a 0%, #3d0a00 100%)', color: '#fff3c6', textShadow: '0 1px 0 #0d0a06', boxShadow: 'inset 0 1px 0 rgba(255,100,70,0.3), 0 3px 0 #0d0a06' }}
             >
               Annuleren
             </button>
@@ -400,9 +417,18 @@ export default function CityClient() {
         </button>
       )}
 
-      {/* Flash toast */}
+      {/* Flash toast — premium floating pill */}
       {flash && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 bg-[#0d0a06] text-[#fdd069] font-display px-4 py-2 rounded-full text-sm shadow-lg border border-[#fdd069]/40 pointer-events-none">
+        <div
+          className="fixed top-18 left-1/2 -translate-x-1/2 z-40 font-display px-5 py-2.5 rounded-full text-sm pointer-events-none border-2 border-[#5a3a10]"
+          style={{
+            background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+            color: '#fdd069',
+            textShadow: '0 1px 0 #0d0a06, 0 0 8px rgba(253,208,105,0.4)',
+            boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.3), 0 4px 0 #0d0a06, 0 8px 20px rgba(0,0,0,0.6)',
+            animation: 'fadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both',
+          }}
+        >
           {flash}
         </div>
       )}
@@ -623,7 +649,7 @@ function BuildQueueBar({ state, onSpeedTap }: { state: CityState; onSpeedTap: (q
   const items = state.buildQueue;
   if (items.length === 0) return null;
   return (
-    <div className="fixed top-14 left-0 right-0 z-20 px-3 flex flex-col gap-1 pointer-events-none">
+    <div className="fixed left-0 right-0 z-20 px-2.5 flex flex-col gap-1.5 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 56px)' }}>
       {items.map(q => {
         const remaining = q.finishesAt - Date.now();
         const total = q.finishesAt - q.startedAt;
@@ -632,21 +658,23 @@ function BuildQueueBar({ state, onSpeedTap }: { state: CityState; onSpeedTap: (q
         return (
           <div
             key={q.id}
-            className="pointer-events-auto bg-[#0d0a06]/85 backdrop-blur border border-[#fdd069]/40 rounded-xl px-3 py-1.5 flex items-center gap-2 max-w-md mx-auto w-full"
+            className="pointer-events-auto rounded-xl px-3 py-2 flex items-center gap-2 max-w-md mx-auto w-full border-2 border-[#3a2718]"
+            style={{ background: 'linear-gradient(180deg, #2a1a0a 0%, #0d0a06 100%)', boxShadow: 'inset 0 1px 0 rgba(255,230,160,0.15), 0 3px 0 #0d0a06, 0 5px 10px rgba(0,0,0,0.4)' }}
           >
             <span className="text-base">🏗</span>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between text-[10px] font-display text-[#fdd069]">
+              <div className="flex items-center justify-between text-[10px] font-display" style={{ color: '#fdd069', textShadow: '0 1px 0 #0d0a06' }}>
                 <span>{def.name} → lvl {q.toLevel}</span>
                 <span className="tabular-nums">{fmtCountdown(remaining)}</span>
               </div>
-              <div className="h-1.5 bg-[#1a0f05] rounded-full overflow-hidden mt-0.5">
-                <div className="h-full bg-gradient-to-r from-[#fdd069] to-[#c08828]" style={{ width: `${pct}%` }} />
+              <div className="h-2 rounded-full overflow-hidden mt-0.5" style={{ background: '#0d0a06', border: '1px solid #3a1e08' }}>
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(180deg, #ffec8c 0%, #fdd069 40%, #d19225 80%, #6e4c10 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)' }} />
               </div>
             </div>
             <button
               onClick={() => onSpeedTap(q.id)}
-              className="text-base px-1.5 py-0.5 rounded bg-[#9bdbff]/20 border border-[#9bdbff]/60 text-[#9bdbff] active:scale-95"
+              className="text-sm w-8 h-8 rounded-lg flex items-center justify-center border-2 border-[#1e5a7a] active:scale-95 transition-transform"
+              style={{ background: 'linear-gradient(180deg, #1a2a3a 0%, #0d1520 100%)', boxShadow: 'inset 0 1px 0 rgba(155,219,255,0.2), 0 2px 0 #0d0a06' }}
               title="Speed token (-5min)"
             >
               ⚡
@@ -664,13 +692,19 @@ function ChestStatus({ state }: { state: CityState }) {
   const ready = isChestReady(state);
   const remaining = chestReadyAt(state) - Date.now();
   return (
-    <div className="fixed top-14 right-3 z-10 pointer-events-none">
+    <div className="fixed z-10 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 56px)', right: 10 }}>
       {ready ? (
-        <div className="bg-[#0d0a06]/85 backdrop-blur border border-[#fdd069] rounded-full px-3 py-1 text-[#fdd069] font-display text-[11px] animate-pulse">
+        <div
+          className="font-display text-[11px] px-3.5 py-1.5 rounded-full border-2 border-[#fdd069] gem-glow-gold"
+          style={{ background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)', color: '#fdd069', textShadow: '0 1px 0 #0d0a06, 0 0 10px rgba(253,208,105,0.5)', boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.3), 0 3px 0 #0d0a06' }}
+        >
           🎁 Chest klaar!
         </div>
       ) : (
-        <div className="bg-[#0d0a06]/60 backdrop-blur border border-[#fdd069]/30 rounded-full px-3 py-1 text-[#fdd069]/60 font-display text-[10px] tabular-nums">
+        <div
+          className="font-display text-[10px] tabular-nums px-3 py-1 rounded-full border-2 border-[#3a2718]"
+          style={{ background: 'linear-gradient(180deg, #2a1a0a 0%, #0d0a06 100%)', color: '#a08060', textShadow: '0 1px 0 #0d0a06', boxShadow: '0 2px 0 #0d0a06' }}
+        >
           🎁 {fmtCountdown(remaining)}
         </div>
       )}
