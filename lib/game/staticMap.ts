@@ -63,17 +63,35 @@ export function parseElevation(): number[][] {
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // Druppelvorm: breed links, taps naar rechts
-      const dx = (c - cx) / 38;
-      const dy = (r - cy) / 28;
-      // Hoogte neemt af naar rechts toe
-      const taperY = dy * (1.0 + dx * 0.4);
-      const dist = Math.sqrt(dx * dx + taperY * taperY);
+      // Cayo Perico stijl: gebogen langwerpig eiland
+      // Curved spine van linksboven naar rechtsonder
+      // met variërende breedte langs de lengte
 
-      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 0.15;
-      const n2 = fbm(noise2, c * 0.09, r * 0.09, 3) * 0.08;
+      // Punt op de spine (parametrisch, t=0 linksboven, t=1 rechtsonder)
+      // Spine is een gebogen lijn
+      const spineX0 = cx - 30, spineY0 = cy - 18;
+      const spineX1 = cx + 5,  spineY1 = cy - 5;  // midpoint (buigt naar rechts)
+      const spineX2 = cx + 28, spineY2 = cy + 20;
 
-      if (dist + n + n2 < 0.92) {
+      // Vind dichtstbijzijnde punt op de quadratic bezier spine
+      let minDistToSpine = 999;
+      let bestT = 0;
+      for (let ti = 0; ti <= 40; ti++) {
+        const t = ti / 40;
+        const it = 1 - t;
+        const sx = it * it * spineX0 + 2 * it * t * spineX1 + t * t * spineX2;
+        const sy = it * it * spineY0 + 2 * it * t * spineY1 + t * t * spineY2;
+        const d = Math.hypot(c - sx, r - sy);
+        if (d < minDistToSpine) { minDistToSpine = d; bestT = t; }
+      }
+
+      // Breedte varieert langs de spine: dik in het midden, dunner aan de uiteinden
+      const widthAtT = 14 + Math.sin(bestT * Math.PI) * 10; // 14-24 tiles breed
+
+      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 3;
+      const n2 = fbm(noise2, c * 0.09, r * 0.09, 3) * 2;
+
+      if (minDistToSpine + n + n2 < widthAtT) {
         grid[r][c] = 3;
       }
     }
