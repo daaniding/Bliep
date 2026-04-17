@@ -63,59 +63,86 @@ export function parseElevation(): number[][] {
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // Cayo Perico reference: breed bovenaan met landingsbaan-schiereiland,
-      // smal middenstuk, breed onderlichaam, kleine eilandjes onderaan.
-      // Grotere schaal zodat het minder blokkerig is.
+      // Cayo Perico — polygon outline nabouwen van de reference
+      // Reference: breed boven met NW landingsbaan-schiereiland,
+      // inham rechts-midden, smal taille, breed onderstuk met
+      // SW schiereiland, puntig onderaan.
 
-      // Spine loopt van boven naar beneden met een S-curve
-      // We gebruiken meerdere bezier segmenten
-      const spines = [
-        // Segment 1: breed bovenstuk (NW naar midden)
-        { x0: cx - 8, y0: cy - 38, x1: cx + 10, y1: cy - 25, x2: cx + 5, y2: cy - 10 },
-        // Segment 2: smal middenstuk
-        { x0: cx + 5, y0: cy - 10, x1: cx - 5, y1: cy + 2, x2: cx - 2, y2: cy + 12 },
-        // Segment 3: breed onderstuk
-        { x0: cx - 2, y0: cy + 12, x1: cx + 8, y1: cy + 25, x2: cx + 2, y2: cy + 38 },
+      // Outline als polygon punten (kloksgewijs vanaf top-midden)
+      const poly: Array<[number, number]> = [
+        // Top — breed plateau
+        [cx - 5,  cy - 38],
+        [cx + 18, cy - 36],
+        [cx + 22, cy - 30],
+        [cx + 20, cy - 22],
+        // Rechts boven — lichte inham
+        [cx + 24, cy - 16],
+        [cx + 18, cy - 10],
+        // Rechts — diepe inham (baai)
+        [cx + 12, cy - 6],
+        [cx + 8,  cy - 2],
+        // Rechts midden — taille
+        [cx + 10, cy + 4],
+        [cx + 14, cy + 10],
+        // Rechts onder — breed onderstuk
+        [cx + 22, cy + 16],
+        [cx + 24, cy + 22],
+        [cx + 20, cy + 28],
+        // Onderkant — puntig
+        [cx + 12, cy + 34],
+        [cx + 4,  cy + 38],
+        [cx - 4,  cy + 36],
+        // Links onder
+        [cx - 14, cy + 30],
+        // SW schiereiland
+        [cx - 22, cy + 24],
+        [cx - 26, cy + 18],
+        [cx - 22, cy + 12],
+        // Links midden
+        [cx - 16, cy + 6],
+        [cx - 14, cy - 2],
+        // Links boven
+        [cx - 18, cy - 8],
+        [cx - 20, cy - 14],
+        // NW schiereiland (landingsbaan)
+        [cx - 30, cy - 22],
+        [cx - 34, cy - 30],
+        [cx - 28, cy - 34],
+        [cx - 18, cy - 36],
+        [cx - 10, cy - 38],
       ];
 
-      let minDistToSpine = 999;
-      let bestT = 0;
-      let bestSeg = 0;
-      for (let si = 0; si < spines.length; si++) {
-        const s = spines[si];
-        for (let ti = 0; ti <= 30; ti++) {
-          const t = ti / 30;
-          const it = 1 - t;
-          const sx = it * it * s.x0 + 2 * it * t * s.x1 + t * t * s.x2;
-          const sy = it * it * s.y0 + 2 * it * t * s.y1 + t * t * s.y2;
-          const d = Math.hypot(c - sx, r - sy);
-          if (d < minDistToSpine) { minDistToSpine = d; bestT = t; bestSeg = si; }
+      // Point-in-polygon test (ray casting)
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i];
+        const [xj, yj] = poly[j];
+        if (((yi > r) !== (yj > r)) && (c < (xj - xi) * (r - yi) / (yj - yi) + xi)) {
+          inside = !inside;
         }
       }
 
-      // Breedte per segment — breed boven en onder, smal in het midden
-      const globalT = (bestSeg + bestT) / spines.length; // 0-1 over hele eiland
-      // Breed boven (25), smal midden (14), breed onder (22)
-      const widthAtT = 14 + Math.sin(globalT * Math.PI) * 6
-                      + (globalT < 0.35 ? (0.35 - globalT) * 30 : 0)  // extra breed boven
-                      + (globalT > 0.65 ? (globalT - 0.65) * 25 : 0); // extra breed onder
+      // Noise voor organische kustlijn (niet te veel — vorm moet herkenbaar blijven)
+      if (inside) {
+        // Check of we dicht bij de rand zijn — alleen daar noise toepassen
+        let minEdgeDist = 999;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const [x1, y1] = poly[i];
+          const [x2, y2] = poly[j];
+          const dx = x2 - x1, dy = y2 - y1;
+          const len2 = dx * dx + dy * dy;
+          let t = len2 > 0 ? ((c - x1) * dx + (r - y1) * dy) / len2 : 0;
+          t = Math.max(0, Math.min(1, t));
+          const px = x1 + t * dx, py = y1 + t * dy;
+          const d = Math.hypot(c - px, r - py);
+          if (d < minEdgeDist) minEdgeDist = d;
+        }
 
-      // NW schiereiland (landingsbaan area)
-      const nwPenDist = Math.hypot(c - (cx - 25), r - (cy - 30)) / 15;
-
-      // SW schiereiland
-      const swPenDist = Math.hypot(c - (cx - 15), r - (cy + 25)) / 12;
-
-      // Oost bump bovenaan
-      const eBumpDist = Math.hypot(c - (cx + 20), r - (cy - 20)) / 13;
-
-      const landDist = Math.min(minDistToSpine / Math.max(widthAtT, 1), nwPenDist, swPenDist, eBumpDist);
-
-      const n = fbm(noise, c * 0.035, r * 0.035, 5) * 0.12;
-      const n2 = fbm(noise2, c * 0.08, r * 0.08, 3) * 0.06;
-
-      if (landDist + n + n2 < 1.0) {
-        grid[r][c] = 3;
+        const n = fbm(noise, c * 0.06, r * 0.06, 4) * 4;
+        // Alleen near de rand subtracteren voor organische kust
+        if (minEdgeDist > 2 + n) {
+          grid[r][c] = 3;
+        }
       }
     }
   }
