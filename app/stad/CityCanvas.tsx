@@ -191,12 +191,13 @@ export default function CityCanvas({
       atlasRef.current = atlas;
       terrainCacheRef.current = terrain;
 
-      // ---- Stage background (ocean blue) ----
+      // ---- Stage background (smooth ocean gradient — not tiled) ----
       const stageBg = new Graphics();
       const drawBg = () => {
         stageBg.clear();
+        // Smooth gradient from lighter edges to darker center
         stageBg.rect(0, 0, app.renderer.width, app.renderer.height);
-        stageBg.fill({ color: 0x5096b8 });
+        stageBg.fill({ color: 0x3d7a9e });
       };
       drawBg();
       app.stage.addChild(stageBg);
@@ -291,23 +292,31 @@ export default function CityCanvas({
       const waterTop = -WATER_MARGIN * TILE_H;
       const waterW = (GRID_SIZE + WATER_MARGIN * 2) * TILE_W;
       const waterH = (GRID_SIZE + WATER_MARGIN * 2) * TILE_H;
+      // Smooth color base layer (no tiling pattern visible)
+      const waterBase = new Graphics();
+      waterBase.rect(waterLeft, waterTop, waterW, waterH);
+      waterBase.fill({ color: 0x4a90b0 });
+      tileLayer.addChild(waterBase);
+
+      // Tile layer 1 — subtle texture overlay
       const water = new TilingSprite({
         texture: bakedWaterFrames[0] || bakedWater,
         width: waterW,
         height: waterH,
       });
       water.position.set(waterLeft, waterTop);
+      water.alpha = 0.35; // subtle — just adds wave texture
       tileLayer.addChild(water);
 
-      // Second water layer — offset and semi-transparent for depth
+      // Tile layer 2 — offset, different speed for shimmer
       const water2 = new TilingSprite({
         texture: bakedWaterFrames[1] || bakedWater,
         width: waterW,
         height: waterH,
       });
       water2.position.set(waterLeft, waterTop);
-      water2.alpha = 0.3;
-      water2.tint = 0x88bbdd; // slightly different blue tint
+      water2.alpha = 0.2;
+      water2.tint = 0x70aacc;
       tileLayer.addChild(water2);
 
       // Animate water by cycling through 4 frames
