@@ -368,26 +368,9 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
-      // ---- Lake water — no tiles rendered; ocean TilingSprite shows through ----
-      // Add turquoise gradient overlay around lake edges for depth effect
-      for (const cell of lakeCells) {
-        // Distance to nearest land for gradient
-        let minDistToLand = 99;
-        for (let dr = -3; dr <= 3; dr++) {
-          for (let dc = -3; dc <= 3; dc++) {
-            const nv = elevation[cell.ry + dr]?.[cell.rx + dc] ?? 0;
-            if (nv === 3 || nv === 2) {
-              minDistToLand = Math.min(minDistToLand, Math.max(Math.abs(dr), Math.abs(dc)));
-            }
-          }
-        }
-        if (minDistToLand <= 3) {
-          const color = minDistToLand <= 1 ? 0x7ee8d0 : minDistToLand <= 2 ? 0x6dd8c8 : 0x5cc0c0;
-          const alpha = minDistToLand <= 1 ? 0.3 : minDistToLand <= 2 ? 0.22 : 0.12;
-          waterOverlay.rect(cell.gx * TILE_W, cell.gy * TILE_H, TILE_W, TILE_H);
-          waterOverlay.fill({ color, alpha });
-        }
-      }
+      // ---- Lake water — ocean TilingSprite shows through, no extra overlay ----
+      // The animated ocean water provides the base; coast autotile on adjacent
+      // grass cells creates the cliff banks. No gradient needed for a small lake.
 
       // ---- Grass tiles — textured tiles with regional tint variation ----
       const grassTints = [
@@ -622,18 +605,7 @@ export default function CityCanvas({
         const py = cell.gy * TILE_H + TILE_H / 2;
         foamCells.push({ px, py, phase: hash(cell.gx, cell.gy, 777) * Math.PI * 2 });
       }
-      // Foam on grass cells touching lake
-      for (const cell of grassCells) {
-        const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
-        const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
-        const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
-        const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-        const touchesLake = n === 4 || s === 4 || w === 4 || e === 4;
-        if (!touchesLake) continue;
-        const px = cell.gx * TILE_W + TILE_W / 2;
-        const py = cell.gy * TILE_H + TILE_H / 2;
-        foamCells.push({ px, py, phase: hash(cell.gx, cell.gy, 778) * Math.PI * 2 });
-      }
+      // No foam on lake — it's calm inland water, not ocean surf
 
       const foamLayer = new Graphics();
       tileLayer.addChild(foamLayer);
