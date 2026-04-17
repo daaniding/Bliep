@@ -1,18 +1,19 @@
 /**
- * Island generation — distance-field based with organic coastline.
+ * Island generation — simple model.
  *
  * Grid values:
  *   0 = deep water
  *   1 = shallow water (near coast)
- *   2 = cliff/coast (rocky border, 2-3 tiles wide)
- *   3 = grass (buildable land)
+ *   3 = grass (land)
  *   4 = lake water
+ *
+ * Coast tiles go directly on grass cells that border water.
+ * No separate cliff layer — the coast tile already contains
+ * the rocky edge + grass top in a single 16×16 tile.
  */
 
 export const MAP_COLS = 120;
 export const MAP_ROWS = 90;
-
-// ---- Seeded noise helpers ----
 
 function seededRng(seed: number) {
   let s = seed | 0;
@@ -54,10 +55,6 @@ function fbm(noise: (x: number, y: number) => number, x: number, y: number, octa
   return value / total;
 }
 
-// ================================================================
-// ISLAND GENERATION
-// ================================================================
-
 export function parseElevation(): number[][] {
   const grid: number[][] = Array.from({ length: MAP_ROWS }, () =>
     new Array(MAP_COLS).fill(0)
@@ -82,30 +79,27 @@ export function parseElevation(): number[][] {
       const n1 = fbm(noise1, c * 0.025, r * 0.025, 4) * 0.40;
       const n2 = fbm(noise2, c * 0.06, r * 0.06, 3) * 0.22;
       const n3 = fbm(noise3, c * 0.12, r * 0.12, 2) * 0.12;
-
       const angle = Math.atan2(r - centerY, c - centerX);
       const peninsulaNoise = fbm(noise4, angle * 2.5 + 10, dist * 3, 3);
       const peninsulaBonus = peninsulaNoise * 0.18 * Math.max(0, dist - 0.4);
 
-      const value = dist + n1 + n2 + n3 - peninsulaBonus;
-
-      if (value < 0.88) {
-        grid[r][c] = 3; // grass
+      if (dist + n1 + n2 + n3 - peninsulaBonus < 0.88) {
+        grid[r][c] = 3;
       }
     }
   }
 
-  // Remove tiny islands (< 8 cells)
+  // Remove tiny islands
   const visited = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
       if (grid[r][c] !== 3 || visited[r][c]) continue;
-      const component: Array<[number, number]> = [];
+      const comp: Array<[number, number]> = [];
       const stack: Array<[number, number]> = [[r, c]];
       visited[r][c] = true;
       while (stack.length > 0) {
         const [cr, cc] = stack.pop()!;
-        component.push([cr, cc]);
+        comp.push([cr, cc]);
         for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const nr = cr + dr, nc = cc + dc;
           if (nr < 0 || nr >= MAP_ROWS || nc < 0 || nc >= MAP_COLS) continue;
@@ -114,24 +108,22 @@ export function parseElevation(): number[][] {
           stack.push([nr, nc]);
         }
       }
-      if (component.length < 8) {
-        for (const [cr, cc] of component) grid[cr][cc] = 0;
-      }
+      if (comp.length < 8) comp.forEach(([cr, cc]) => { grid[cr][cc] = 0; });
     }
   }
 
-  // Fill tiny water holes (< 6 cells)
+  // Fill tiny water holes
   const visitedW = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
       if (grid[r][c] !== 0 || visitedW[r][c]) continue;
-      const component: Array<[number, number]> = [];
+      const comp: Array<[number, number]> = [];
       const stack: Array<[number, number]> = [[r, c]];
       visitedW[r][c] = true;
       let touchesEdge = false;
       while (stack.length > 0) {
         const [cr, cc] = stack.pop()!;
-        component.push([cr, cc]);
+        comp.push([cr, cc]);
         if (cr === 0 || cr === MAP_ROWS - 1 || cc === 0 || cc === MAP_COLS - 1) touchesEdge = true;
         for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const nr = cr + dr, nc = cc + dc;
@@ -141,66 +133,24 @@ export function parseElevation(): number[][] {
           stack.push([nr, nc]);
         }
       }
-      if (!touchesEdge && component.length < 6) {
-        for (const [cr, cc] of component) grid[cr][cc] = 3;
-      }
+      if (!touchesEdge && comp.length < 6) comp.forEach(([cr, cc]) => { grid[cr][cc] = 3; });
     }
   }
 
   return grid;
 }
 
-// ================================================================
-// POST-PROCESSING
-// ================================================================
-
 export function processElevation(raw: number[][]): number[][] {
   const rows = raw.length;
   const cols = raw[0]?.length ?? 0;
   const grid: number[][] = raw.map(r => [...r]);
 
-  // ---- Cliff band: grass cells within 2 tiles of water → cliff (2) ----
-  // This creates the thick rocky coast edge seen in the reference images
-  const distToWater: number[][] = Array.from({ length: rows }, () =>
-    new Array(cols).fill(999)
-  );
-  // BFS from water cells
-  const wQueue: Array<[number, number]> = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === 0) { distToWater[r][c] = 0; wQueue.push([r, c]); }
-    }
-  }
-  let wqi = 0;
-  while (wqi < wQueue.length) {
-    const [r, c] = wQueue[wqi++];
-    const d = distToWater[r][c];
-    if (d >= 5) continue;
-    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      if (distToWater[nr][nc] <= d + 1) continue;
-      distToWater[nr][nc] = d + 1;
-      wQueue.push([nr, nc]);
-    }
-  }
-  // Convert grass within 2 tiles of water to cliff
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === 3 && distToWater[r][c] <= 2) {
-        grid[r][c] = 2; // cliff
-      }
-    }
-  }
-
-  // ---- Shallow water: ocean cells within 3 tiles of land ----
-  const distToLand: number[][] = Array.from({ length: rows }, () =>
-    new Array(cols).fill(999)
-  );
+  // Shallow water: ocean cells within 3 tiles of land
+  const distToLand: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(999));
   const queue: Array<[number, number]> = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (grid[r][c] >= 2) { distToLand[r][c] = 0; queue.push([r, c]); }
+      if (grid[r][c] === 3) { distToLand[r][c] = 0; queue.push([r, c]); }
     }
   }
   let qi = 0;
@@ -218,37 +168,21 @@ export function processElevation(raw: number[][]): number[][] {
   }
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === 0 && distToLand[r][c] <= 3) {
-        grid[r][c] = 1; // shallow water
-      }
+      if (grid[r][c] === 0 && distToLand[r][c] <= 3) grid[r][c] = 1;
     }
   }
 
-  // ---- Lake — small round blob in the northeast ----
+  // Lake
   const lakeNoise = makeNoise2D(1337);
-  const lakeCX = 72, lakeCY = 26;
-  const lakeR = 4;
+  const lakeCX = 72, lakeCY = 26, lakeR = 4;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (grid[r][c] !== 3) continue;
       const dx = (c - lakeCX) / lakeR;
       const dy = (r - lakeCY) / lakeR;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const n = fbm(lakeNoise, c * 0.1, r * 0.1, 2) * 0.2;
-      if (dist + n < 0.85) {
-        grid[r][c] = 4; // lake
-      }
-    }
-  }
-  // Lake shore: grass around lake within 1 tile → cliff for rocky edge
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] !== 3) continue;
-      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-        if (grid[r + dr]?.[c + dc] === 4) {
-          grid[r][c] = 2; // cliff around lake
-          break;
-        }
+      if (dist + fbm(lakeNoise, c * 0.1, r * 0.1, 2) * 0.2 < 0.85) {
+        grid[r][c] = 4;
       }
     }
   }

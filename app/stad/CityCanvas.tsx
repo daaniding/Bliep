@@ -18,7 +18,7 @@ import {
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { cliffToWaterIndex, cliffInnerCorner, grassToCliffIndex } from '@/lib/game/autotile';
+import { autotileCoastIndex } from '@/lib/game/autotile';
 import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
@@ -302,7 +302,6 @@ export default function CityCanvas({
 
       // Collect cells by type
       const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
-      const cliffCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const lakeCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const landCells: Array<{ gx: number; gy: number }> = [];
 
@@ -312,9 +311,6 @@ export default function CityCanvas({
           const gx = worldGx(rx), gy = worldGy(ry);
           if (v === 3) {
             grassCells.push({ gx, gy, rx, ry });
-            landCells.push({ gx, gy });
-          } else if (v === 2) {
-            cliffCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           } else if (v === 4) {
             lakeCells.push({ gx, gy, rx, ry });
@@ -349,7 +345,7 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Animated water edges — foam on water cells adjacent to cliff/land ----
+      // ---- Animated water edges — foam on water cells adjacent to land ----
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
           const v = elevation[ry][rx];
@@ -358,42 +354,29 @@ export default function CityCanvas({
           const sv = elevation[ry + 1]?.[rx] ?? 0;
           const wv = elevation[ry]?.[rx - 1] ?? 0;
           const ev = elevation[ry]?.[rx + 1] ?? 0;
-          const landN = nv >= 2 && nv !== 4;
-          const landS = sv >= 2 && sv !== 4;
-          const landW = wv >= 2 && wv !== 4;
-          const landE = ev >= 2 && ev !== 4;
-          if (!landN && !landS && !landW && !landE) {
-            // Check diagonals for inner corners
+          const landN = nv === 3, landS = sv === 3, landW = wv === 3, landE = ev === 3;
+
+          let frames: Texture[] | null = null;
+          if (landN || landS || landW || landE) {
+            if (landN && landW) frames = terrain.waterEdge.NW;
+            else if (landN && landE) frames = terrain.waterEdge.NE;
+            else if (landS && landW) frames = terrain.waterEdge.SW;
+            else if (landS && landE) frames = terrain.waterEdge.SE;
+            else if (landN) frames = terrain.waterEdge.N;
+            else if (landS) frames = terrain.waterEdge.S;
+            else if (landW) frames = terrain.waterEdge.W;
+            else if (landE) frames = terrain.waterEdge.E;
+          } else {
+            // Inner corners (diagonal land only)
             const nwv = elevation[ry - 1]?.[rx - 1] ?? 0;
             const nev = elevation[ry - 1]?.[rx + 1] ?? 0;
             const swv = elevation[ry + 1]?.[rx - 1] ?? 0;
             const sev = elevation[ry + 1]?.[rx + 1] ?? 0;
-            let frames: Texture[] | null = null;
-            if (nwv >= 2 && nwv !== 4) frames = terrain.waterEdge.NW;
-            else if (nev >= 2 && nev !== 4) frames = terrain.waterEdge.NE;
-            else if (swv >= 2 && swv !== 4) frames = terrain.waterEdge.SW;
-            else if (sev >= 2 && sev !== 4) frames = terrain.waterEdge.SE;
-            if (frames && frames.length > 0) {
-              const gx = worldGx(rx), gy = worldGy(ry);
-              const anim = new AnimatedSprite(frames);
-              anim.anchor.set(0, 0);
-              anim.position.set(gx * TILE_W, gy * TILE_H);
-              anim.width = TILE_W; anim.height = TILE_H;
-              anim.animationSpeed = 0.06; anim.play();
-              anim.currentFrame = Math.floor(hash(gx, gy, 8001) * frames.length);
-              tileLayer.addChild(anim);
-            }
-            continue;
+            if (nwv === 3) frames = terrain.waterEdge.NW;
+            else if (nev === 3) frames = terrain.waterEdge.NE;
+            else if (swv === 3) frames = terrain.waterEdge.SW;
+            else if (sev === 3) frames = terrain.waterEdge.SE;
           }
-          let frames: Texture[] | null = null;
-          if (landN && landW) frames = terrain.waterEdge.NW;
-          else if (landN && landE) frames = terrain.waterEdge.NE;
-          else if (landS && landW) frames = terrain.waterEdge.SW;
-          else if (landS && landE) frames = terrain.waterEdge.SE;
-          else if (landN) frames = terrain.waterEdge.N;
-          else if (landS) frames = terrain.waterEdge.S;
-          else if (landW) frames = terrain.waterEdge.W;
-          else if (landE) frames = terrain.waterEdge.E;
           if (!frames || frames.length === 0) continue;
           const gx = worldGx(rx), gy = worldGy(ry);
           const anim = new AnimatedSprite(frames);
@@ -404,29 +387,6 @@ export default function CityCanvas({
           anim.currentFrame = Math.floor(hash(gx, gy, 8000) * frames.length);
           tileLayer.addChild(anim);
         }
-      }
-
-      // ---- Cliff tiles — rocky coast autotile (2-3 tiles wide band) ----
-      for (const cell of cliffCells) {
-        const idx = cliffToWaterIndex(elevation, cell.rx, cell.ry);
-        const innerCorner = cliffInnerCorner(elevation, cell.rx, cell.ry);
-
-        let tex: Texture;
-        if (innerCorner && terrain.coastInner.length >= 4) {
-          const ci = innerCorner === 'NW' ? 0 : innerCorner === 'NE' ? 1 : innerCorner === 'SW' ? 2 : 3;
-          tex = terrain.coastInner[ci];
-        } else if (idx !== null && idx !== 4 && terrain.coast.length >= 9) {
-          tex = terrain.coast[idx];
-        } else {
-          // Interior cliff — use coast center tile (rocky ground)
-          tex = terrain.coast[4] ?? terrain.grass[0];
-        }
-        const sprite = new Sprite(tex);
-        sprite.anchor.set(0, 0);
-        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
-        sprite.width = TILE_W;
-        sprite.height = TILE_H;
-        tileLayer.addChild(sprite);
       }
 
       // ---- Lake water ----
@@ -470,12 +430,38 @@ export default function CityCanvas({
       const grassColorA = 0xFCFFF8, grassColorB = 0xECF4E0, grassColorC = 0xE0ECDA;
 
       for (const cell of grassCells) {
-        // Grass-to-cliff edge transition
-        const edgeIdx = grassToCliffIndex(elevation, cell.rx, cell.ry);
+        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
+        const inner = (() => {
+          // Import inline to avoid circular dep
+          const v = elevation[cell.ry]?.[cell.rx];
+          if (v !== 3) return null;
+          const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+          const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+          const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+          const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+          const isW = (x: number) => x === 0 || x === 1 || x === 4;
+          if (isW(n) || isW(s) || isW(w) || isW(e)) return null;
+          const nw = elevation[cell.ry - 1]?.[cell.rx - 1] ?? 0;
+          const ne = elevation[cell.ry - 1]?.[cell.rx + 1] ?? 0;
+          const sw = elevation[cell.ry + 1]?.[cell.rx - 1] ?? 0;
+          const se = elevation[cell.ry + 1]?.[cell.rx + 1] ?? 0;
+          if (isW(nw)) return 0; if (isW(ne)) return 1;
+          if (isW(sw)) return 2; if (isW(se)) return 3;
+          return null;
+        })();
+
         let tex: Texture;
-        if (edgeIdx !== null && edgeIdx !== 4 && terrain.sandToGrass.length >= 9) {
-          tex = terrain.sandToGrass[edgeIdx];
+        let isCoast = false;
+        if (coastIdx !== null && terrain.coast.length >= 9) {
+          // Coast tile: grass + rocky cliff edge in one tile
+          tex = terrain.coast[coastIdx];
+          isCoast = true;
+        } else if (inner !== null && terrain.coastInner.length >= 4) {
+          // Inner corner: diagonal water
+          tex = terrain.coastInner[inner];
+          isCoast = true;
         } else {
+          // Plain grass with variation
           const r = hash(cell.gx, cell.gy, 50);
           tex = r < 0.85 ? terrain.grass[0]
               : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
@@ -484,8 +470,8 @@ export default function CityCanvas({
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W; sprite.height = TILE_H;
-        // Tint variation for interior grass
-        if (edgeIdx === null || edgeIdx === 4) {
+        // Tint variation for interior grass only (not coast tiles)
+        if (!isCoast) {
           const n1 = smoothNoise(cell.gx, cell.gy);
           const n2 = smoothNoise(cell.gx * 2.3 + 100, cell.gy * 2.3 + 100) * 0.3;
           const combined = Math.min(1, Math.max(0, n1 + n2));
@@ -554,14 +540,15 @@ export default function CityCanvas({
       // CATTAILS / REEDS — along cliff cells that touch water
       // ================================================================
       if (terrain.cattails.length > 0) {
-        for (const cell of cliffCells) {
+        for (const cell of grassCells) {
           const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
           const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
           const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
           const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-          const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1 || n === 4 || s === 4 || w === 4 || e === 4;
+          const isW = (v: number) => v === 0 || v === 1 || v === 4;
+          const touchesWater = isW(n) || isW(s) || isW(w) || isW(e);
           if (!touchesWater) continue;
-          if (hash(cell.gx, cell.gy, 2000) > 0.35) continue; // 35% of cliff-water edges
+          if (hash(cell.gx, cell.gy, 2000) > 0.35) continue;
           const idx = Math.floor(hash(cell.gx, cell.gy, 2001) * terrain.cattails.length);
           const sprite = new Sprite(terrain.cattails[idx]);
           sprite.anchor.set(0.5, 0.9);
