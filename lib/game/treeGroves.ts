@@ -94,7 +94,7 @@ export function generateGroves(
   // ---- Step 1: Pick grove centers using Poisson-disk-like sampling ----
   const groves: GroveCenter[] = [];
   const minSpacing = 4;
-  const maxGroves = 40;
+  const maxGroves = 28;
   const attempts = 600;
 
   for (let i = 0; i < attempts && groves.length < maxGroves; i++) {
@@ -139,11 +139,11 @@ export function generateGroves(
                  : type === 'orchard' ? 4 + rand() * 3
                  : 3 + rand() * 4;
 
-    const treeCount = type === 'dense' ? 22 + Math.floor(rand() * 16)
-                    : type === 'mixed' ? 15 + Math.floor(rand() * 12)
-                    : type === 'cherry' ? 6 + Math.floor(rand() * 6)
-                    : type === 'orchard' ? 10 + Math.floor(rand() * 8)
-                    : 8 + Math.floor(rand() * 10);
+    const treeCount = type === 'dense' ? 14 + Math.floor(rand() * 10)
+                    : type === 'mixed' ? 10 + Math.floor(rand() * 8)
+                    : type === 'cherry' ? 4 + Math.floor(rand() * 4)
+                    : type === 'orchard' ? 6 + Math.floor(rand() * 5)
+                    : 5 + Math.floor(rand() * 6);
 
     groves.push({ gx: cell.gx, gy: cell.gy, radius, type, treeCount });
   }
@@ -255,7 +255,7 @@ export function generateGroves(
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 3) continue; // not too close to coast
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.35) continue; // ~35% fill rate for dense border
+    if (rand() > 0.18) continue; // ~18% fill rate for border (was 35% — too dense)
 
     const r = rand();
     placements.push({
@@ -274,7 +274,7 @@ export function generateGroves(
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 2 || ed > 5) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.22) continue; // ~22% of edge cells get bushes
+    if (rand() > 0.12) continue; // ~12% of edge cells get bushes (was 22%)
 
     placements.push({
       gx: cell.gx, gy: cell.gy,
@@ -294,7 +294,7 @@ export function generateGroves(
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 3) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.12) continue; // ~12% fill rate
+    if (rand() > 0.06) continue; // ~6% fill rate (was 12% — too much)
 
     const r = rand();
     placements.push({

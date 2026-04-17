@@ -323,21 +323,18 @@ export default function CityCanvas({
         }
       }
 
-      // ---- Shallow water gradient (tropical feel) ----
-      // Closer to land = lighter/more turquoise, further = deeper blue
+      // ---- Shallow water gradient (tropical lagoon feel) ----
+      // Much stronger contrast: bright turquoise near coast, fading outward
       const waterOverlay = new Graphics();
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
           if (elevation[ry][rx] === 1) {
-            // Calculate distance to nearest land for gradient
             let minDist = 4;
             for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-              const nr = ry + dr, nc = rx + dc;
-              const nv = elevation[nr]?.[nc] ?? 0;
+              const nv = elevation[ry + dr]?.[rx + dc] ?? 0;
               if (nv >= 2) { minDist = 1; break; }
             }
             if (minDist > 1) {
-              // Check 2-tile radius
               outer: for (let dr = -2; dr <= 2; dr++) {
                 for (let dc = -2; dc <= 2; dc++) {
                   const nv = elevation[ry+dr]?.[rx+dc] ?? 0;
@@ -345,9 +342,9 @@ export default function CityCanvas({
                 }
               }
             }
-            // Gradient: closest = bright turquoise, further = subtle blue
-            const color = minDist <= 1 ? 0x7ee8d0 : minDist <= 2 ? 0x6dd8c8 : 0x5cc0c0;
-            const alpha = minDist <= 1 ? 0.3 : minDist <= 2 ? 0.22 : 0.15;
+            // Stronger colors and alpha for visible lagoon gradient
+            const color = minDist <= 1 ? 0x70e8c8 : minDist <= 2 ? 0x58d4b8 : 0x48c0b0;
+            const alpha = minDist <= 1 ? 0.50 : minDist <= 2 ? 0.38 : 0.25;
             waterOverlay.rect(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H, TILE_W, TILE_H);
             waterOverlay.fill({ color, alpha });
           }
@@ -355,11 +352,10 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Sand tiles — grass tile tinted to sand colour for texture ----
-      const sandBaseTex = terrain.grass.length > 1 ? terrain.grass[1] : terrain.grass[0];
-      const sandTints = [0xe8d8a8, 0xe0d0a0, 0xdcc898, 0xd8c490];
+      // ---- Sand tiles — plain fill with warm visible tints ----
+      const sandTints = [0xdcc070, 0xd4b868, 0xccb060, 0xc8a858]; // warm, visible sand
       for (const cell of sandCells) {
-        const sprite = new Sprite(sandBaseTex);
+        const sprite = new Sprite(terrain.sandFill);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
@@ -367,6 +363,22 @@ export default function CityCanvas({
         sprite.tint = sandTints[((cell.gx * 7 + cell.gy * 13) >>> 0) % sandTints.length];
         tileLayer.addChild(sprite);
       }
+
+      // ---- Sand/grass transition overlay — soft edge between sand and grass ----
+      const sandEdgeOverlay = new Graphics();
+      for (const cell of sandCells) {
+        const nv = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+        const sv = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+        const wv = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+        const ev = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+        const px = cell.gx * TILE_W, py = cell.gy * TILE_H;
+        // Soft green edge where sand meets grass
+        if (nv === 3) { sandEdgeOverlay.rect(px, py, TILE_W, TILE_H * 0.3); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
+        if (sv === 3) { sandEdgeOverlay.rect(px, py + TILE_H * 0.7, TILE_W, TILE_H * 0.3); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
+        if (wv === 3) { sandEdgeOverlay.rect(px, py, TILE_W * 0.3, TILE_H); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
+        if (ev === 3) { sandEdgeOverlay.rect(px + TILE_W * 0.7, py, TILE_W * 0.3, TILE_H); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
+      }
+      tileLayer.addChild(sandEdgeOverlay);
 
       // ---- Lake water — dedicated animated TilingSprite with shimmer ----
       if (lakeCells.length > 0) {
@@ -406,16 +418,40 @@ export default function CityCanvas({
         });
       }
 
-      // ---- Grass tiles — textured tiles with regional tint variation ----
-      const grassTints = [
-        0xFFFFFF, // natural (no tint)
-        0xF0FFE8, // bright meadow
-        0xE8F0D8, // warm sunlit
-        0xD8E8C8, // shaded undergrowth
-        0xF0F8E0, // clearing
-      ];
+      // ---- Grass tiles — smooth noise-based tint variation ----
+      // Simple value-noise: sample at low frequency, interpolate for smooth fields
+      const noiseGrid = new Map<string, number>();
+      const noiseAt = (gx: number, gy: number): number => {
+        const key = `${gx},${gy}`;
+        let v = noiseGrid.get(key);
+        if (v === undefined) { v = hash(gx, gy, 42); noiseGrid.set(key, v); }
+        return v;
+      };
+      const smoothNoise = (x: number, y: number): number => {
+        const freq = 0.045; // very low frequency = large smooth biome fields
+        const fx = x * freq, fy = y * freq;
+        const ix = Math.floor(fx), iy = Math.floor(fy);
+        const tx = fx - ix, ty = fy - iy;
+        // Smoothstep interpolation
+        const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+        const n00 = noiseAt(ix, iy), n10 = noiseAt(ix + 1, iy);
+        const n01 = noiseAt(ix, iy + 1), n11 = noiseAt(ix + 1, iy + 1);
+        return n00 * (1 - sx) * (1 - sy) + n10 * sx * (1 - sy) + n01 * (1 - sx) * sy + n11 * sx * sy;
+      };
+      const lerpColor = (a: number, b: number, t: number): number => {
+        const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+        const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+        const r = Math.round(ar + (br - ar) * t);
+        const g = Math.round(ag + (bg - ag) * t);
+        const bl = Math.round(ab + (bb - ab) * t);
+        return (r << 16) | (g << 8) | bl;
+      };
+      // Grass biome colors — subtle tint shifts, smoothly blended
+      const grassColorA = 0xFCFFF8; // bright clearing (near-white)
+      const grassColorB = 0xECF4E0; // warm meadow
+      const grassColorC = 0xE0ECDA; // cool shade
+
       for (const cell of grassCells) {
-        // Check if this grass cell borders lake water (4) → use coast autotile
         const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
         const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
         const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
@@ -428,19 +464,18 @@ export default function CityCanvas({
 
         let tex: Texture;
         if (touchesLake && terrain.coast.length >= 9) {
-          // Use coast autotile for cliff-edge bank along the lake
           let slotX = 1, slotY = 1;
           if (lakeBorderW) slotX = 0;
           if (lakeBorderE) slotX = 2;
           if (lakeBorderN) slotY = 0;
           if (lakeBorderS) slotY = 2;
-          const coastIdx = slotY * 3 + slotX;
-          tex = terrain.coast[coastIdx];
+          tex = terrain.coast[slotY * 3 + slotX];
         } else {
-          // Pick grass tile per cell — all tiles are similar medium green
-          // so no checkerboard; texture detail provides subtle variation
-          const tileIdx = Math.floor(hash(cell.gx, cell.gy, 50) * terrain.grass.length);
-          tex = terrain.grass[tileIdx];
+          // Use primarily the first grass tile for consistency;
+          // only ~15% get a variant for subtle texture detail
+          const r = hash(cell.gx, cell.gy, 50);
+          tex = r < 0.85 ? terrain.grass[0]
+              : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
         }
 
         const sprite = new Sprite(tex);
@@ -449,15 +484,23 @@ export default function CityCanvas({
         sprite.width = TILE_W;
         sprite.height = TILE_H;
         if (!touchesLake) {
-          const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
-          sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
+          // Two octaves of smooth noise for natural color variation
+          const n1 = smoothNoise(cell.gx, cell.gy);
+          const n2 = smoothNoise(cell.gx * 2.3 + 100, cell.gy * 2.3 + 100) * 0.3;
+          const combined = Math.min(1, Math.max(0, n1 + n2));
+          // Blend between 3 colors based on noise
+          if (combined < 0.5) {
+            sprite.tint = lerpColor(grassColorA, grassColorB, combined * 2);
+          } else {
+            sprite.tint = lerpColor(grassColorB, grassColorC, (combined - 0.5) * 2);
+          }
         }
         tileLayer.addChild(sprite);
       }
 
       // ================================================================
       // DECORATION SCATTER — flowers, tufts, mushrooms on GRASS cells
-      // Much denser for a lush, lived-in feel
+      // Scaled up for visibility at default zoom
       // ================================================================
       for (const cell of grassCells) {
         const centerDist = Math.hypot(cell.gx - CITY_CENTER.gx, cell.gy - CITY_CENTER.gy);
@@ -471,12 +514,11 @@ export default function CityCanvas({
           sprite.anchor.set(0.5, 0.8);
           sprite.position.set(sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.6,
                               sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.6);
-          sprite.width = TILE_W * 0.65;
-          sprite.height = TILE_H * 0.65;
-          sprite.alpha = 0.8;
+          sprite.width = TILE_W * 0.85;
+          sprite.height = TILE_H * 0.85;
+          sprite.alpha = 0.85;
           sprite.zIndex = Math.floor(sprite.position.y) - 1;
           decorLayer.addChild(sprite);
-          // Don't continue — allow flowers on top of tufts sometimes
           if (hash(cell.gx, cell.gy, 104) > 0.3) continue;
         }
         // White flowers ~10%
@@ -485,8 +527,8 @@ export default function CityCanvas({
           const sprite = new Sprite(terrain.flowersWhite[idx]);
           sprite.anchor.set(0.5, 0.8);
           sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.4, sy);
-          sprite.width = TILE_W * 0.6;
-          sprite.height = TILE_H * 0.6;
+          sprite.width = TILE_W * 0.85;
+          sprite.height = TILE_H * 0.85;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
@@ -497,8 +539,8 @@ export default function CityCanvas({
           const sprite = new Sprite(terrain.flowersPurple[idx]);
           sprite.anchor.set(0.5, 0.8);
           sprite.position.set(sx + (hash(cell.gx, cell.gy, 302) - 0.5) * TILE_W * 0.3, sy);
-          sprite.width = TILE_W * 0.6;
-          sprite.height = TILE_H * 0.6;
+          sprite.width = TILE_W * 0.85;
+          sprite.height = TILE_H * 0.85;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
@@ -509,8 +551,8 @@ export default function CityCanvas({
           const sprite = new Sprite(terrain.mushrooms[idx]);
           sprite.anchor.set(0.5, 0.9);
           sprite.position.set(sx + (hash(cell.gx, cell.gy, 402) - 0.5) * TILE_W * 0.3, sy);
-          sprite.width = TILE_W * 0.5;
-          sprite.height = TILE_H * 0.5;
+          sprite.width = TILE_W * 0.7;
+          sprite.height = TILE_H * 0.7;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
@@ -605,23 +647,33 @@ export default function CityCanvas({
 
       // No ambient wandering animals — NPCs appear when buildings are placed.
 
-      // ---- Clouds layer ----
+      // ---- Clouds layer — varied depth and layering ----
       const cloudLayer = new Container();
       world.addChild(cloudLayer);
       const cloudSprites: { sprite: Sprite; speed: number }[] = [];
       if (terrain.clouds.length) {
-        for (let i = 0; i < 8; i++) {
-          const tex = terrain.clouds[i % terrain.clouds.length];
-          const cloud = new Sprite(tex);
-          cloud.anchor.set(0.5, 0.5);
-          cloud.alpha = 0.85;
-          cloud.position.set(
-            hash(i, 0, 500) * GRID_SIZE * TILE_W,
-            hash(i, 1, 500) * GRID_SIZE * TILE_H,
-          );
-          cloud.scale.set(1.5 + hash(i, 2, 500) * 1.5);
-          cloudLayer.addChild(cloud);
-          cloudSprites.push({ sprite: cloud, speed: 0.15 + hash(i, 3, 500) * 0.25 });
+        // Two layers: back (faded, slow) and front (opaque, faster)
+        const cloudConfigs = [
+          { alpha: 0.35, scaleBase: 2.5, speedBase: 0.08, count: 4 }, // background
+          { alpha: 0.70, scaleBase: 1.8, speedBase: 0.18, count: 5 }, // midground
+          { alpha: 0.90, scaleBase: 1.2, speedBase: 0.28, count: 3 }, // foreground
+        ];
+        let ci = 0;
+        for (const cfg of cloudConfigs) {
+          for (let i = 0; i < cfg.count; i++) {
+            const tex = terrain.clouds[ci % terrain.clouds.length];
+            const cloud = new Sprite(tex);
+            cloud.anchor.set(0.5, 0.5);
+            cloud.alpha = cfg.alpha + (hash(ci, 4, 500) - 0.5) * 0.15;
+            cloud.position.set(
+              hash(ci, 0, 500) * GRID_SIZE * TILE_W,
+              hash(ci, 1, 500) * GRID_SIZE * TILE_H,
+            );
+            cloud.scale.set(cfg.scaleBase + hash(ci, 2, 500) * 1.0);
+            cloudLayer.addChild(cloud);
+            cloudSprites.push({ sprite: cloud, speed: cfg.speedBase + hash(ci, 3, 500) * 0.12 });
+            ci++;
+          }
         }
       }
 
@@ -698,15 +750,22 @@ export default function CityCanvas({
           if (c.sprite.position.x > cloudWrapX) c.sprite.position.x = -200;
         }
 
-        // Animate foam — gentle wave pulse
+        // Animate foam — elongated wave shapes along coastline
         const t = Date.now() / 1000;
         foamLayer.clear();
         for (const f of foamCells) {
-          const wave = Math.sin(t * 1.2 + f.phase) * 0.5 + 0.5;
-          const alpha = 0.15 + wave * 0.25;
-          const radius = TILE_W * 0.25 + wave * TILE_W * 0.1;
-          foamLayer.circle(f.px, f.py, radius);
+          const wave = Math.sin(t * 1.0 + f.phase) * 0.5 + 0.5;
+          const alpha = 0.20 + wave * 0.30;
+          const w = TILE_W * 0.7 + wave * TILE_W * 0.15;
+          const h = TILE_H * 0.15 + wave * TILE_H * 0.08;
+          const ox = Math.sin(t * 0.6 + f.phase * 1.3) * TILE_W * 0.08;
+          foamLayer.ellipse(f.px + ox, f.py, w, h);
           foamLayer.fill({ color: 0xFFFFFF, alpha });
+          // Secondary smaller foam line offset
+          const w2 = w * 0.6, h2 = h * 0.7;
+          const alpha2 = alpha * 0.5;
+          foamLayer.ellipse(f.px - ox * 0.5, f.py + TILE_H * 0.2, w2, h2);
+          foamLayer.fill({ color: 0xeef8ff, alpha: alpha2 });
         }
 
         // Animate butterflies — figure-8 flight + wing flap

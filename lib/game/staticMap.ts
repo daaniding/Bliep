@@ -119,14 +119,42 @@ export function parseElevation(): number[][] {
     const row: number[] = [];
     for (let i = 0; i < MAP_COLS; i++) {
       const ch = padded[i];
-      // Both '1' and 'r' become grass — river removed for cleaner look
       if (ch === '1' || ch === 'r') row.push(3);
-      else row.push(0);                 // water
+      else row.push(0);
     }
     rows.push(row);
   }
   while (rows.length < MAP_ROWS) rows.push(new Array(MAP_COLS).fill(0));
-  return rows.slice(0, MAP_ROWS);
+  const grid = rows.slice(0, MAP_ROWS);
+
+  // ---- Smooth coastline: alternating erode/fill passes ----
+  // Erode: remove land cells with ≤1 cardinal land neighbor (thin peninsulas)
+  // Fill: add land to water cells with ≥3 cardinal land neighbors (concave notches)
+  // Multiple passes create progressively smoother coastline.
+  for (let pass = 0; pass < 4; pass++) {
+    // Erode pass
+    const snapE = grid.map(r => [...r]);
+    for (let r = 1; r < MAP_ROWS - 1; r++) {
+      for (let c = 1; c < MAP_COLS - 1; c++) {
+        if (snapE[r][c] !== 3) continue;
+        const cardinalLand = (snapE[r-1][c] === 3 ? 1 : 0) + (snapE[r+1][c] === 3 ? 1 : 0)
+                           + (snapE[r][c-1] === 3 ? 1 : 0) + (snapE[r][c+1] === 3 ? 1 : 0);
+        if (cardinalLand <= 1) grid[r][c] = 0;
+      }
+    }
+    // Fill pass
+    const snapF = grid.map(r => [...r]);
+    for (let r = 1; r < MAP_ROWS - 1; r++) {
+      for (let c = 1; c < MAP_COLS - 1; c++) {
+        if (snapF[r][c] !== 0) continue;
+        const cardinalLand = (snapF[r-1][c] === 3 ? 1 : 0) + (snapF[r+1][c] === 3 ? 1 : 0)
+                           + (snapF[r][c-1] === 3 ? 1 : 0) + (snapF[r][c+1] === 3 ? 1 : 0);
+        if (cardinalLand >= 3) grid[r][c] = 3;
+      }
+    }
+  }
+
+  return grid;
 }
 
 /**
@@ -208,14 +236,19 @@ export function processElevation(raw: number[][]): number[][] {
   }
 
   // ---- Lake in the northeast quadrant ----
-  // Organic oval ~11×8 tiles. Elevation 4 = lake water.
-  // Grass borders lake directly (no sand) → coast autotile gives cliff banks.
+  // Organic blob shape using noise-perturbed distance for natural edges.
   const lakeCR = 70, lakeRR = 24;
-  for (let dr = -4; dr <= 4; dr++) {
-    for (let dc = -6; dc <= 6; dc++) {
-      // Oval: wider than tall
-      const dist = Math.sqrt(dr * dr * 1.8 + dc * dc);
-      if (dist > 5.2) continue;
+  const lakeHash = (x: number, y: number): number => {
+    let h = (x * 374761 + y * 668265 + 7919) | 0;
+    h = (h ^ (h >>> 13)) * 1274126177;
+    return ((h >>> 0) % 1000) / 1000;
+  };
+  for (let dr = -6; dr <= 6; dr++) {
+    for (let dc = -8; dc <= 8; dc++) {
+      const baseDist = Math.sqrt(dr * dr * 1.6 + dc * dc);
+      // Perturb the threshold per-cell for organic edges
+      const noise = (lakeHash(lakeCR + dc, lakeRR + dr) - 0.5) * 1.8;
+      if (baseDist > 5.5 + noise) continue;
       const r = lakeRR + dr, c = lakeCR + dc;
       if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === 3) {
         grid[r][c] = 4;
