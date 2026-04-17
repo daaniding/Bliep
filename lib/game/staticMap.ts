@@ -69,17 +69,18 @@ export function parseElevation(): number[][] {
     for (let c = 0; c < MAP_COLS; c++) {
       const angle = Math.atan2(r - cy, c - cx);
 
-      // Base radius: iets hoger dan breed (portrait)
-      const rx = 30; // horizontaal
-      const ry = 36; // verticaal — hoger dan breed
+      // Iets breder dan hoog, asymmetrisch
+      const rx = 34;
+      const ry = 30;
 
-      // Zachte variatie per richting (geen scherpe hoeken)
-      const shape = Math.sin(angle * 1.0 + 0.8) * 3    // grote zachte deuk
-                  + Math.sin(angle * 2.0 - 0.5) * 2    // subtiele tweede golf
-                  + Math.cos(angle * 3.0 + 1.5) * 1.5; // klein detail
+      // Asymmetrische vorm — links anders dan rechts, boven anders dan onder
+      const shape = Math.sin(angle * 1.7 + 2.2) * 4
+                  + Math.cos(angle * 2.3 - 0.8) * 2.5
+                  + Math.sin(angle * 3.8 + 1.0) * 1.5
+                  + Math.cos(angle * 0.6 + 3.5) * 3;
 
       const dx = (c - cx) / (rx + shape);
-      const dy = (r - cy) / (ry + shape * 0.7);
+      const dy = (r - cy) / (ry + shape * 0.6);
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       // Fijne noise voor natuurlijke kustlijn
