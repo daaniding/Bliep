@@ -1,21 +1,16 @@
 /**
  * Multi-layer autotile for the antarcticbees coastline.
  *
- * The processed elevation grid has these values:
+ * Elevation grid values:
  *   0 = deep water
  *   1 = shallow water
- *   2 = sand/beach
+ *   2 = cliff/coast (rocky border)
  *   3 = grass (buildable)
- *   4 = river water
+ *   4 = lake water
  *
- * We need multiple transition layers:
- *   sand → water  (rocky coastline)
- *   grass → sand   (soft edge into beach)
- *
- * Each autotile returns a 3×3 index (0-8):
- *   0=NW  1=N  2=NE
- *   3=W   4=C  5=E
- *   6=SW  7=S  8=SE
+ * Transitions:
+ *   cliff → water  (rocky coastline autotile)
+ *   grass → cliff  (grass-to-cliff edge, uses sand-to-grass tiles)
  */
 
 export interface TileCell {
@@ -23,19 +18,10 @@ export interface TileCell {
   row: number;
 }
 
-// ---- Elevation category helpers ----
-
-/** Is this cell water (ocean, shallow, or river)? */
-function isWaterish(v: number): boolean {
+/** Is this cell any kind of water? */
+function isWater(v: number): boolean {
   return v === 0 || v === 1 || v === 4;
 }
-
-/** Is this cell solid ground (sand or grass)? */
-function isGround(v: number): boolean {
-  return v === 2 || v === 3;
-}
-
-// ---- 4-bit neighbor → 3×3 slot ----
 
 function neighborSlot(edgeN: boolean, edgeS: boolean, edgeW: boolean, edgeE: boolean): number {
   let slotX = 1;
@@ -52,14 +38,14 @@ function get(elev: number[][], gy: number, gx: number): number {
 }
 
 // ============================================================
-// SAND → WATER coastline autotile
+// CLIFF → WATER coastline autotile
 // ============================================================
 /**
- * For sand cells (2): returns 0-8 index into coast[] tiles if this sand
- * cell borders water. Returns 4 (center) if surrounded by ground.
- * Returns null if this cell is not sand.
+ * For cliff cells (2): returns 0-8 index into coast[] tiles.
+ * The coast tile is chosen based on which neighbors are water.
+ * Returns 4 (center) if fully surrounded by land.
  */
-export function sandToWaterIndex(
+export function cliffToWaterIndex(
   elev: number[][],
   gx: number,
   gy: number,
@@ -69,18 +55,46 @@ export function sandToWaterIndex(
   const s = get(elev, gy + 1, gx);
   const w = get(elev, gy, gx - 1);
   const e = get(elev, gy, gx + 1);
-  return neighborSlot(isWaterish(n), isWaterish(s), isWaterish(w), isWaterish(e));
+  return neighborSlot(isWater(n), isWater(s), isWater(w), isWater(e));
+}
+
+/**
+ * Check if a cliff cell has a diagonal water neighbor but no cardinal water.
+ * Returns the inner corner direction or null.
+ */
+export function cliffInnerCorner(
+  elev: number[][],
+  gx: number,
+  gy: number,
+): 'NW' | 'NE' | 'SW' | 'SE' | null {
+  if (get(elev, gy, gx) !== 2) return null;
+  const n = get(elev, gy - 1, gx);
+  const s = get(elev, gy + 1, gx);
+  const w = get(elev, gy, gx - 1);
+  const e = get(elev, gy, gx + 1);
+  // Only inner corners when no cardinal neighbor is water
+  if (isWater(n) || isWater(s) || isWater(w) || isWater(e)) return null;
+
+  const nw = get(elev, gy - 1, gx - 1);
+  const ne = get(elev, gy - 1, gx + 1);
+  const sw = get(elev, gy + 1, gx - 1);
+  const se = get(elev, gy + 1, gx + 1);
+
+  if (isWater(nw)) return 'NW';
+  if (isWater(ne)) return 'NE';
+  if (isWater(sw)) return 'SW';
+  if (isWater(se)) return 'SE';
+  return null;
 }
 
 // ============================================================
-// GRASS → SAND transition autotile
+// GRASS → CLIFF transition autotile
 // ============================================================
 /**
- * For grass cells (3): returns 0-8 index into sandToGrass[] tiles if this
- * grass cell borders sand. Returns null if not grass or not bordering sand.
- * Returns 4 (center = no edge) if fully surrounded by grass.
+ * For grass cells (3): returns 0-8 index into sandToGrass[] tiles
+ * if this grass cell borders cliff (2). Provides a soft grass-to-cliff edge.
  */
-export function grassToSandIndex(
+export function grassToCliffIndex(
   elev: number[][],
   gx: number,
   gy: number,
@@ -90,18 +104,17 @@ export function grassToSandIndex(
   const s = get(elev, gy + 1, gx);
   const w = get(elev, gy, gx - 1);
   const e = get(elev, gy, gx + 1);
-  // Edge = neighbor is NOT grass (it's sand, water, or river)
+  // Edge = neighbor is cliff, water, or lake (not grass)
   const edgeN = n !== 3;
   const edgeS = s !== 3;
   const edgeW = w !== 3;
   const edgeE = e !== 3;
-  if (!edgeN && !edgeS && !edgeW && !edgeE) return null; // no edges, fully interior
+  if (!edgeN && !edgeS && !edgeW && !edgeE) return null;
   return neighborSlot(edgeN, edgeS, edgeW, edgeE);
 }
 
 // ============================================================
-// Legacy compat: simple coast index (grass on water)
-// Used by CityCanvas for basic rendering fallback.
+// Legacy compat
 // ============================================================
 export function autotileCoastIndex(
   elev: number[][],
@@ -109,15 +122,14 @@ export function autotileCoastIndex(
   gy: number,
 ): number | null {
   const e = get(elev, gy, gx);
-  if (isWaterish(e)) return null;
+  if (isWater(e)) return null;
   const n = get(elev, gy - 1, gx);
   const s = get(elev, gy + 1, gx);
   const w = get(elev, gy, gx - 1);
   const eE = get(elev, gy, gx + 1);
-  return neighborSlot(isWaterish(n), isWaterish(s), isWaterish(w), isWaterish(eE));
+  return neighborSlot(isWater(n), isWater(s), isWater(w), isWater(eE));
 }
 
-/** Legacy wrapper for old code. */
 export function autotileGrassSlot(
   elev: number[][],
   gx: number,
@@ -128,7 +140,6 @@ export function autotileGrassSlot(
   return { col: idx % 3, row: Math.floor(idx / 3) };
 }
 
-/** Kept for API compat. */
 export function shouldPaintCliffWall(): boolean {
   return false;
 }

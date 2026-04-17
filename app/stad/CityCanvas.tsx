@@ -18,7 +18,7 @@ import {
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { autotileCoastIndex } from '@/lib/game/autotile';
+import { cliffToWaterIndex, cliffInnerCorner, grassToCliffIndex } from '@/lib/game/autotile';
 import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
@@ -300,9 +300,9 @@ export default function CityCanvas({
         return ((h >>> 0) % 10000) / 10000;
       };
 
-      // Collect cells by type for rendering + preview bbox
+      // Collect cells by type
       const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
-      const sandCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
+      const cliffCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const lakeCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const landCells: Array<{ gx: number; gy: number }> = [];
 
@@ -314,17 +314,15 @@ export default function CityCanvas({
             grassCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           } else if (v === 2) {
-            sandCells.push({ gx, gy, rx, ry });
+            cliffCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           } else if (v === 4) {
             lakeCells.push({ gx, gy, rx, ry });
-            landCells.push({ gx, gy });
           }
         }
       }
 
-      // ---- Shallow water gradient (tropical lagoon feel) ----
-      // Much stronger contrast: bright turquoise near coast, fading outward
+      // ---- Shallow water gradient ----
       const waterOverlay = new Graphics();
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
@@ -342,7 +340,6 @@ export default function CityCanvas({
                 }
               }
             }
-            // Stronger colors and alpha for visible lagoon gradient
             const color = minDist <= 1 ? 0x70e8c8 : minDist <= 2 ? 0x58d4b8 : 0x48c0b0;
             const alpha = minDist <= 1 ? 0.50 : minDist <= 2 ? 0.38 : 0.25;
             waterOverlay.rect(worldGx(rx) * TILE_W, worldGy(ry) * TILE_H, TILE_W, TILE_H);
@@ -352,210 +349,201 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Sand tiles (if any remain) — plain fill ----
-      for (const cell of sandCells) {
-        const sprite = new Sprite(terrain.sandFill);
-        sprite.anchor.set(0, 0);
-        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
-        sprite.width = TILE_W;
-        sprite.height = TILE_H;
-        sprite.tint = 0xdcc070;
-        tileLayer.addChild(sprite);
+      // ---- Animated water edges — foam on water cells adjacent to cliff/land ----
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          const v = elevation[ry][rx];
+          if (v !== 0 && v !== 1) continue;
+          const nv = elevation[ry - 1]?.[rx] ?? 0;
+          const sv = elevation[ry + 1]?.[rx] ?? 0;
+          const wv = elevation[ry]?.[rx - 1] ?? 0;
+          const ev = elevation[ry]?.[rx + 1] ?? 0;
+          const landN = nv >= 2 && nv !== 4;
+          const landS = sv >= 2 && sv !== 4;
+          const landW = wv >= 2 && wv !== 4;
+          const landE = ev >= 2 && ev !== 4;
+          if (!landN && !landS && !landW && !landE) {
+            // Check diagonals for inner corners
+            const nwv = elevation[ry - 1]?.[rx - 1] ?? 0;
+            const nev = elevation[ry - 1]?.[rx + 1] ?? 0;
+            const swv = elevation[ry + 1]?.[rx - 1] ?? 0;
+            const sev = elevation[ry + 1]?.[rx + 1] ?? 0;
+            let frames: Texture[] | null = null;
+            if (nwv >= 2 && nwv !== 4) frames = terrain.waterEdge.NW;
+            else if (nev >= 2 && nev !== 4) frames = terrain.waterEdge.NE;
+            else if (swv >= 2 && swv !== 4) frames = terrain.waterEdge.SW;
+            else if (sev >= 2 && sev !== 4) frames = terrain.waterEdge.SE;
+            if (frames && frames.length > 0) {
+              const gx = worldGx(rx), gy = worldGy(ry);
+              const anim = new AnimatedSprite(frames);
+              anim.anchor.set(0, 0);
+              anim.position.set(gx * TILE_W, gy * TILE_H);
+              anim.width = TILE_W; anim.height = TILE_H;
+              anim.animationSpeed = 0.06; anim.play();
+              anim.currentFrame = Math.floor(hash(gx, gy, 8001) * frames.length);
+              tileLayer.addChild(anim);
+            }
+            continue;
+          }
+          let frames: Texture[] | null = null;
+          if (landN && landW) frames = terrain.waterEdge.NW;
+          else if (landN && landE) frames = terrain.waterEdge.NE;
+          else if (landS && landW) frames = terrain.waterEdge.SW;
+          else if (landS && landE) frames = terrain.waterEdge.SE;
+          else if (landN) frames = terrain.waterEdge.N;
+          else if (landS) frames = terrain.waterEdge.S;
+          else if (landW) frames = terrain.waterEdge.W;
+          else if (landE) frames = terrain.waterEdge.E;
+          if (!frames || frames.length === 0) continue;
+          const gx = worldGx(rx), gy = worldGy(ry);
+          const anim = new AnimatedSprite(frames);
+          anim.anchor.set(0, 0);
+          anim.position.set(gx * TILE_W, gy * TILE_H);
+          anim.width = TILE_W; anim.height = TILE_H;
+          anim.animationSpeed = 0.06; anim.play();
+          anim.currentFrame = Math.floor(hash(gx, gy, 8000) * frames.length);
+          tileLayer.addChild(anim);
+        }
       }
 
-      // ---- Lake water — dedicated animated TilingSprite with shimmer ----
-      if (lakeCells.length > 0) {
-        let lakeMinX = Infinity, lakeMinY = Infinity, lakeMaxX = -Infinity, lakeMaxY = -Infinity;
-        for (const c of lakeCells) {
-          const px = c.gx * TILE_W;
-          const py = c.gy * TILE_H;
-          if (px < lakeMinX) lakeMinX = px;
-          if (py < lakeMinY) lakeMinY = py;
-          if (px + TILE_W > lakeMaxX) lakeMaxX = px + TILE_W;
-          if (py + TILE_H > lakeMaxY) lakeMaxY = py + TILE_H;
-        }
-        const lakeWater = new TilingSprite({
-          texture: bakedWater,
-          width: lakeMaxX - lakeMinX + TILE_W * 2,
-          height: lakeMaxY - lakeMinY + TILE_H * 2,
-        });
-        lakeWater.position.set(lakeMinX - TILE_W, lakeMinY - TILE_H);
-        lakeWater.tint = 0x88ccee; // slightly lighter/bluer than ocean
-        tileLayer.addChild(lakeWater);
-
-        // Mask: only show water inside actual lake cells
-        const lakeMask = new Graphics();
-        for (const c of lakeCells) {
-          lakeMask.rect(c.gx * TILE_W, c.gy * TILE_H, TILE_W, TILE_H);
-        }
-        lakeMask.fill({ color: 0xffffff });
-        tileLayer.addChild(lakeMask);
-        lakeWater.mask = lakeMask;
-
-        // Animate lake water in ticker (different speed/direction from ocean)
-        const lakeWaterRef = lakeWater;
-        app.ticker.add((ticker) => {
-          const dt = ticker.deltaTime ?? 1;
-          lakeWaterRef.tilePosition.x -= 0.15 * dt;
-          lakeWaterRef.tilePosition.y += 0.3 * dt;
-        });
-      }
-
-      // ---- Grass tiles — smooth noise-based tint variation ----
-      // Simple value-noise: sample at low frequency, interpolate for smooth fields
-      const noiseGrid = new Map<string, number>();
-      const noiseAt = (gx: number, gy: number): number => {
-        const key = `${gx},${gy}`;
-        let v = noiseGrid.get(key);
-        if (v === undefined) { v = hash(gx, gy, 42); noiseGrid.set(key, v); }
-        return v;
-      };
-      const smoothNoise = (x: number, y: number): number => {
-        const freq = 0.045; // very low frequency = large smooth biome fields
-        const fx = x * freq, fy = y * freq;
-        const ix = Math.floor(fx), iy = Math.floor(fy);
-        const tx = fx - ix, ty = fy - iy;
-        // Smoothstep interpolation
-        const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
-        const n00 = noiseAt(ix, iy), n10 = noiseAt(ix + 1, iy);
-        const n01 = noiseAt(ix, iy + 1), n11 = noiseAt(ix + 1, iy + 1);
-        return n00 * (1 - sx) * (1 - sy) + n10 * sx * (1 - sy) + n01 * (1 - sx) * sy + n11 * sx * sy;
-      };
-      const lerpColor = (a: number, b: number, t: number): number => {
-        const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
-        const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
-        const r = Math.round(ar + (br - ar) * t);
-        const g = Math.round(ag + (bg - ag) * t);
-        const bl = Math.round(ab + (bb - ab) * t);
-        return (r << 16) | (g << 8) | bl;
-      };
-      // Grass biome colors — subtle tint shifts, smoothly blended
-      const grassColorA = 0xFCFFF8; // bright clearing (near-white)
-      const grassColorB = 0xECF4E0; // warm meadow
-      const grassColorC = 0xE0ECDA; // cool shade
-
-      for (const cell of grassCells) {
-        const nv = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
-        const sv = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
-        const wv = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
-        const ev = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-        // Water = ocean (0), shallow (1), or lake (4)
-        const waterN = nv <= 1 || nv === 4;
-        const waterS = sv <= 1 || sv === 4;
-        const waterW = wv <= 1 || wv === 4;
-        const waterE = ev <= 1 || ev === 4;
-        const touchesWater = waterN || waterS || waterW || waterE;
-
-        // Also check diagonal neighbors for inner corners
-        const nwv = elevation[cell.ry - 1]?.[cell.rx - 1] ?? 0;
-        const nev = elevation[cell.ry - 1]?.[cell.rx + 1] ?? 0;
-        const swv = elevation[cell.ry + 1]?.[cell.rx - 1] ?? 0;
-        const sev = elevation[cell.ry + 1]?.[cell.rx + 1] ?? 0;
-        const waterNW = nwv <= 1 || nwv === 4;
-        const waterNE = nev <= 1 || nev === 4;
-        const waterSW = swv <= 1 || swv === 4;
-        const waterSE = sev <= 1 || sev === 4;
+      // ---- Cliff tiles — rocky coast autotile (2-3 tiles wide band) ----
+      for (const cell of cliffCells) {
+        const idx = cliffToWaterIndex(elevation, cell.rx, cell.ry);
+        const innerCorner = cliffInnerCorner(elevation, cell.rx, cell.ry);
 
         let tex: Texture;
-        if (touchesWater && terrain.coast.length >= 9) {
-          // Coast 3×3 autotile — rocky cliff edge with foam
-          let slotX = 1, slotY = 1;
-          if (waterW) slotX = 0;
-          if (waterE) slotX = 2;
-          if (waterN) slotY = 0;
-          if (waterS) slotY = 2;
-          tex = terrain.coast[slotY * 3 + slotX];
-        } else if (!waterN && !waterS && !waterW && !waterE && terrain.coastInner.length >= 4) {
-          // Inner corner: cardinal neighbors are land but a diagonal is water
-          // coastInner: [NW, NE, SW, SE]
-          if (waterNW) tex = terrain.coastInner[0];
-          else if (waterNE) tex = terrain.coastInner[1];
-          else if (waterSW) tex = terrain.coastInner[2];
-          else if (waterSE) tex = terrain.coastInner[3];
-          else {
-            const r = hash(cell.gx, cell.gy, 50);
-            tex = r < 0.85 ? terrain.grass[0]
-                : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
-          }
+        if (innerCorner && terrain.coastInner.length >= 4) {
+          const ci = innerCorner === 'NW' ? 0 : innerCorner === 'NE' ? 1 : innerCorner === 'SW' ? 2 : 3;
+          tex = terrain.coastInner[ci];
+        } else if (idx !== null && idx !== 4 && terrain.coast.length >= 9) {
+          tex = terrain.coast[idx];
         } else {
-          const r = hash(cell.gx, cell.gy, 50);
-          tex = r < 0.85 ? terrain.grass[0]
-              : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
+          // Interior cliff — use coast center tile (rocky ground)
+          tex = terrain.coast[4] ?? terrain.grass[0];
         }
-
         const sprite = new Sprite(tex);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
-        if (!touchesWater && !waterNW && !waterNE && !waterSW && !waterSE) {
+        tileLayer.addChild(sprite);
+      }
+
+      // ---- Lake water ----
+      if (lakeCells.length > 0) {
+        let lakeMinX = Infinity, lakeMinY = Infinity, lakeMaxX = -Infinity, lakeMaxY = -Infinity;
+        for (const c of lakeCells) {
+          const px = c.gx * TILE_W, py = c.gy * TILE_H;
+          if (px < lakeMinX) lakeMinX = px;
+          if (py < lakeMinY) lakeMinY = py;
+          if (px + TILE_W > lakeMaxX) lakeMaxX = px + TILE_W;
+          if (py + TILE_H > lakeMaxY) lakeMaxY = py + TILE_H;
+        }
+        const lakeWater = new TilingSprite({ texture: bakedWater, width: lakeMaxX - lakeMinX + TILE_W * 2, height: lakeMaxY - lakeMinY + TILE_H * 2 });
+        lakeWater.position.set(lakeMinX - TILE_W, lakeMinY - TILE_H);
+        lakeWater.tint = 0x88ccee;
+        tileLayer.addChild(lakeWater);
+        const lakeMask = new Graphics();
+        for (const c of lakeCells) { lakeMask.rect(c.gx * TILE_W, c.gy * TILE_H, TILE_W, TILE_H); }
+        lakeMask.fill({ color: 0xffffff });
+        tileLayer.addChild(lakeMask);
+        lakeWater.mask = lakeMask;
+        const lakeWaterRef = lakeWater;
+        app.ticker.add((ticker) => { const dt = ticker.deltaTime ?? 1; lakeWaterRef.tilePosition.x -= 0.15 * dt; lakeWaterRef.tilePosition.y += 0.3 * dt; });
+      }
+
+      // ---- Grass tiles — smooth noise-based tint variation ----
+      const noiseGrid = new Map<string, number>();
+      const noiseAt = (gx: number, gy: number): number => { const key = `${gx},${gy}`; let v = noiseGrid.get(key); if (v === undefined) { v = hash(gx, gy, 42); noiseGrid.set(key, v); } return v; };
+      const smoothNoise = (x: number, y: number): number => {
+        const freq = 0.045, fx = x * freq, fy = y * freq;
+        const ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+        const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+        const n00 = noiseAt(ix, iy), n10 = noiseAt(ix + 1, iy), n01 = noiseAt(ix, iy + 1), n11 = noiseAt(ix + 1, iy + 1);
+        return n00 * (1 - sx) * (1 - sy) + n10 * sx * (1 - sy) + n01 * (1 - sx) * sy + n11 * sx * sy;
+      };
+      const lerpColor = (a: number, b: number, t: number): number => {
+        const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+        const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+        return (Math.round(ar + (br - ar) * t) << 16) | (Math.round(ag + (bg - ag) * t) << 8) | Math.round(ab + (bb - ab) * t);
+      };
+      const grassColorA = 0xFCFFF8, grassColorB = 0xECF4E0, grassColorC = 0xE0ECDA;
+
+      for (const cell of grassCells) {
+        // Grass-to-cliff edge transition
+        const edgeIdx = grassToCliffIndex(elevation, cell.rx, cell.ry);
+        let tex: Texture;
+        if (edgeIdx !== null && edgeIdx !== 4 && terrain.sandToGrass.length >= 9) {
+          tex = terrain.sandToGrass[edgeIdx];
+        } else {
+          const r = hash(cell.gx, cell.gy, 50);
+          tex = r < 0.85 ? terrain.grass[0]
+              : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
+        }
+        const sprite = new Sprite(tex);
+        sprite.anchor.set(0, 0);
+        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+        sprite.width = TILE_W; sprite.height = TILE_H;
+        // Tint variation for interior grass
+        if (edgeIdx === null || edgeIdx === 4) {
           const n1 = smoothNoise(cell.gx, cell.gy);
           const n2 = smoothNoise(cell.gx * 2.3 + 100, cell.gy * 2.3 + 100) * 0.3;
           const combined = Math.min(1, Math.max(0, n1 + n2));
-          if (combined < 0.5) {
-            sprite.tint = lerpColor(grassColorA, grassColorB, combined * 2);
-          } else {
-            sprite.tint = lerpColor(grassColorB, grassColorC, (combined - 0.5) * 2);
-          }
+          sprite.tint = combined < 0.5 ? lerpColor(grassColorA, grassColorB, combined * 2) : lerpColor(grassColorB, grassColorC, (combined - 0.5) * 2);
         }
         tileLayer.addChild(sprite);
       }
 
       // ================================================================
-      // DECORATION SCATTER — flowers, tufts, mushrooms on GRASS cells
-      // Scaled up for visibility at default zoom
+      // DECORATION SCATTER — denser flowers, tufts, mushrooms
       // ================================================================
       for (const cell of grassCells) {
         const centerDist = Math.hypot(cell.gx - CITY_CENTER.gx, cell.gy - CITY_CENTER.gy);
         const r = hash(cell.gx, cell.gy, 100);
         const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
 
-        // Grass tufts ~22%
-        if (r < 0.22 && terrain.grassTufts.length > 0) {
+        // Grass tufts ~30%
+        if (r < 0.30 && terrain.grassTufts.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 101) * terrain.grassTufts.length);
           const sprite = new Sprite(terrain.grassTufts[idx]);
           sprite.anchor.set(0.5, 0.8);
           sprite.position.set(sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.6,
                               sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.6);
-          sprite.width = TILE_W * 0.85;
-          sprite.height = TILE_H * 0.85;
-          sprite.alpha = 0.85;
-          sprite.zIndex = Math.floor(sprite.position.y) - 1;
+          sprite.width = TILE_W * 0.9; sprite.height = TILE_H * 0.9;
+          sprite.alpha = 0.85; sprite.zIndex = Math.floor(sprite.position.y) - 1;
           decorLayer.addChild(sprite);
-          if (hash(cell.gx, cell.gy, 104) > 0.3) continue;
+          // Some cells get BOTH tuft and flower for lush overlap
+          if (hash(cell.gx, cell.gy, 104) > 0.4) continue;
         }
-        // White flowers ~10%
-        if (r < 0.32 && r >= 0.22 && terrain.flowersWhite.length > 0) {
+        // White flowers ~14%
+        if (r >= 0.16 && r < 0.30 && terrain.flowersWhite.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 201) * terrain.flowersWhite.length);
           const sprite = new Sprite(terrain.flowersWhite[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.4, sy);
-          sprite.width = TILE_W * 0.85;
-          sprite.height = TILE_H * 0.85;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.5, sy);
+          sprite.width = TILE_W * 0.9; sprite.height = TILE_H * 0.9;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
         }
-        // Purple flowers ~5%
-        if (r < 0.37 && r >= 0.32 && terrain.flowersPurple.length > 0) {
+        // Purple flowers ~7%
+        if (r >= 0.30 && r < 0.37 && terrain.flowersPurple.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 301) * terrain.flowersPurple.length);
           const sprite = new Sprite(terrain.flowersPurple[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 302) - 0.5) * TILE_W * 0.3, sy);
-          sprite.width = TILE_W * 0.85;
-          sprite.height = TILE_H * 0.85;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 302) - 0.5) * TILE_W * 0.4, sy);
+          sprite.width = TILE_W * 0.9; sprite.height = TILE_H * 0.9;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
         }
-        // Mushrooms ~3%, further from center
-        if (r < 0.40 && r >= 0.37 && terrain.mushrooms.length > 0 && centerDist > 14) {
+        // Mushrooms ~4%, further from center
+        if (r >= 0.37 && r < 0.41 && terrain.mushrooms.length > 0 && centerDist > 12) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 401) * terrain.mushrooms.length);
           const sprite = new Sprite(terrain.mushrooms[idx]);
           sprite.anchor.set(0.5, 0.9);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 402) - 0.5) * TILE_W * 0.3, sy);
-          sprite.width = TILE_W * 0.7;
-          sprite.height = TILE_H * 0.7;
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 402) - 0.5) * TILE_W * 0.4, sy);
+          sprite.width = TILE_W * 0.75; sprite.height = TILE_H * 0.75;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
           continue;
@@ -563,31 +551,30 @@ export default function CityCanvas({
       }
 
       // ================================================================
-      // CATTAILS / REEDS — along sand cells that touch water (beach edge)
+      // CATTAILS / REEDS — along cliff cells that touch water
       // ================================================================
       if (terrain.cattails.length > 0) {
-        for (const cell of sandCells) {
+        for (const cell of cliffCells) {
           const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
           const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
           const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
           const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-          const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1;
+          const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1 || n === 4 || s === 4 || w === 4 || e === 4;
           if (!touchesWater) continue;
-          if (hash(cell.gx, cell.gy, 2000) > 0.25) continue;
+          if (hash(cell.gx, cell.gy, 2000) > 0.35) continue; // 35% of cliff-water edges
           const idx = Math.floor(hash(cell.gx, cell.gy, 2001) * terrain.cattails.length);
           const sprite = new Sprite(terrain.cattails[idx]);
           sprite.anchor.set(0.5, 0.9);
           const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 2002) - 0.5) * TILE_W * 0.5, sy);
-          sprite.width = TILE_W * 0.55;
-          sprite.height = TILE_H * 0.7;
-          sprite.zIndex = Math.floor(sy);
+          sprite.position.set(sx + (hash(cell.gx, cell.gy, 2002) - 0.5) * TILE_W * 0.5, sy + TILE_H * 0.1);
+          sprite.width = TILE_W * 0.65; sprite.height = TILE_H * 0.8;
+          sprite.zIndex = Math.floor(sy) + 1;
           decorLayer.addChild(sprite);
         }
       }
 
       // ================================================================
-      // TREE GROVES — clustered, not random
+      // TREE GROVES — HUGE overlapping trees like reference images
       // ================================================================
       const swayTrees: { sprite: Sprite; baseX: number; phase: number }[] = [];
       const groveplacements = generateGroves(
@@ -624,8 +611,7 @@ export default function CityCanvas({
           case 'pine':
             if (terrain.trees.length > 0) {
               const pineIdx = Math.min(4, terrain.trees.length - 1);
-              const sheet = terrain.trees[pineIdx];
-              tex = sheet.frames[0] ?? null;
+              tex = terrain.trees[pineIdx].frames[0] ?? null;
             }
             break;
           case 'bush':
@@ -637,18 +623,16 @@ export default function CityCanvas({
         if (!tex) continue;
         const sprite = new Sprite(tex);
         sprite.anchor.set(0.5, 0.9);
-        const treeScale = (TILE_W * tp.scale) / Math.max(tex.width, tex.height);
+        // Trees are 1.5x bigger than before for that lush canopy feel
+        const treeScale = (TILE_W * tp.scale * 1.5) / Math.max(tex.width, tex.height);
         sprite.scale.set(treeScale);
         sprite.position.set(px, py);
         sprite.zIndex = Math.floor(py);
         decorLayer.addChild(sprite);
-        // Track for sway animation (limit to 100 for performance)
-        if (swayTrees.length < 100 && tp.type !== 'bush') {
+        if (swayTrees.length < 120 && tp.type !== 'bush') {
           swayTrees.push({ sprite, baseX: px, phase: hash(tp.gx, tp.gy, 4000) * Math.PI * 2 });
         }
       }
-
-      // No ambient wandering animals — NPCs appear when buildings are placed.
 
       // ---- Clouds layer — varied depth and layering ----
       const cloudLayer = new Container();
@@ -677,96 +661,6 @@ export default function CityCanvas({
             cloudSprites.push({ sprite: cloud, speed: cfg.speedBase + hash(ci, 3, 500) * 0.12 });
             ci++;
           }
-        }
-      }
-
-      // ================================================================
-      // ANIMATED WATER EDGES — foam/waves on water cells adjacent to land
-      // Uses 4-frame animation from the farm tileset waterEdge textures.
-      // ================================================================
-      const waterEdgeSprites: AnimatedSprite[] = [];
-      for (let ry = 0; ry < MAP_ROWS; ry++) {
-        for (let rx = 0; rx < MAP_COLS; rx++) {
-          const v = elevation[ry][rx];
-          // Only on water cells (shallow=1 or deep=0) adjacent to grass
-          if (v !== 0 && v !== 1) continue;
-
-          const nv = elevation[ry - 1]?.[rx] ?? 0;
-          const sv = elevation[ry + 1]?.[rx] ?? 0;
-          const wv = elevation[ry]?.[rx - 1] ?? 0;
-          const ev = elevation[ry]?.[rx + 1] ?? 0;
-
-          const landN = nv === 3;
-          const landS = sv === 3;
-          const landW = wv === 3;
-          const landE = ev === 3;
-
-          if (!landN && !landS && !landW && !landE) continue;
-
-          // Pick the right edge direction
-          let frames: Texture[] | null = null;
-          if (landN && landW) frames = terrain.waterEdge.NW;
-          else if (landN && landE) frames = terrain.waterEdge.NE;
-          else if (landS && landW) frames = terrain.waterEdge.SW;
-          else if (landS && landE) frames = terrain.waterEdge.SE;
-          else if (landN) frames = terrain.waterEdge.N;
-          else if (landS) frames = terrain.waterEdge.S;
-          else if (landW) frames = terrain.waterEdge.W;
-          else if (landE) frames = terrain.waterEdge.E;
-
-          if (!frames || frames.length === 0) continue;
-
-          const gx = worldGx(rx), gy = worldGy(ry);
-          const anim = new AnimatedSprite(frames);
-          anim.anchor.set(0, 0);
-          anim.position.set(gx * TILE_W, gy * TILE_H);
-          anim.width = TILE_W;
-          anim.height = TILE_H;
-          anim.animationSpeed = 0.06; // slow gentle wave
-          anim.play();
-          // Stagger start frame for organic look
-          anim.currentFrame = Math.floor(hash(gx, gy, 8000) * frames.length);
-          tileLayer.addChild(anim);
-          waterEdgeSprites.push(anim);
-        }
-      }
-
-      // Also add inner corner water edges (diagonal land, no cardinal land)
-      for (let ry = 0; ry < MAP_ROWS; ry++) {
-        for (let rx = 0; rx < MAP_COLS; rx++) {
-          const v = elevation[ry][rx];
-          if (v !== 0 && v !== 1) continue;
-
-          const nv = elevation[ry - 1]?.[rx] ?? 0;
-          const sv = elevation[ry + 1]?.[rx] ?? 0;
-          const wv = elevation[ry]?.[rx - 1] ?? 0;
-          const ev = elevation[ry]?.[rx + 1] ?? 0;
-          if (nv === 3 || sv === 3 || wv === 3 || ev === 3) continue;
-
-          const nwv = elevation[ry - 1]?.[rx - 1] ?? 0;
-          const nev = elevation[ry - 1]?.[rx + 1] ?? 0;
-          const swv = elevation[ry + 1]?.[rx - 1] ?? 0;
-          const sev = elevation[ry + 1]?.[rx + 1] ?? 0;
-
-          let frames: Texture[] | null = null;
-          if (nwv === 3) frames = terrain.waterEdge.NW;
-          else if (nev === 3) frames = terrain.waterEdge.NE;
-          else if (swv === 3) frames = terrain.waterEdge.SW;
-          else if (sev === 3) frames = terrain.waterEdge.SE;
-
-          if (!frames || frames.length === 0) continue;
-
-          const gx = worldGx(rx), gy = worldGy(ry);
-          const anim = new AnimatedSprite(frames);
-          anim.anchor.set(0, 0);
-          anim.position.set(gx * TILE_W, gy * TILE_H);
-          anim.width = TILE_W;
-          anim.height = TILE_H;
-          anim.animationSpeed = 0.06;
-          anim.play();
-          anim.currentFrame = Math.floor(hash(gx, gy, 8001) * frames.length);
-          tileLayer.addChild(anim);
-          waterEdgeSprites.push(anim);
         }
       }
 
@@ -824,7 +718,6 @@ export default function CityCanvas({
           if (c.sprite.position.x > cloudWrapX) c.sprite.position.x = -200;
         }
 
-        // Water edge AnimatedSprites auto-animate via Pixi ticker (no manual update needed)
         const t = Date.now() / 1000;
 
         // Animate butterflies — figure-8 flight + wing flap
