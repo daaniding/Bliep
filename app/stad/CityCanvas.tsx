@@ -258,14 +258,23 @@ export default function CityCanvas({
         return elevation[ry][rx] === 3; // grass
       };
 
-      // ---- Bake water frames to 2×2 blocks for seamless tiling ----
-      const bakeWaterTile = (tex: Texture) => {
+      // ---- Bake water frames to 6×6 blocks with subtle variation ----
+      // Larger baked texture = less visible tiling pattern
+      const WATER_BAKE_SIZE = 6;
+      const bakeWaterTile = (tex: Texture, frameIdx: number) => {
         const c = new Container();
-        for (let dy = 0; dy < 2; dy++) {
-          for (let dx = 0; dx < 2; dx++) {
+        for (let dy = 0; dy < WATER_BAKE_SIZE; dy++) {
+          for (let dx = 0; dx < WATER_BAKE_SIZE; dx++) {
             const s = new Sprite(tex);
             s.width = TILE_W; s.height = TILE_H;
             s.position.set(dx * TILE_W, dy * TILE_H);
+            // Subtle tint variation to break up the grid
+            const h = ((dx * 374761 + dy * 668265 + frameIdx * 12345) >>> 0) % 1000;
+            const brightness = 0.96 + (h / 1000) * 0.08; // 0.96 - 1.04
+            const r = Math.round(80 * brightness);
+            const g = Math.round(150 * brightness);
+            const b = Math.round(184 * brightness);
+            s.tint = (r << 16) | (g << 8) | b;
             c.addChild(s);
           }
         }
@@ -274,8 +283,8 @@ export default function CityCanvas({
         c.destroy({ children: true });
         return t;
       };
-      const bakedWater = bakeWaterTile(terrain.water);
-      const bakedWaterFrames = terrain.waterFrames.map(f => bakeWaterTile(f));
+      const bakedWater = bakeWaterTile(terrain.water, 0);
+      const bakedWaterFrames = terrain.waterFrames.map((f, i) => bakeWaterTile(f, i));
 
       // ---- Animated water backdrop ----
       const waterLeft = -WATER_MARGIN * TILE_W;
@@ -289,6 +298,17 @@ export default function CityCanvas({
       });
       water.position.set(waterLeft, waterTop);
       tileLayer.addChild(water);
+
+      // Second water layer — offset and semi-transparent for depth
+      const water2 = new TilingSprite({
+        texture: bakedWaterFrames[1] || bakedWater,
+        width: waterW,
+        height: waterH,
+      });
+      water2.position.set(waterLeft, waterTop);
+      water2.alpha = 0.3;
+      water2.tint = 0x88bbdd; // slightly different blue tint
+      tileLayer.addChild(water2);
 
       // Animate water by cycling through 4 frames
       let waterFrame = 0;
@@ -351,6 +371,8 @@ export default function CityCanvas({
       }
 
       // ---- Multi-layer terrain rendering ----
+      // TEMP: hide island to focus on ocean only
+      const HIDE_ISLAND = true;
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
         let h = (x * 374761393 + y * 668265263 + salt * 2147483647 + seed * 69069) | 0;
@@ -377,6 +399,8 @@ export default function CityCanvas({
         }
       }
 
+      const swayTrees: { sprite: Sprite; baseX: number; phase: number }[] = [];
+      if (!HIDE_ISLAND) {
       // ---- Shallow water gradient ----
       const waterOverlay = new Graphics();
       for (let ry = 0; ry < MAP_ROWS; ry++) {
@@ -622,7 +646,6 @@ export default function CityCanvas({
       // ================================================================
       // TREE GROVES — HUGE overlapping trees like reference images
       // ================================================================
-      const swayTrees: { sprite: Sprite; baseX: number; phase: number }[] = [];
       const groveplacements = generateGroves(
         elevation, MAP_COLS, MAP_ROWS,
         CITY_CENTER.gx, CITY_CENTER.gy,
@@ -679,6 +702,8 @@ export default function CityCanvas({
           swayTrees.push({ sprite, baseX: px, phase: hash(tp.gx, tp.gy, 4000) * Math.PI * 2 });
         }
       }
+
+      } // end HIDE_ISLAND
 
       // ---- Clouds layer — varied depth and layering ----
       const cloudLayer = new Container();
@@ -759,13 +784,17 @@ export default function CityCanvas({
         const dt = ticker.deltaTime ?? 1;
         waterT += 0.25 * dt;
         water.tilePosition.set(waterT, waterT * 0.5);
+        // Second layer moves in opposite direction for shimmer
+        water2.tilePosition.set(-waterT * 0.7 + 100, waterT * 0.3 + 50);
 
-        // Cycle water animation frames (~every 20 ticks = ~0.33s at 60fps)
+        // Cycle water animation: 1→2→3→2→1→2→3→2 (frame 4 = frame 2 per tileset docs)
         waterFrameTimer += dt;
-        if (waterFrameTimer > 20 && bakedWaterFrames.length > 1) {
+        if (waterFrameTimer > 18 && bakedWaterFrames.length >= 3) {
           waterFrameTimer = 0;
-          waterFrame = (waterFrame + 1) % bakedWaterFrames.length;
-          water.texture = bakedWaterFrames[waterFrame];
+          // Ping-pong: 0,1,2,1,0,1,2,1,...
+          const sequence = [0, 1, 2, 1];
+          waterFrame = (waterFrame + 1) % sequence.length;
+          water.texture = bakedWaterFrames[sequence[waterFrame]];
         }
         for (const c of cloudSprites) {
           c.sprite.position.x += c.speed * dt;
@@ -833,7 +862,7 @@ export default function CityCanvas({
 
       // ---- Daily chest ----
       const chestTex = getTopdownTexture(atlas, 'chest');
-      if (chestTex && chestTex !== Texture.EMPTY) {
+      if (!HIDE_ISLAND && chestTex && chestTex !== Texture.EMPTY) {
         const chest = new Sprite(chestTex);
         chest.anchor.set(0.5, 0.95);
         const { sx, sy } = gridToScreen(CITY_CENTER.gx, CITY_CENTER.gy, 0, 0);
@@ -1289,6 +1318,9 @@ export default function CityCanvas({
   }
 
   function syncBuildings() {
+    // TEMP: hide buildings while focusing on ocean
+    const HIDE_BUILDINGS = true;
+    if (HIDE_BUILDINGS) return;
     const layer = buildingLayerRef.current;
     const npcLayer = npcLayerRef.current;
     const overlay = overlayLayerRef.current;
