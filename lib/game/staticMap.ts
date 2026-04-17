@@ -69,18 +69,17 @@ export function parseElevation(): number[][] {
     for (let c = 0; c < MAP_COLS; c++) {
       const angle = Math.atan2(r - cy, c - cx);
 
-      // Iets breder dan hoog, asymmetrisch
-      const rx = 34;
-      const ry = 30;
+      // Langwerpig van boven naar beneden
+      const rx = 24;
+      const ry = 38;
 
-      // Asymmetrische vorm — links anders dan rechts, boven anders dan onder
-      const shape = Math.sin(angle * 1.7 + 2.2) * 4
-                  + Math.cos(angle * 2.3 - 0.8) * 2.5
-                  + Math.sin(angle * 3.8 + 1.0) * 1.5
-                  + Math.cos(angle * 0.6 + 3.5) * 3;
+      // Zachte asymmetrie — kleine bochten in de kustlijn
+      const shape = Math.sin(angle * 2.1 + 1.4) * 2.5
+                  + Math.cos(angle * 3.4 - 0.6) * 1.5
+                  + Math.sin(angle * 5.2 + 2.8) * 1.0;
 
       const dx = (c - cx) / (rx + shape);
-      const dy = (r - cy) / (ry + shape * 0.6);
+      const dy = (r - cy) / (ry + shape * 0.4);
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       // Fijne noise voor natuurlijke kustlijn
