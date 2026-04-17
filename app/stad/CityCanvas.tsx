@@ -680,8 +680,95 @@ export default function CityCanvas({
         }
       }
 
-      // Coast autotile on grass cells handles the rocky cliff + foam.
-      // No separate water edge overlay needed.
+      // ================================================================
+      // ANIMATED WATER EDGES — foam/waves on water cells adjacent to land
+      // Uses 4-frame animation from the farm tileset waterEdge textures.
+      // ================================================================
+      const waterEdgeSprites: AnimatedSprite[] = [];
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          const v = elevation[ry][rx];
+          // Only on water cells (shallow=1 or deep=0) adjacent to grass
+          if (v !== 0 && v !== 1) continue;
+
+          const nv = elevation[ry - 1]?.[rx] ?? 0;
+          const sv = elevation[ry + 1]?.[rx] ?? 0;
+          const wv = elevation[ry]?.[rx - 1] ?? 0;
+          const ev = elevation[ry]?.[rx + 1] ?? 0;
+
+          const landN = nv === 3;
+          const landS = sv === 3;
+          const landW = wv === 3;
+          const landE = ev === 3;
+
+          if (!landN && !landS && !landW && !landE) continue;
+
+          // Pick the right edge direction
+          let frames: Texture[] | null = null;
+          if (landN && landW) frames = terrain.waterEdge.NW;
+          else if (landN && landE) frames = terrain.waterEdge.NE;
+          else if (landS && landW) frames = terrain.waterEdge.SW;
+          else if (landS && landE) frames = terrain.waterEdge.SE;
+          else if (landN) frames = terrain.waterEdge.N;
+          else if (landS) frames = terrain.waterEdge.S;
+          else if (landW) frames = terrain.waterEdge.W;
+          else if (landE) frames = terrain.waterEdge.E;
+
+          if (!frames || frames.length === 0) continue;
+
+          const gx = worldGx(rx), gy = worldGy(ry);
+          const anim = new AnimatedSprite(frames);
+          anim.anchor.set(0, 0);
+          anim.position.set(gx * TILE_W, gy * TILE_H);
+          anim.width = TILE_W;
+          anim.height = TILE_H;
+          anim.animationSpeed = 0.06; // slow gentle wave
+          anim.play();
+          // Stagger start frame for organic look
+          anim.currentFrame = Math.floor(hash(gx, gy, 8000) * frames.length);
+          tileLayer.addChild(anim);
+          waterEdgeSprites.push(anim);
+        }
+      }
+
+      // Also add inner corner water edges (diagonal land, no cardinal land)
+      for (let ry = 0; ry < MAP_ROWS; ry++) {
+        for (let rx = 0; rx < MAP_COLS; rx++) {
+          const v = elevation[ry][rx];
+          if (v !== 0 && v !== 1) continue;
+
+          const nv = elevation[ry - 1]?.[rx] ?? 0;
+          const sv = elevation[ry + 1]?.[rx] ?? 0;
+          const wv = elevation[ry]?.[rx - 1] ?? 0;
+          const ev = elevation[ry]?.[rx + 1] ?? 0;
+          if (nv === 3 || sv === 3 || wv === 3 || ev === 3) continue;
+
+          const nwv = elevation[ry - 1]?.[rx - 1] ?? 0;
+          const nev = elevation[ry - 1]?.[rx + 1] ?? 0;
+          const swv = elevation[ry + 1]?.[rx - 1] ?? 0;
+          const sev = elevation[ry + 1]?.[rx + 1] ?? 0;
+
+          let frames: Texture[] | null = null;
+          if (nwv === 3) frames = terrain.waterEdge.NW;
+          else if (nev === 3) frames = terrain.waterEdge.NE;
+          else if (swv === 3) frames = terrain.waterEdge.SW;
+          else if (sev === 3) frames = terrain.waterEdge.SE;
+
+          if (!frames || frames.length === 0) continue;
+
+          const gx = worldGx(rx), gy = worldGy(ry);
+          const anim = new AnimatedSprite(frames);
+          anim.anchor.set(0, 0);
+          anim.position.set(gx * TILE_W, gy * TILE_H);
+          anim.width = TILE_W;
+          anim.height = TILE_H;
+          anim.animationSpeed = 0.06;
+          anim.play();
+          anim.currentFrame = Math.floor(hash(gx, gy, 8001) * frames.length);
+          tileLayer.addChild(anim);
+          waterEdgeSprites.push(anim);
+        }
+      }
 
       // ---- Butterflies — small animated particles over flower areas ----
       type ButterflyData = { g: Graphics; baseX: number; baseY: number; phase: number; speed: number; amp: number };
@@ -849,8 +936,8 @@ export default function CityCanvas({
         app.renderer.height / extMapH,
       );
       const defaultZoom = Math.min(
-        app.renderer.width / (28 * TILE_W),
-        app.renderer.height / (28 * TILE_H),
+        app.renderer.width / (18 * TILE_W),
+        app.renderer.height / (18 * TILE_H),
       );
       const previewPadding = 4 * TILE_W;
       const previewZoom = Math.min(

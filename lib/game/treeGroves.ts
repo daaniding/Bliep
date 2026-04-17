@@ -1,10 +1,8 @@
 /**
  * Tree grove clustering algorithm.
  *
- * Instead of scattering trees randomly per-cell, this generates
- * natural-looking groves: clusters of trees with varying density,
- * type, and size. Creates a forest-like feel at the island edges
- * and orchards near the center.
+ * Dense forest at island edges, only center open for building.
+ * Creates natural-looking groves with varying density, type, and size.
  */
 
 export type GroveType = 'dense' | 'light' | 'orchard' | 'cherry' | 'mixed';
@@ -40,15 +38,7 @@ function seededRng(seed: number) {
 
 /**
  * Generate tree placements using grove-based clustering.
- *
- * @param elevation The processed elevation grid (0-4 values)
- * @param mapCols Grid width
- * @param mapRows Grid height
- * @param centerGx World-grid X of island center
- * @param centerGy World-grid Y of island center
- * @param offsetGx Map-to-world X offset
- * @param offsetGy Map-to-world Y offset
- * @param seed Random seed
+ * Dense at edges, center open for building.
  */
 export function generateGroves(
   elevation: number[][],
@@ -76,9 +66,9 @@ export function generateGroves(
   const centerDist = (gx: number, gy: number) =>
     Math.hypot(gx - centerGx, gy - centerGy);
 
-  // Distance from any non-grass cell (coast/sand proximity)
+  // Distance from any non-grass cell (coast/water proximity)
   const distFromEdge = (rx: number, ry: number): number => {
-    for (let d = 1; d <= 5; d++) {
+    for (let d = 1; d <= 8; d++) {
       for (let dy = -d; dy <= d; dy++) {
         for (let dx = -d; dx <= d; dx++) {
           if (Math.abs(dx) === d || Math.abs(dy) === d) {
@@ -88,14 +78,14 @@ export function generateGroves(
         }
       }
     }
-    return 6;
+    return 9;
   };
 
-  // ---- Step 1: Pick grove centers using Poisson-disk-like sampling ----
+  // ---- Step 1: Pick grove centers ----
   const groves: GroveCenter[] = [];
-  const minSpacing = 4;
-  const maxGroves = 28;
-  const attempts = 600;
+  const minSpacing = 3;
+  const maxGroves = 45; // more groves for denser edges
+  const attempts = 900;
 
   for (let i = 0; i < attempts && groves.length < maxGroves; i++) {
     const idx = Math.floor(rand() * grassCells.length);
@@ -103,9 +93,9 @@ export function generateGroves(
     const cd = centerDist(cell.gx, cell.gy);
     const ed = distFromEdge(cell.rx, cell.ry);
 
-    // Keep core build area clear but trees close around it
-    if (cd < 8) continue;
-    // Must be at least 2 tiles from edge (not on beach)
+    // Center clear zone — bigger open area for building
+    if (cd < 12) continue;
+    // Must be at least 2 tiles from water edge
     if (ed < 2) continue;
 
     // Check spacing from existing groves
@@ -114,35 +104,36 @@ export function generateGroves(
     );
     if (tooClose) continue;
 
-    // Determine grove type based on position — lush everywhere
+    // Grove type based on distance from center
     let type: GroveType;
-    if (cd > 25) {
-      type = rand() < 0.7 ? 'dense' : 'mixed'; // outer ring = thick forest
-    } else if (cd > 18) {
+    if (cd > 28) {
+      type = rand() < 0.8 ? 'dense' : 'mixed'; // outer = thick forest
+    } else if (cd > 22) {
       const r = rand();
-      if (r < 0.25) type = 'cherry';
-      else if (r < 0.5) type = 'dense';
-      else if (r < 0.75) type = 'mixed';
+      if (r < 0.4) type = 'dense';
+      else if (r < 0.6) type = 'mixed';
+      else if (r < 0.8) type = 'cherry';
       else type = 'light';
-    } else if (cd > 12) {
+    } else if (cd > 16) {
       const r = rand();
-      if (r < 0.35) type = 'orchard';
-      else if (r < 0.55) type = 'cherry';
+      if (r < 0.3) type = 'mixed';
+      else if (r < 0.5) type = 'cherry';
+      else if (r < 0.7) type = 'orchard';
       else type = 'light';
     } else {
-      type = rand() < 0.6 ? 'orchard' : 'light'; // near center = orchard
+      type = rand() < 0.5 ? 'orchard' : 'light'; // near center = sparse
     }
 
-    const radius = type === 'dense' ? 5 + rand() * 5
-                 : type === 'mixed' ? 4 + rand() * 4
+    const radius = type === 'dense' ? 5 + rand() * 6
+                 : type === 'mixed' ? 4 + rand() * 5
                  : type === 'cherry' ? 3 + rand() * 3
-                 : type === 'orchard' ? 4 + rand() * 3
+                 : type === 'orchard' ? 3 + rand() * 3
                  : 3 + rand() * 4;
 
-    const treeCount = type === 'dense' ? 14 + Math.floor(rand() * 10)
-                    : type === 'mixed' ? 10 + Math.floor(rand() * 8)
-                    : type === 'cherry' ? 4 + Math.floor(rand() * 4)
-                    : type === 'orchard' ? 6 + Math.floor(rand() * 5)
+    const treeCount = type === 'dense' ? 16 + Math.floor(rand() * 14)
+                    : type === 'mixed' ? 12 + Math.floor(rand() * 10)
+                    : type === 'cherry' ? 5 + Math.floor(rand() * 5)
+                    : type === 'orchard' ? 5 + Math.floor(rand() * 5)
                     : 5 + Math.floor(rand() * 6);
 
     groves.push({ gx: cell.gx, gy: cell.gy, radius, type, treeCount });
@@ -154,24 +145,24 @@ export function generateGroves(
 
   for (const grove of groves) {
     for (let t = 0; t < grove.treeCount; t++) {
-      // Gaussian-ish distribution around grove center
       const angle = rand() * Math.PI * 2;
-      const dist = rand() * rand() * grove.radius; // squared for center-heavy distribution
+      const dist = rand() * rand() * grove.radius;
       const gx = Math.round(grove.gx + Math.cos(angle) * dist);
       const gy = Math.round(grove.gy + Math.sin(angle) * dist);
 
       const key = `${gx},${gy}`;
       if (usedCells.has(key)) continue;
 
-      // Verify this is a grass cell
       const rx = gx - offsetGx;
       const ry = gy - offsetGy;
       if (rx < 0 || rx >= mapCols || ry < 0 || ry >= mapRows) continue;
       if (elevation[ry][rx] !== 3) continue;
 
+      // Don't place in center clear zone
+      if (centerDist(gx, gy) < 12) continue;
+
       usedCells.add(key);
 
-      // Determine tree type based on grove type
       let type: TreePlacement['type'];
       let scale: number;
 
@@ -179,7 +170,7 @@ export function generateGroves(
         case 'dense':
           {
             const r = rand();
-            if (r < 0.12) { type = 'large'; scale = 3.0 + rand() * 1.0; }
+            if (r < 0.12) { type = 'large'; scale = 3.0 + rand() * 1.2; }
             else if (r < 0.25) { type = 'pine'; scale = 2.2 + rand() * 0.8; }
             else if (r < 0.35) { type = 'bush'; scale = 1.2 + rand() * 0.6; }
             else { type = 'basic'; scale = 2.2 + rand() * 1.2; }
@@ -226,36 +217,14 @@ export function generateGroves(
     }
   }
 
-  // ---- Step 3: Add sparse individual trees outside groves ----
+  // ---- Step 3: Dense outer ring fill — every grass cell far from center ----
   for (const cell of grassCells) {
     const cd = centerDist(cell.gx, cell.gy);
-    if (cd < 8) continue; // keep core build area clear
+    if (cd < 22) continue;
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 2) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.05) continue; // ~5% of remaining cells
-
-    const r = rand();
-    placements.push({
-      gx: cell.gx, gy: cell.gy,
-      offsetX: (rand() - 0.5) * 0.3,
-      offsetY: (rand() - 0.5) * 0.3,
-      type: r < 0.15 ? 'pine' : r < 0.3 ? 'fruit' : r < 0.4 ? 'cherry' : 'basic',
-      sheetIndex: Math.floor(rand() * 100),
-      scale: 2.0 + rand() * 1.0,
-    });
-    usedCells.add(`${cell.gx},${cell.gy}`);
-  }
-
-  // ---- Step 4: Fill outer ring — dense forest border ----
-  // Any grass cell far from center that's not occupied gets a tree
-  for (const cell of grassCells) {
-    const cd = centerDist(cell.gx, cell.gy);
-    if (cd < 20) continue; // only outer ring
-    const ed = distFromEdge(cell.rx, cell.ry);
-    if (ed < 3) continue; // not too close to coast
-    if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.18) continue; // ~18% fill rate for border (was 35% — too dense)
+    if (rand() > 0.30) continue; // 30% fill rate for outer ring
 
     const r = rand();
     placements.push({
@@ -269,12 +238,12 @@ export function generateGroves(
     usedCells.add(`${cell.gx},${cell.gy}`);
   }
 
-  // ---- Step 5: Edge bushes — line of bushes near the coast ----
+  // ---- Step 4: Edge bushes — thick bush border near coast ----
   for (const cell of grassCells) {
     const ed = distFromEdge(cell.rx, cell.ry);
-    if (ed < 2 || ed > 5) continue;
+    if (ed < 2 || ed > 6) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.12) continue; // ~12% of edge cells get bushes (was 22%)
+    if (rand() > 0.18) continue; // 18% of edge cells get bushes
 
     placements.push({
       gx: cell.gx, gy: cell.gy,
@@ -287,14 +256,14 @@ export function generateGroves(
     usedCells.add(`${cell.gx},${cell.gy}`);
   }
 
-  // ---- Step 6: Mid-ring fill — lighter tree coverage ----
+  // ---- Step 5: Mid-ring fill — moderate coverage ----
   for (const cell of grassCells) {
     const cd = centerDist(cell.gx, cell.gy);
-    if (cd < 12 || cd > 20) continue; // mid ring only
+    if (cd < 14 || cd > 22) continue;
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 3) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.06) continue; // ~6% fill rate (was 12% — too much)
+    if (rand() > 0.10) continue; // 10% fill rate for mid ring
 
     const r = rand();
     placements.push({
@@ -304,6 +273,27 @@ export function generateGroves(
       type: r < 0.2 ? 'fruit' : r < 0.35 ? 'cherry' : r < 0.5 ? 'bush' : 'basic',
       sheetIndex: Math.floor(rand() * 100),
       scale: r < 0.5 ? 1.0 + rand() * 0.5 : 2.0 + rand() * 0.8,
+    });
+    usedCells.add(`${cell.gx},${cell.gy}`);
+  }
+
+  // ---- Step 6: Sparse individuals outside groves ----
+  for (const cell of grassCells) {
+    const cd = centerDist(cell.gx, cell.gy);
+    if (cd < 12) continue;
+    const ed = distFromEdge(cell.rx, cell.ry);
+    if (ed < 2) continue;
+    if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
+    if (rand() > 0.04) continue; // 4% of remaining cells
+
+    const r = rand();
+    placements.push({
+      gx: cell.gx, gy: cell.gy,
+      offsetX: (rand() - 0.5) * 0.3,
+      offsetY: (rand() - 0.5) * 0.3,
+      type: r < 0.15 ? 'pine' : r < 0.3 ? 'fruit' : r < 0.4 ? 'cherry' : 'basic',
+      sheetIndex: Math.floor(rand() * 100),
+      scale: 2.0 + rand() * 1.0,
     });
     usedCells.add(`${cell.gx},${cell.gy}`);
   }
