@@ -305,7 +305,7 @@ export default function CityCanvas({
         height: waterH,
       });
       water.position.set(waterLeft, waterTop);
-      water.alpha = 0.18; // very subtle wave texture
+      water.alpha = 0.28; // visible wave movement but still smooth
       tileLayer.addChild(water);
 
       // Tile layer 2 — offset, different speed for shimmer
@@ -315,7 +315,7 @@ export default function CityCanvas({
         height: waterH,
       });
       water2.position.set(waterLeft, waterTop);
-      water2.alpha = 0.10;
+      water2.alpha = 0.15;
       water2.tint = 0x70aacc;
       tileLayer.addChild(water2);
 
