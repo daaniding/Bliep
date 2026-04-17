@@ -1,8 +1,5 @@
 /**
- * Island generation — Stardew Valley inspired shape.
- *
- * Natural, cozy farm island with a protected harbor bay,
- * winding coastline, and distinct areas for different zones.
+ * Island shape — simple, natural, no gimmicks.
  *
  * Grid values:
  *   0 = deep water
@@ -53,67 +50,33 @@ function fbm(noise: (x: number, y: number) => number, x: number, y: number, octa
   return value / total;
 }
 
-function ellipseDist(x: number, y: number, cx: number, cy: number, rx: number, ry: number): number {
-  const dx = (x - cx) / rx;
-  const dy = (y - cy) / ry;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
 export function parseElevation(): number[][] {
   const grid: number[][] = Array.from({ length: MAP_ROWS }, () =>
     new Array(MAP_COLS).fill(0)
   );
 
-  const noise1 = makeNoise2D(55);
-  const noise2 = makeNoise2D(201);
-  const noise3 = makeNoise2D(3344);
+  const noise = makeNoise2D(77);
 
   const cx = MAP_COLS / 2;
   const cy = MAP_ROWS / 2;
+  const radius = 30;
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // ============================================================
-      // SIMPEL MOOI EILAND — verticaal, organisch, één massa
-      // ============================================================
+      const dx = (c - cx) / radius;
+      const dy = (r - cy) / radius;
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Eén grote verticale ellips als basis
-      const mainDist = ellipseDist(c, r, cx, cy, 26, 34);
+      // Noise maakt de rand organisch
+      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 0.4;
 
-      // Kleine uitstulpingen voor organische vorm
-      const bumpE = ellipseDist(c, r, cx + 20, cy - 5, 12, 10);
-      const bumpW = ellipseDist(c, r, cx - 18, cy + 8, 10, 12);
-      const bumpN = ellipseDist(c, r, cx - 6, cy - 28, 10, 8);
-
-      const minLand = Math.min(mainDist, bumpE, bumpW, bumpN);
-
-      // Inhammen
-      const inlet1 = ellipseDist(c, r, cx + 14, cy + 12, 7, 5);
-      const inlet2 = ellipseDist(c, r, cx - 12, cy - 10, 6, 5);
-      const inlet3 = ellipseDist(c, r, cx + 4, cy + 30, 8, 5);
-
-      // Organic noise
-      const n1 = fbm(noise1, c * 0.028, r * 0.028, 4) * 0.22;
-      const n2 = fbm(noise2, c * 0.07, r * 0.07, 3) * 0.12;
-      const n3 = fbm(noise3, c * 0.14, r * 0.14, 2) * 0.06;
-
-      const landValue = minLand + n1 + n2 + n3;
-      const threshold = 0.95;
-
-      if (landValue < threshold) {
-        // Subtract inlets
-        const inInlet1 = inlet1 < 0.75 && landValue > threshold * 0.55;
-        const inInlet2 = inlet2 < 0.70 && landValue > threshold * 0.55;
-        const inInlet3 = inlet3 < 0.75 && landValue > threshold * 0.6;
-
-        if (!inInlet1 && !inInlet2 && !inInlet3) {
-          grid[r][c] = 3;
-        }
+      if (dist + n < 1.0) {
+        grid[r][c] = 3;
       }
     }
   }
 
-  // Remove tiny islands (< 12 cells)
+  // Kleine eilandjes weg
   const visited = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
@@ -132,11 +95,11 @@ export function parseElevation(): number[][] {
           stack.push([nr, nc]);
         }
       }
-      if (comp.length < 12) comp.forEach(([cr, cc]) => { grid[cr][cc] = 0; });
+      if (comp.length < 15) comp.forEach(([cr, cc]) => { grid[cr][cc] = 0; });
     }
   }
 
-  // Fill tiny water holes (< 8 cells)
+  // Kleine gaatjes dicht
   const visitedW = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
@@ -157,7 +120,7 @@ export function parseElevation(): number[][] {
           stack.push([nr, nc]);
         }
       }
-      if (!touchesEdge && comp.length < 8) comp.forEach(([cr, cc]) => { grid[cr][cc] = 3; });
+      if (!touchesEdge && comp.length < 10) comp.forEach(([cr, cc]) => { grid[cr][cc] = 3; });
     }
   }
 
