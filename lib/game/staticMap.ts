@@ -63,25 +63,18 @@ export function parseElevation(): number[][] {
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // Hoek-afhankelijke radius: maakt de vorm onregelmatig
-      // Sommige richtingen steken verder uit dan andere
-      const angle = Math.atan2(r - cy, c - cx);
-      const baseRadius = 28;
-      // 5 "lobes" van verschillende grootte
-      const lobe = Math.sin(angle * 1.3 + 0.5) * 6
-                  + Math.sin(angle * 2.7 - 1.2) * 4
-                  + Math.cos(angle * 0.8 + 2.0) * 5;
-      const radius = baseRadius + lobe;
+      // Druppelvorm: breed bovenaan, taps naar beneden
+      // zoals een mango of druppel water
+      const dx = (c - cx) / 32;
+      const dy = (r - cy) / 38;
+      // Breedte neemt af naar beneden toe
+      const taperX = dx * (1.0 + dy * 0.35);
+      const dist = Math.sqrt(taperX * taperX + dy * dy);
 
-      const dx = (c - cx);
-      const dy = (r - cy);
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 0.15;
+      const n2 = fbm(noise2, c * 0.09, r * 0.09, 3) * 0.08;
 
-      // Noise voor organische kust details
-      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 8;
-      const n2 = fbm(noise2, c * 0.09, r * 0.09, 3) * 4;
-
-      if (dist + n + n2 < radius) {
+      if (dist + n + n2 < 0.92) {
         grid[r][c] = 3;
       }
     }
