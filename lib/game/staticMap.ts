@@ -1,15 +1,16 @@
 /**
- * Island generation — simple model.
+ * Island generation — hand-designed shape with organic coastline.
+ *
+ * Instead of pure noise, the island is built from overlapping shapes
+ * (circles, ellipses) that create an intentional landmass with
+ * bays, peninsulas, and a harbor area. Noise is added on top for
+ * organic coastline detail.
  *
  * Grid values:
  *   0 = deep water
  *   1 = shallow water (near coast)
  *   3 = grass (land)
  *   4 = lake water
- *
- * Coast tiles go directly on grass cells that border water.
- * No separate cliff layer — the coast tile already contains
- * the rocky edge + grass top in a single 16×16 tile.
  */
 
 export const MAP_COLS = 120;
@@ -55,6 +56,13 @@ function fbm(noise: (x: number, y: number) => number, x: number, y: number, octa
   return value / total;
 }
 
+/** Smooth distance to an ellipse (0 = center, 1 = edge). */
+function ellipseDist(x: number, y: number, cx: number, cy: number, rx: number, ry: number): number {
+  const dx = (x - cx) / rx;
+  const dy = (y - cy) / ry;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 export function parseElevation(): number[][] {
   const grid: number[][] = Array.from({ length: MAP_ROWS }, () =>
     new Array(MAP_COLS).fill(0)
@@ -63,33 +71,66 @@ export function parseElevation(): number[][] {
   const noise1 = makeNoise2D(42);
   const noise2 = makeNoise2D(137);
   const noise3 = makeNoise2D(2891);
-  const noise4 = makeNoise2D(7723);
 
-  const centerX = MAP_COLS / 2;
-  const centerY = MAP_ROWS / 2;
-  const radiusX = MAP_COLS * 0.36;
-  const radiusY = MAP_ROWS * 0.36;
+  // ================================================================
+  // ISLAND SHAPE — built from overlapping shapes
+  // Think: main body + southern bay + eastern peninsula + northern bump
+  // ================================================================
+
+  const cx = MAP_COLS / 2;  // 60
+  const cy = MAP_ROWS / 2;  // 45
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      const dx = (c - centerX) / radiusX;
-      const dy = (r - centerY) / radiusY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      // --- Main body: wide ellipse, slightly left of center ---
+      const mainDist = ellipseDist(c, r, cx - 3, cy, 32, 26);
 
-      const n1 = fbm(noise1, c * 0.025, r * 0.025, 4) * 0.40;
-      const n2 = fbm(noise2, c * 0.06, r * 0.06, 3) * 0.22;
-      const n3 = fbm(noise3, c * 0.12, r * 0.12, 2) * 0.12;
-      const angle = Math.atan2(r - centerY, c - centerX);
-      const peninsulaNoise = fbm(noise4, angle * 2.5 + 10, dist * 3, 3);
-      const peninsulaBonus = peninsulaNoise * 0.18 * Math.max(0, dist - 0.4);
+      // --- Southern peninsula pointing SE ---
+      const southPenDist = ellipseDist(c, r, cx + 15, cy + 20, 18, 12);
 
-      if (dist + n1 + n2 + n3 - peninsulaBonus < 0.88) {
-        grid[r][c] = 3;
+      // --- Northern lobe (wider top) ---
+      const northLobeDist = ellipseDist(c, r, cx + 5, cy - 16, 22, 14);
+
+      // --- Western bump ---
+      const westBumpDist = ellipseDist(c, r, cx - 22, cy - 5, 14, 18);
+
+      // --- Small eastern peninsula ---
+      const eastPenDist = ellipseDist(c, r, cx + 28, cy + 5, 10, 8);
+
+      // --- Harbor bay (subtract — creates an inlet on the south) ---
+      const bayDist = ellipseDist(c, r, cx - 5, cy + 22, 12, 10);
+
+      // --- NE cove (subtract — creates a cove) ---
+      const coveDist = ellipseDist(c, r, cx + 18, cy - 18, 8, 7);
+
+      // Combine: land if ANY shape is close enough (union of shapes)
+      const minLand = Math.min(mainDist, southPenDist, northLobeDist, westBumpDist, eastPenDist);
+
+      // Noise for organic coastline (not too much — shape should be recognizable)
+      const n1 = fbm(noise1, c * 0.03, r * 0.03, 4) * 0.25;
+      const n2 = fbm(noise2, c * 0.08, r * 0.08, 3) * 0.12;
+      const n3 = fbm(noise3, c * 0.15, r * 0.15, 2) * 0.06;
+
+      const landValue = minLand + n1 + n2 + n3;
+      const threshold = 0.92;
+
+      if (landValue < threshold) {
+        // Check if inside a bay/cove (subtract)
+        const bayStrength = Math.max(0, 1 - bayDist) * 0.8;
+        const coveStrength = Math.max(0, 1 - coveDist) * 0.7;
+
+        if (landValue + bayStrength * 0.6 < threshold && bayDist > 0.5) {
+          grid[r][c] = 3; // land
+        } else if (bayDist > 0.5 && coveDist > 0.5) {
+          grid[r][c] = 3; // land (not in bay or cove)
+        } else if (landValue < threshold * 0.7) {
+          grid[r][c] = 3; // deep enough inside to survive bay subtraction
+        }
       }
     }
   }
 
-  // Remove tiny islands
+  // ---- Remove tiny islands (< 10 cells) ----
   const visited = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
@@ -108,11 +149,11 @@ export function parseElevation(): number[][] {
           stack.push([nr, nc]);
         }
       }
-      if (comp.length < 8) comp.forEach(([cr, cc]) => { grid[cr][cc] = 0; });
+      if (comp.length < 10) comp.forEach(([cr, cc]) => { grid[cr][cc] = 0; });
     }
   }
 
-  // Fill tiny water holes
+  // ---- Fill tiny water holes inside the island (< 8 cells) ----
   const visitedW = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
@@ -133,7 +174,7 @@ export function parseElevation(): number[][] {
           stack.push([nr, nc]);
         }
       }
-      if (!touchesEdge && comp.length < 6) comp.forEach(([cr, cc]) => { grid[cr][cc] = 3; });
+      if (!touchesEdge && comp.length < 8) comp.forEach(([cr, cc]) => { grid[cr][cc] = 3; });
     }
   }
 
@@ -172,14 +213,15 @@ export function processElevation(raw: number[][]): number[][] {
     }
   }
 
-  // Lake
+  // Lake — small round in the northeast area
   const lakeNoise = makeNoise2D(1337);
-  const lakeCX = 72, lakeCY = 26, lakeR = 4;
+  const lakeCX = Math.round(cols * 0.58);
+  const lakeCY = Math.round(rows * 0.32);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (grid[r][c] !== 3) continue;
-      const dx = (c - lakeCX) / lakeR;
-      const dy = (r - lakeCY) / lakeR;
+      const dx = (c - lakeCX) / 4;
+      const dy = (r - lakeCY) / 3.5;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist + fbm(lakeNoise, c * 0.1, r * 0.1, 2) * 0.2 < 0.85) {
         grid[r][c] = 4;

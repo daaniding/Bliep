@@ -471,7 +471,8 @@ export default function CityCanvas({
 
       // ---- Multi-layer terrain rendering ----
       // TEMP: hide island to focus on ocean only
-      const HIDE_ISLAND = true;
+      const HIDE_ISLAND = false;
+      const SHAPE_ONLY = true; // only grass + coast, no trees/decorations
       const seed = state.npcSeed || 1;
       const hash = (x: number, y: number, salt: number): number => {
         let h = (x * 374761393 + y * 668265263 + salt * 2147483647 + seed * 69069) | 0;
@@ -662,6 +663,7 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
+      if (!SHAPE_ONLY) {
       // ================================================================
       // DECORATION SCATTER — denser flowers, tufts, mushrooms
       // ================================================================
@@ -802,6 +804,7 @@ export default function CityCanvas({
         }
       }
 
+      } // end SHAPE_ONLY
       } // end HIDE_ISLAND
 
       // ---- Clouds layer — varied depth and layering ----
