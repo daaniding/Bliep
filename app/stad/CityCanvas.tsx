@@ -351,12 +351,9 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Sand tiles — coast autotile for water border, plain fill interior ----
+      // ---- Sand tiles — plain fill (coast tiles are cliff/rock, not beach) ----
       for (const cell of sandCells) {
-        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
-        const isCoastEdge = coastIdx !== null && coastIdx !== 4;
-        const tex = isCoastEdge ? terrain.coast[coastIdx] : terrain.sandFill;
-        const sprite = new Sprite(tex);
+        const sprite = new Sprite(terrain.sandFill);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
@@ -377,8 +374,11 @@ export default function CityCanvas({
         const sandIdx = grassToSandIndex(elevation, cell.rx, cell.ry);
         const hasSandEdge = sandIdx !== null;
 
+        // The sandToGrass tiles are path autotiles (sand perspective).
+        // For a grass cell looking at sand, we mirror the index: 8 - idx.
+        // This flips N↔S and E↔W so the sand edge faces the correct direction.
         const tex = hasSandEdge
-          ? (terrain.sandToGrass[sandIdx] ?? terrain.grass[0])
+          ? (terrain.sandToGrass[8 - sandIdx] ?? terrain.grass[0])
           : terrain.grass[0];
         const sprite = new Sprite(tex);
         sprite.anchor.set(0, 0);
