@@ -725,60 +725,99 @@ export default function CityCanvas({
         }
       }
 
-      if (!SHAPE_ONLY) {
+      {
       // ================================================================
-      // DECORATION SCATTER — denser flowers, tufts, mushrooms
+      // DECORATION SCATTER — DENSE, overlapping, breaking up the grid
+      // Elke cel kan MEERDERE decoraties krijgen
       // ================================================================
       for (const cell of grassCells) {
-        const centerDist = Math.hypot(cell.gx - CITY_CENTER.gx, cell.gy - CITY_CENTER.gy);
-        const r = hash(cell.gx, cell.gy, 100);
+        const distFromEdge = grassDistFromEdge.get(`${cell.rx},${cell.ry}`) ?? maxGrassDist;
+        const edgeT = Math.min(1, distFromEdge / maxGrassDist);
         const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
 
-        // Grass tufts ~30%
-        if (r < 0.30 && terrain.grassTufts.length > 0) {
+        // --- Layer 1: Grass tufts (45% van cellen) — breekt het grid op ---
+        if (hash(cell.gx, cell.gy, 100) < 0.45 && terrain.grassTufts.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 101) * terrain.grassTufts.length);
           const sprite = new Sprite(terrain.grassTufts[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.6,
-                              sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.6);
-          sprite.width = TILE_W * 0.9; sprite.height = TILE_H * 0.9;
-          sprite.alpha = 0.85; sprite.zIndex = Math.floor(sprite.position.y) - 1;
+          sprite.position.set(
+            sx + (hash(cell.gx, cell.gy, 102) - 0.5) * TILE_W * 0.7,
+            sy + (hash(cell.gx, cell.gy, 103) - 0.5) * TILE_H * 0.7
+          );
+          sprite.width = TILE_W * 1.0; sprite.height = TILE_H * 1.0;
+          sprite.alpha = 0.8;
+          sprite.zIndex = Math.floor(sprite.position.y) - 1;
           decorLayer.addChild(sprite);
-          // Some cells get BOTH tuft and flower for lush overlap
-          if (hash(cell.gx, cell.gy, 104) > 0.4) continue;
         }
-        // White flowers ~14%
-        if (r >= 0.16 && r < 0.30 && terrain.flowersWhite.length > 0) {
+
+        // --- Layer 2: TWEEDE tuft op andere positie (25%) — meer overlap ---
+        if (hash(cell.gx, cell.gy, 110) < 0.25 && terrain.grassTufts.length > 0) {
+          const idx = Math.floor(hash(cell.gx, cell.gy, 111) * terrain.grassTufts.length);
+          const sprite = new Sprite(terrain.grassTufts[idx]);
+          sprite.anchor.set(0.5, 0.8);
+          sprite.position.set(
+            sx + (hash(cell.gx, cell.gy, 112) - 0.5) * TILE_W * 0.9,
+            sy + (hash(cell.gx, cell.gy, 113) - 0.5) * TILE_H * 0.5
+          );
+          sprite.width = TILE_W * 0.7; sprite.height = TILE_H * 0.7;
+          sprite.alpha = 0.65;
+          sprite.zIndex = Math.floor(sprite.position.y) - 2;
+          decorLayer.addChild(sprite);
+        }
+
+        // --- Layer 3: Witte bloemen (18% — meer in open centrum) ---
+        const flowerChance = edgeT > 0.4 ? 0.18 : 0.06;
+        if (hash(cell.gx, cell.gy, 200) < flowerChance && terrain.flowersWhite.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 201) * terrain.flowersWhite.length);
           const sprite = new Sprite(terrain.flowersWhite[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.5, sy);
-          sprite.width = TILE_W * 0.9; sprite.height = TILE_H * 0.9;
+          sprite.position.set(
+            sx + (hash(cell.gx, cell.gy, 202) - 0.5) * TILE_W * 0.6,
+            sy + (hash(cell.gx, cell.gy, 203) - 0.5) * TILE_H * 0.4
+          );
+          sprite.width = TILE_W * 1.0; sprite.height = TILE_H * 1.0;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
-          continue;
         }
-        // Purple flowers ~7%
-        if (r >= 0.30 && r < 0.37 && terrain.flowersPurple.length > 0) {
+
+        // --- Layer 4: Paarse bloemen (10% — clusters via noise) ---
+        const purpleNoise = smoothNoise(cell.gx * 3.5 + 500, cell.gy * 3.5 + 500);
+        if (purpleNoise > 0.6 && hash(cell.gx, cell.gy, 300) < 0.25 && terrain.flowersPurple.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 301) * terrain.flowersPurple.length);
           const sprite = new Sprite(terrain.flowersPurple[idx]);
           sprite.anchor.set(0.5, 0.8);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 302) - 0.5) * TILE_W * 0.4, sy);
+          sprite.position.set(
+            sx + (hash(cell.gx, cell.gy, 302) - 0.5) * TILE_W * 0.5,
+            sy + (hash(cell.gx, cell.gy, 303) - 0.5) * TILE_H * 0.3
+          );
           sprite.width = TILE_W * 0.9; sprite.height = TILE_H * 0.9;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
-          continue;
         }
-        // Mushrooms ~4%, further from center
-        if (r >= 0.37 && r < 0.41 && terrain.mushrooms.length > 0 && centerDist > 12) {
+
+        // --- Layer 5: Paddenstoelen (5% — alleen aan randen) ---
+        if (edgeT < 0.3 && hash(cell.gx, cell.gy, 400) < 0.08 && terrain.mushrooms.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 401) * terrain.mushrooms.length);
           const sprite = new Sprite(terrain.mushrooms[idx]);
           sprite.anchor.set(0.5, 0.9);
-          sprite.position.set(sx + (hash(cell.gx, cell.gy, 402) - 0.5) * TILE_W * 0.4, sy);
-          sprite.width = TILE_W * 0.75; sprite.height = TILE_H * 0.75;
+          sprite.position.set(
+            sx + (hash(cell.gx, cell.gy, 402) - 0.5) * TILE_W * 0.5,
+            sy + (hash(cell.gx, cell.gy, 403) - 0.5) * TILE_H * 0.3
+          );
+          sprite.width = TILE_W * 0.8; sprite.height = TILE_H * 0.8;
           sprite.zIndex = Math.floor(sy);
           decorLayer.addChild(sprite);
-          continue;
+        }
+
+        // --- Layer 6: Stenen (3% — verspreid, meer aan randen) ---
+        if (edgeT < 0.4 && hash(cell.gx, cell.gy, 500) < 0.04 && terrain.rocks.length > 0) {
+          const idx = Math.floor(hash(cell.gx, cell.gy, 501) * terrain.rocks.length);
+          const sprite = new Sprite(terrain.rocks[idx]);
+          sprite.anchor.set(0.5, 0.9);
+          sprite.position.set(sx, sy);
+          sprite.width = TILE_W * 0.7; sprite.height = TILE_H * 0.6;
+          sprite.zIndex = Math.floor(sy);
+          decorLayer.addChild(sprite);
         }
       }
 
