@@ -368,9 +368,43 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
-      // ---- Lake water — ocean TilingSprite shows through, no extra overlay ----
-      // The animated ocean water provides the base; coast autotile on adjacent
-      // grass cells creates the cliff banks. No gradient needed for a small lake.
+      // ---- Lake water — dedicated animated TilingSprite with shimmer ----
+      if (lakeCells.length > 0) {
+        let lakeMinX = Infinity, lakeMinY = Infinity, lakeMaxX = -Infinity, lakeMaxY = -Infinity;
+        for (const c of lakeCells) {
+          const px = c.gx * TILE_W;
+          const py = c.gy * TILE_H;
+          if (px < lakeMinX) lakeMinX = px;
+          if (py < lakeMinY) lakeMinY = py;
+          if (px + TILE_W > lakeMaxX) lakeMaxX = px + TILE_W;
+          if (py + TILE_H > lakeMaxY) lakeMaxY = py + TILE_H;
+        }
+        const lakeWater = new TilingSprite({
+          texture: bakedWater,
+          width: lakeMaxX - lakeMinX + TILE_W * 2,
+          height: lakeMaxY - lakeMinY + TILE_H * 2,
+        });
+        lakeWater.position.set(lakeMinX - TILE_W, lakeMinY - TILE_H);
+        lakeWater.tint = 0x88ccee; // slightly lighter/bluer than ocean
+        tileLayer.addChild(lakeWater);
+
+        // Mask: only show water inside actual lake cells
+        const lakeMask = new Graphics();
+        for (const c of lakeCells) {
+          lakeMask.rect(c.gx * TILE_W, c.gy * TILE_H, TILE_W, TILE_H);
+        }
+        lakeMask.fill({ color: 0xffffff });
+        tileLayer.addChild(lakeMask);
+        lakeWater.mask = lakeMask;
+
+        // Animate lake water in ticker (different speed/direction from ocean)
+        const lakeWaterRef = lakeWater;
+        app.ticker.add((ticker) => {
+          const dt = ticker.deltaTime ?? 1;
+          lakeWaterRef.tilePosition.x -= 0.15 * dt;
+          lakeWaterRef.tilePosition.y += 0.3 * dt;
+        });
+      }
 
       // ---- Grass tiles — textured tiles with regional tint variation ----
       const grassTints = [
