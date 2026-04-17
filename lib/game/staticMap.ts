@@ -135,8 +135,9 @@ export function parseElevation(): number[][] {
  * Adds shallow water gradient + sand beach band for island feel.
  *   0 = deep water
  *   1 = shallow water (2-3 tiles from coast)
- *   2 = sand/beach (1-2 tile band around coastline)
+ *   2 = sand/beach (1-2 tile band around ocean coastline)
  *   3 = grass (buildable land)
+ *   4 = lake water (inland, no sand band, coast autotile banks)
  */
 export function processElevation(raw: number[][]): number[][] {
   const rows = raw.length;
@@ -177,10 +178,10 @@ export function processElevation(raw: number[][]): number[][] {
     }
   }
 
-  // ---- Sand beach band: 2 tiles wide around coastline ----
+  // ---- Sand beach band: 2 tiles wide around OCEAN coastline ----
   const dirs: Array<[number, number]> = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-  // Pass 1: grass cells directly adjacent to water/shallow → sand
+  // Pass 1: grass cells directly adjacent to ocean water/shallow → sand
   const snap1 = grid.map(r => [...r]);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -202,6 +203,20 @@ export function processElevation(raw: number[][]): number[][] {
         const nr = r + dr, nc = c + dc;
         if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
         if (snap2[nr][nc] === 2) { grid[r][c] = 2; break; }
+      }
+    }
+  }
+
+  // ---- Small lake in the northeast quadrant ----
+  // Organic diamond shape, ~7×5 tiles. Elevation 4 = lake water.
+  // Grass borders lake directly (no sand) → coast autotile gives cliff banks.
+  const lakeCR = 72, lakeRR = 22;
+  for (let dr = -2; dr <= 2; dr++) {
+    for (let dc = -3; dc <= 3; dc++) {
+      if (Math.abs(dr) + Math.abs(dc) > 3) continue;
+      const r = lakeRR + dr, c = lakeCR + dc;
+      if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === 3) {
+        grid[r][c] = 4;
       }
     }
   }

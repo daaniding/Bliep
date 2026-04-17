@@ -303,6 +303,7 @@ export default function CityCanvas({
       // Collect cells by type for rendering + preview bbox
       const grassCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const sandCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
+      const lakeCells: Array<{ gx: number; gy: number; rx: number; ry: number }> = [];
       const landCells: Array<{ gx: number; gy: number }> = [];
 
       for (let ry = 0; ry < MAP_ROWS; ry++) {
@@ -314,6 +315,9 @@ export default function CityCanvas({
             landCells.push({ gx, gy });
           } else if (v === 2) {
             sandCells.push({ gx, gy, rx, ry });
+            landCells.push({ gx, gy });
+          } else if (v === 4) {
+            lakeCells.push({ gx, gy, rx, ry });
             landCells.push({ gx, gy });
           }
         }
@@ -351,10 +355,11 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Sand tiles — flat colour (tileset has no clean beach tiles) ----
-      const sandTints = [0xd4c090, 0xcdb888, 0xd0bc8a, 0xc8b480];
+      // ---- Sand tiles — grass tile tinted to sand colour for texture ----
+      const sandBaseTex = terrain.grass.length > 1 ? terrain.grass[1] : terrain.grass[0];
+      const sandTints = [0xe8d8a8, 0xe0d0a0, 0xdcc898, 0xd8c490];
       for (const cell of sandCells) {
-        const sprite = new Sprite(Texture.WHITE);
+        const sprite = new Sprite(sandBaseTex);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
@@ -363,24 +368,63 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
-      // ---- Grass tiles — plain fill with regional tint variation ----
-      // No sandToGrass autotile: those tiles have cobblestone borders (path tiles),
-      // not natural beach transitions. Clean colour-change edge looks better.
-      const grassTints = [
-        0xFFFFFF, // natural (no tint)
-        0xE5FFDD, // cool meadow
-        0xFFF0C8, // warm sunlit patch
-        0xD5ECC8, // shaded undergrowth
-        0xEEFFE0, // bright clearing
-      ];
-      for (const cell of grassCells) {
-        const sprite = new Sprite(terrain.grass[0]);
+      // ---- Lake tiles — water with coast autotile banks on adjacent grass ----
+      for (const cell of lakeCells) {
+        // Render lake water as a blue-tinted tile
+        const sprite = new Sprite(terrain.water);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
-        const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
-        sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
+        tileLayer.addChild(sprite);
+      }
+
+      // ---- Grass tiles — textured tiles with regional tint variation ----
+      const grassTints = [
+        0xFFFFFF, // natural (no tint)
+        0xF0FFE8, // bright meadow
+        0xE8F0D8, // warm sunlit
+        0xD8E8C8, // shaded undergrowth
+        0xF0F8E0, // clearing
+      ];
+      for (const cell of grassCells) {
+        // Check if this grass cell borders lake water (4) → use coast autotile
+        const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+        const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+        const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+        const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+        const lakeBorderN = n === 4;
+        const lakeBorderS = s === 4;
+        const lakeBorderW = w === 4;
+        const lakeBorderE = e === 4;
+        const touchesLake = lakeBorderN || lakeBorderS || lakeBorderW || lakeBorderE;
+
+        let tex: Texture;
+        if (touchesLake && terrain.coast.length >= 9) {
+          // Use coast autotile for cliff-edge bank along the lake
+          let slotX = 1, slotY = 1;
+          if (lakeBorderW) slotX = 0;
+          if (lakeBorderE) slotX = 2;
+          if (lakeBorderN) slotY = 0;
+          if (lakeBorderS) slotY = 2;
+          const coastIdx = slotY * 3 + slotX;
+          tex = terrain.coast[coastIdx];
+        } else {
+          // Pick grass tile per cell — all tiles are similar medium green
+          // so no checkerboard; texture detail provides subtle variation
+          const tileIdx = Math.floor(hash(cell.gx, cell.gy, 50) * terrain.grass.length);
+          tex = terrain.grass[tileIdx];
+        }
+
+        const sprite = new Sprite(tex);
+        sprite.anchor.set(0, 0);
+        sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+        sprite.width = TILE_W;
+        sprite.height = TILE_H;
+        if (!touchesLake) {
+          const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
+          sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
+        }
         tileLayer.addChild(sprite);
       }
 

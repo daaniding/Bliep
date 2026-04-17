@@ -131,10 +131,14 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   const water = tile(0, 21);
 
   // ============================================================
-  // GRASS — single confirmed tile, variation via tinting in renderer
+  // GRASS — textured tiles, all similar medium-green base
+  // Tint variation provides colour patches; tiles provide texture.
   // ============================================================
   const grass: Texture[] = [
-    tile(2, 23),   // confirmed solid grass fill (coast center)
+    tile(19, 1),  // medium green, clean
+    tile(20, 1),  // medium green, grass blade details
+    tile(21, 1),  // medium green, sprout details
+    tile(20, 0),  // slightly lighter, subtle dots (for variety)
   ];
 
   // ============================================================
