@@ -56,21 +56,32 @@ export function parseElevation(): number[][] {
   );
 
   const noise = makeNoise2D(77);
+  const noise2 = makeNoise2D(333);
 
   const cx = MAP_COLS / 2;
   const cy = MAP_ROWS / 2;
-  const radius = 30;
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      const dx = (c - cx) / radius;
-      const dy = (r - cy) / radius;
+      // Hoek-afhankelijke radius: maakt de vorm onregelmatig
+      // Sommige richtingen steken verder uit dan andere
+      const angle = Math.atan2(r - cy, c - cx);
+      const baseRadius = 28;
+      // 5 "lobes" van verschillende grootte
+      const lobe = Math.sin(angle * 1.3 + 0.5) * 6
+                  + Math.sin(angle * 2.7 - 1.2) * 4
+                  + Math.cos(angle * 0.8 + 2.0) * 5;
+      const radius = baseRadius + lobe;
+
+      const dx = (c - cx);
+      const dy = (r - cy);
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Noise maakt de rand organisch
-      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 0.4;
+      // Noise voor organische kust details
+      const n = fbm(noise, c * 0.04, r * 0.04, 5) * 8;
+      const n2 = fbm(noise2, c * 0.09, r * 0.09, 3) * 4;
 
-      if (dist + n < 1.0) {
+      if (dist + n + n2 < radius) {
         grid[r][c] = 3;
       }
     }
