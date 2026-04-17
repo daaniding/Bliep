@@ -73,35 +73,41 @@ export function parseElevation(): number[][] {
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // --- Main body: big connected center ---
-      const mainDist = ellipseDist(c, r, cx, cy, 32, 24);
+      // ============================================================
+      // NEDERLAND-ACHTIGE VORM
+      // Langwerpig van noord naar zuid, breder aan de bovenkant,
+      // smaller aan de onderkant, met een inham (Zuiderzee/IJsselmeer)
+      // ============================================================
 
-      // --- Northwest lobe (forest zone) — overlaps main ---
-      const nwDist = ellipseDist(c, r, cx - 14, cy - 10, 18, 15);
+      // --- Brede bovenkant (Noord-Holland/Friesland/Groningen) ---
+      const topDist = ellipseDist(c, r, cx, cy - 12, 30, 16);
 
-      // --- Southeast wing (farm area) — overlaps main ---
-      const seDist = ellipseDist(c, r, cx + 14, cy + 10, 18, 13);
+      // --- Middensectie (Utrecht/Gelderland) smaller ---
+      const midDist = ellipseDist(c, r, cx + 2, cy + 2, 22, 14);
 
-      // --- South peninsula (beach) — connected to main bottom ---
-      const southDist = ellipseDist(c, r, cx - 2, cy + 22, 12, 10);
+      // --- Zuiden (Brabant/Limburg) — smal, loopt naar rechtsonder ---
+      const southDist = ellipseDist(c, r, cx + 6, cy + 16, 18, 12);
 
-      // --- East bump (dock) — connected to main right ---
-      const eastDist = ellipseDist(c, r, cx + 26, cy - 4, 10, 14);
+      // --- Limburg-staart (smal stukje naar beneden) ---
+      const limburgDist = ellipseDist(c, r, cx + 14, cy + 26, 8, 10);
 
-      // --- North bump — connected to main top ---
-      const northDist = ellipseDist(c, r, cx + 6, cy - 18, 15, 10);
+      // --- Zeeland/Zuid-Holland bump links onderaan ---
+      const zeelandDist = ellipseDist(c, r, cx - 16, cy + 12, 12, 10);
 
-      // --- Southwest arm — connected to main left ---
-      const swArmDist = ellipseDist(c, r, cx - 20, cy + 8, 12, 16);
+      // --- Noord-Holland neus (uitstekend naar boven) ---
+      const nhDist = ellipseDist(c, r, cx - 8, cy - 26, 10, 8);
 
-      // Union of all land shapes
-      const minLand = Math.min(mainDist, nwDist, seDist, southDist, eastDist, northDist, swArmDist);
+      // Union
+      const minLand = Math.min(topDist, midDist, southDist, limburgDist, zeelandDist, nhDist);
 
-      // --- Bay cutout (between SW arm and south peninsula) ---
-      const bayDist = ellipseDist(c, r, cx - 10, cy + 18, 9, 7);
+      // --- Zuiderzee/IJsselmeer inham (carves into the top section) ---
+      const bayDist = ellipseDist(c, r, cx + 6, cy - 8, 10, 8);
 
-      // --- North cove (small inlet) ---
-      const northCoveDist = ellipseDist(c, r, cx - 6, cy - 16, 6, 5);
+      // --- Westerschelde (small cut between Zeeland and mainland) ---
+      const scheldeDist = ellipseDist(c, r, cx - 8, cy + 14, 6, 4);
+
+      // Geen north cove nodig
+      const northCoveDist = 999;
 
       // Organic noise
       const n1 = fbm(noise1, c * 0.028, r * 0.028, 4) * 0.22;
@@ -112,11 +118,11 @@ export function parseElevation(): number[][] {
       const threshold = 0.95;
 
       if (landValue < threshold) {
-        // Subtract bays
-        const inBay = bayDist < 0.85 && landValue > threshold * 0.55;
-        const inCove = northCoveDist < 0.75 && landValue > threshold * 0.5;
+        // Subtract water bodies
+        const inBay = bayDist < 0.80 && landValue > threshold * 0.5;
+        const inSchelde = scheldeDist < 0.70 && landValue > threshold * 0.6;
 
-        if (!inBay && !inCove) {
+        if (!inBay && !inSchelde) {
           grid[r][c] = 3;
         }
       }
