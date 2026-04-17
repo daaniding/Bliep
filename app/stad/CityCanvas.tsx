@@ -677,22 +677,53 @@ export default function CityCanvas({
         }
       }
 
-      // ---- Wave foam along coastline + lake edges ----
-      const foamCells: Array<{ px: number; py: number; phase: number }> = [];
-      // Foam on sand cells touching ocean
-      for (const cell of sandCells) {
-        const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
-        const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
-        const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
-        const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-        const touchesWater = n <= 1 || s <= 1 || w <= 1 || e <= 1;
-        if (!touchesWater) continue;
-        const px = cell.gx * TILE_W + TILE_W / 2;
-        const py = cell.gy * TILE_H + TILE_H / 2;
-        foamCells.push({ px, py, phase: hash(cell.gx, cell.gy, 777) * Math.PI * 2 });
-      }
-      // No foam on lake — it's calm inland water, not ocean surf
+      // ---- Animated water edges — farm tileset foam sprites ----
+      // Place AnimatedSprites on shallow water cells adjacent to land.
+      // These cycle through 4 frames of wave/foam animation from the farm pack.
+      const waterEdgeSprites: AnimatedSprite[] = [];
+      if (terrain.waterEdge) {
+        for (let ry = 0; ry < MAP_ROWS; ry++) {
+          for (let rx = 0; rx < MAP_COLS; rx++) {
+            const v = elevation[ry][rx];
+            if (v !== 0 && v !== 1) continue; // only water cells
+            const gx = worldGx(rx), gy = worldGy(ry);
+            // Check which sides border land (sand=2 or grass=3)
+            const nv = elevation[ry - 1]?.[rx] ?? 0;
+            const sv = elevation[ry + 1]?.[rx] ?? 0;
+            const wv = elevation[ry]?.[rx - 1] ?? 0;
+            const ev = elevation[ry]?.[rx + 1] ?? 0;
+            const landN = nv >= 2 && nv !== 4;
+            const landS = sv >= 2 && sv !== 4;
+            const landW = wv >= 2 && wv !== 4;
+            const landE = ev >= 2 && ev !== 4;
+            if (!landN && !landS && !landW && !landE) continue;
 
+            // Pick the right edge frames based on which side has land
+            let frames: Texture[];
+            if (landN && landW) frames = terrain.waterEdge.NW;
+            else if (landN && landE) frames = terrain.waterEdge.NE;
+            else if (landS && landW) frames = terrain.waterEdge.SW;
+            else if (landS && landE) frames = terrain.waterEdge.SE;
+            else if (landN) frames = terrain.waterEdge.N;
+            else if (landS) frames = terrain.waterEdge.S;
+            else if (landW) frames = terrain.waterEdge.W;
+            else frames = terrain.waterEdge.E;
+
+            const anim = new AnimatedSprite(frames);
+            anim.anchor.set(0, 0);
+            anim.position.set(gx * TILE_W, gy * TILE_H);
+            anim.width = TILE_W;
+            anim.height = TILE_H;
+            anim.animationSpeed = 0.06 + hash(gx, gy, 888) * 0.02; // ~3-4 FPS, slight variation
+            anim.gotoAndPlay(Math.floor(hash(gx, gy, 889) * 4)); // stagger start frame
+            tileLayer.addChild(anim);
+            waterEdgeSprites.push(anim);
+          }
+        }
+      }
+
+      // Fallback procedural foam for cells not covered by sprite edges
+      const foamCells: Array<{ px: number; py: number; phase: number }> = [];
       const foamLayer = new Graphics();
       tileLayer.addChild(foamLayer);
 
@@ -750,23 +781,8 @@ export default function CityCanvas({
           if (c.sprite.position.x > cloudWrapX) c.sprite.position.x = -200;
         }
 
-        // Animate foam — elongated wave shapes along coastline
+        // Water edge AnimatedSprites auto-animate via Pixi ticker (no manual update needed)
         const t = Date.now() / 1000;
-        foamLayer.clear();
-        for (const f of foamCells) {
-          const wave = Math.sin(t * 1.0 + f.phase) * 0.5 + 0.5;
-          const alpha = 0.20 + wave * 0.30;
-          const w = TILE_W * 0.7 + wave * TILE_W * 0.15;
-          const h = TILE_H * 0.15 + wave * TILE_H * 0.08;
-          const ox = Math.sin(t * 0.6 + f.phase * 1.3) * TILE_W * 0.08;
-          foamLayer.ellipse(f.px + ox, f.py, w, h);
-          foamLayer.fill({ color: 0xFFFFFF, alpha });
-          // Secondary smaller foam line offset
-          const w2 = w * 0.6, h2 = h * 0.7;
-          const alpha2 = alpha * 0.5;
-          foamLayer.ellipse(f.px - ox * 0.5, f.py + TILE_H * 0.2, w2, h2);
-          foamLayer.fill({ color: 0xeef8ff, alpha: alpha2 });
-        }
 
         // Animate butterflies — figure-8 flight + wing flap
         for (const b of butterflies) {

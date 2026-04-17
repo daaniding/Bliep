@@ -57,6 +57,25 @@ export interface FarmTerrain {
 
   /** Cloud sprites. */
   clouds: Texture[];
+  /**
+   * Animated water edge tiles (4 frames each).
+   * The tileset has 4 animation frames at 5-row intervals (base rows 21, 26, 31, 36).
+   * Water tiles adjacent to coast have shifting foam/wave patterns.
+   *
+   * Keyed by direction: which side of the water cell has land.
+   * E.g. 'S' = water cell with land to the south → foam on south edge.
+   */
+  waterEdge: {
+    N: Texture[];   // foam on north edge (land above)
+    S: Texture[];   // foam on south edge (land below)
+    W: Texture[];   // foam on west edge (land left)
+    E: Texture[];   // foam on east edge (land right)
+    NW: Texture[];  // corner: land to NW
+    NE: Texture[];  // corner: land to NE
+    SW: Texture[];  // corner: land to SW
+    SE: Texture[];  // corner: land to SE
+  };
+
   /** Building sprites keyed by slug. */
   buildings: Map<string, Texture>;
 
@@ -298,6 +317,28 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
   }
 
   // ============================================================
+  // ANIMATED WATER EDGES (4 frames at 5-row intervals)
+  // The pond preview block at cols 0-3 shows water edges around a
+  // 2×2 coast island. The water tiles animate; the coast stays static.
+  // Base rows: 21, 26, 31, 36 → 4 animation frames.
+  // ============================================================
+  const baseRows = [21, 26, 31, 36];
+  const waterEdge = {
+    // Which side of the water cell has the foam/land
+    N:  baseRows.map(b => tile(1, b)),     // top foam (land above, from top row of pond)
+    S:  baseRows.map(b => tile(1, b + 3)), // bottom foam (land below)
+    W:  baseRows.map(b => tile(0, b + 1)), // left foam (land to the left)
+    E:  baseRows.map(b => tile(3, b + 1)), // right foam (land to the right)
+    NW: baseRows.map(b => tile(0, b)),     // top-left corner
+    NE: baseRows.map(b => tile(3, b)),     // top-right corner
+    SW: baseRows.map(b => tile(0, b + 3)), // bottom-left corner
+    SE: baseRows.map(b => tile(3, b + 3)), // bottom-right corner
+  };
+  for (const frames of Object.values(waterEdge)) {
+    for (const t of frames) nearest(t);
+  }
+
+  // ============================================================
   // CLOUDS
   // ============================================================
   const clouds: Texture[] = [];
@@ -327,7 +368,7 @@ export async function loadFarmTerrain(): Promise<FarmTerrain> {
     sandFill, sandToGrass, rocks, cattails, stonePath,
     flowersWhite, flowersPurple, grassTufts, mushrooms,
     trees, largeTrees, cherryTrees, fruitTrees, bushes,
-    windmill,
+    windmill, waterEdge,
     clouds, buildings, tile, rect,
   };
   return cached;
