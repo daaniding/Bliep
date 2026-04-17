@@ -63,13 +63,12 @@ export function parseElevation(): number[][] {
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // Druppelvorm: breed bovenaan, taps naar beneden
-      // zoals een mango of druppel water
-      const dx = (c - cx) / 32;
-      const dy = (r - cy) / 38;
-      // Breedte neemt af naar beneden toe
-      const taperX = dx * (1.0 + dy * 0.35);
-      const dist = Math.sqrt(taperX * taperX + dy * dy);
+      // Druppelvorm: breed links, taps naar rechts
+      const dx = (c - cx) / 38;
+      const dy = (r - cy) / 28;
+      // Hoogte neemt af naar rechts toe
+      const taperY = dy * (1.0 + dx * 0.4);
+      const dist = Math.sqrt(dx * dx + taperY * taperY);
 
       const n = fbm(noise, c * 0.04, r * 0.04, 5) * 0.15;
       const n2 = fbm(noise2, c * 0.09, r * 0.09, 3) * 0.08;
