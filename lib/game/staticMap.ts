@@ -127,30 +127,32 @@ export function parseElevation(): number[][] {
   while (rows.length < MAP_ROWS) rows.push(new Array(MAP_COLS).fill(0));
   const grid = rows.slice(0, MAP_ROWS);
 
-  // ---- Smooth coastline: alternating erode/fill passes ----
-  // Erode: remove land cells with ≤1 cardinal land neighbor (thin peninsulas)
-  // Fill: add land to water cells with ≥3 cardinal land neighbors (concave notches)
-  // Multiple passes create progressively smoother coastline.
-  for (let pass = 0; pass < 4; pass++) {
-    // Erode pass
-    const snapE = grid.map(r => [...r]);
+  // ---- Smooth coastline: box-blur + threshold ----
+  // Convert to float, blur with a 3×3 kernel multiple times, then
+  // threshold back to land/water. This naturally rounds corners and
+  // eliminates 1-tile staircases on diagonals.
+  let floatGrid: number[][] = grid.map(r => r.map(v => v === 3 ? 1.0 : 0.0));
+
+  // Apply 3×3 box blur 6 times for very smooth organic edges
+  for (let pass = 0; pass < 6; pass++) {
+    const prev = floatGrid.map(r => [...r]);
     for (let r = 1; r < MAP_ROWS - 1; r++) {
       for (let c = 1; c < MAP_COLS - 1; c++) {
-        if (snapE[r][c] !== 3) continue;
-        const cardinalLand = (snapE[r-1][c] === 3 ? 1 : 0) + (snapE[r+1][c] === 3 ? 1 : 0)
-                           + (snapE[r][c-1] === 3 ? 1 : 0) + (snapE[r][c+1] === 3 ? 1 : 0);
-        if (cardinalLand <= 1) grid[r][c] = 0;
+        let sum = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            sum += prev[r + dr][c + dc];
+          }
+        }
+        floatGrid[r][c] = sum / 9;
       }
     }
-    // Fill pass
-    const snapF = grid.map(r => [...r]);
-    for (let r = 1; r < MAP_ROWS - 1; r++) {
-      for (let c = 1; c < MAP_COLS - 1; c++) {
-        if (snapF[r][c] !== 0) continue;
-        const cardinalLand = (snapF[r-1][c] === 3 ? 1 : 0) + (snapF[r+1][c] === 3 ? 1 : 0)
-                           + (snapF[r][c-1] === 3 ? 1 : 0) + (snapF[r][c+1] === 3 ? 1 : 0);
-        if (cardinalLand >= 3) grid[r][c] = 3;
-      }
+  }
+
+  // Threshold: cells above 0.5 become land, below become water
+  for (let r = 0; r < MAP_ROWS; r++) {
+    for (let c = 0; c < MAP_COLS; c++) {
+      grid[r][c] = floatGrid[r][c] >= 0.5 ? 3 : 0;
     }
   }
 
@@ -210,22 +212,62 @@ export function processElevation(raw: number[][]): number[][] {
   // The coast autotile tiles already show grass→rock→water transition.
 
   // ---- Lake in the northeast quadrant ----
-  // Organic blob shape using noise-perturbed distance for natural edges.
+  // Organic blob using multi-octave noise for natural, smooth edges.
   const lakeCR = 70, lakeRR = 24;
-  const lakeHash = (x: number, y: number): number => {
-    let h = (x * 374761 + y * 668265 + 7919) | 0;
+  const lakeHash = (x: number, y: number, s: number): number => {
+    let h = (x * 374761 + y * 668265 + s * 2147483) | 0;
     h = (h ^ (h >>> 13)) * 1274126177;
     return ((h >>> 0) % 1000) / 1000;
   };
-  for (let dr = -6; dr <= 6; dr++) {
-    for (let dc = -8; dc <= 8; dc++) {
-      const baseDist = Math.sqrt(dr * dr * 1.6 + dc * dc);
-      // Perturb the threshold per-cell for organic edges
-      const noise = (lakeHash(lakeCR + dc, lakeRR + dr) - 0.5) * 1.8;
-      if (baseDist > 5.5 + noise) continue;
+  // Build a smooth noise field for lake edges (blur small random values)
+  const lakeNoise: number[][] = Array.from({ length: 20 }, (_, r) =>
+    Array.from({ length: 24 }, (_, c) => (lakeHash(c, r, 42) - 0.5) * 2)
+  );
+  // Blur the noise for smooth edges
+  for (let pass = 0; pass < 3; pass++) {
+    const prev = lakeNoise.map(r => [...r]);
+    for (let r = 1; r < 19; r++) {
+      for (let c = 1; c < 23; c++) {
+        lakeNoise[r][c] = (prev[r-1][c] + prev[r+1][c] + prev[r][c-1] + prev[r][c+1] + prev[r][c]) / 5;
+      }
+    }
+  }
+  for (let dr = -8; dr <= 8; dr++) {
+    for (let dc = -10; dc <= 10; dc++) {
+      const baseDist = Math.sqrt(dr * dr * 1.4 + dc * dc);
+      const ni = Math.min(19, Math.max(0, dr + 9));
+      const nj = Math.min(23, Math.max(0, dc + 11));
+      const noise = lakeNoise[ni][nj] * 1.5;
+      if (baseDist > 6.0 + noise) continue;
       const r = lakeRR + dr, c = lakeCR + dc;
       if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === 3) {
         grid[r][c] = 4;
+      }
+    }
+  }
+  // Smooth the lake edges with the same blur-threshold technique
+  let lakeFloat: number[][] = grid.map(r => r.map(v => v === 4 ? 1.0 : 0.0));
+  for (let pass = 0; pass < 3; pass++) {
+    const prev = lakeFloat.map(r => [...r]);
+    for (let r = 1; r < rows - 1; r++) {
+      for (let c = 1; c < cols - 1; c++) {
+        let sum = 0;
+        for (let dr2 = -1; dr2 <= 1; dr2++) {
+          for (let dc2 = -1; dc2 <= 1; dc2++) {
+            sum += prev[r + dr2][c + dc2];
+          }
+        }
+        lakeFloat[r][c] = sum / 9;
+      }
+    }
+  }
+  // Apply smoothed lake shape
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (lakeFloat[r][c] >= 0.45 && grid[r][c] === 3) {
+        grid[r][c] = 4;
+      } else if (lakeFloat[r][c] < 0.35 && grid[r][c] === 4) {
+        grid[r][c] = 3; // remove thin lake peninsulas
       }
     }
   }
