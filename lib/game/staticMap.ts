@@ -73,26 +73,26 @@ export function parseElevation(): number[][] {
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // --- Main body: slightly tilted, like a potato ---
-      const mainDist = ellipseDist(c, r, cx, cy + 2, 30, 22);
+      // --- Main body: big connected center ---
+      const mainDist = ellipseDist(c, r, cx, cy, 32, 24);
 
-      // --- Northwest highland (forest zone) ---
-      const nwDist = ellipseDist(c, r, cx - 18, cy - 14, 16, 13);
+      // --- Northwest lobe (forest zone) — overlaps main ---
+      const nwDist = ellipseDist(c, r, cx - 14, cy - 10, 18, 15);
 
-      // --- Southeast farm wing ---
-      const seDist = ellipseDist(c, r, cx + 16, cy + 12, 18, 11);
+      // --- Southeast wing (farm area) — overlaps main ---
+      const seDist = ellipseDist(c, r, cx + 14, cy + 10, 18, 13);
 
-      // --- South beach peninsula (thin, pointing down) ---
-      const southDist = ellipseDist(c, r, cx - 4, cy + 25, 10, 9);
+      // --- South peninsula (beach) — connected to main bottom ---
+      const southDist = ellipseDist(c, r, cx - 2, cy + 22, 12, 10);
 
-      // --- East dock area (small bump) ---
-      const eastDist = ellipseDist(c, r, cx + 30, cy - 2, 8, 12);
+      // --- East bump (dock) — connected to main right ---
+      const eastDist = ellipseDist(c, r, cx + 26, cy - 4, 10, 14);
 
-      // --- North ridge ---
-      const northDist = ellipseDist(c, r, cx + 8, cy - 22, 14, 8);
+      // --- North bump — connected to main top ---
+      const northDist = ellipseDist(c, r, cx + 6, cy - 18, 15, 10);
 
-      // --- Southwest cove arm (wraps around the bay) ---
-      const swArmDist = ellipseDist(c, r, cx - 24, cy + 10, 10, 15);
+      // --- Southwest arm — connected to main left ---
+      const swArmDist = ellipseDist(c, r, cx - 20, cy + 8, 12, 16);
 
       // Union of all land shapes
       const minLand = Math.min(mainDist, nwDist, seDist, southDist, eastDist, northDist, swArmDist);
