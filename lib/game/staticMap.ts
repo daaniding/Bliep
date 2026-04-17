@@ -1,16 +1,13 @@
 /**
- * Island generation — hand-designed shape with organic coastline.
+ * Island generation — Stardew Valley inspired shape.
  *
- * Instead of pure noise, the island is built from overlapping shapes
- * (circles, ellipses) that create an intentional landmass with
- * bays, peninsulas, and a harbor area. Noise is added on top for
- * organic coastline detail.
+ * Natural, cozy farm island with a protected harbor bay,
+ * winding coastline, and distinct areas for different zones.
  *
  * Grid values:
  *   0 = deep water
  *   1 = shallow water (near coast)
  *   3 = grass (land)
- *   4 = lake water
  */
 
 export const MAP_COLS = 120;
@@ -56,7 +53,6 @@ function fbm(noise: (x: number, y: number) => number, x: number, y: number, octa
   return value / total;
 }
 
-/** Smooth distance to an ellipse (0 = center, 1 = edge). */
 function ellipseDist(x: number, y: number, cx: number, cy: number, rx: number, ry: number): number {
   const dx = (x - cx) / rx;
   const dy = (y - cy) / ry;
@@ -68,69 +64,66 @@ export function parseElevation(): number[][] {
     new Array(MAP_COLS).fill(0)
   );
 
-  const noise1 = makeNoise2D(42);
-  const noise2 = makeNoise2D(137);
-  const noise3 = makeNoise2D(2891);
+  const noise1 = makeNoise2D(55);
+  const noise2 = makeNoise2D(201);
+  const noise3 = makeNoise2D(3344);
 
-  // ================================================================
-  // ISLAND SHAPE — built from overlapping shapes
-  // Think: main body + southern bay + eastern peninsula + northern bump
-  // ================================================================
-
-  const cx = MAP_COLS / 2;  // 60
-  const cy = MAP_ROWS / 2;  // 45
+  const cx = MAP_COLS / 2;
+  const cy = MAP_ROWS / 2;
 
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
-      // --- Main body: wide ellipse, slightly left of center ---
-      const mainDist = ellipseDist(c, r, cx - 3, cy, 32, 26);
+      // --- Main body: slightly tilted, like a potato ---
+      const mainDist = ellipseDist(c, r, cx, cy + 2, 30, 22);
 
-      // --- Southern peninsula pointing SE ---
-      const southPenDist = ellipseDist(c, r, cx + 15, cy + 20, 18, 12);
+      // --- Northwest highland (forest zone) ---
+      const nwDist = ellipseDist(c, r, cx - 18, cy - 14, 16, 13);
 
-      // --- Northern lobe (wider top) ---
-      const northLobeDist = ellipseDist(c, r, cx + 5, cy - 16, 22, 14);
+      // --- Southeast farm wing ---
+      const seDist = ellipseDist(c, r, cx + 16, cy + 12, 18, 11);
 
-      // --- Western bump ---
-      const westBumpDist = ellipseDist(c, r, cx - 22, cy - 5, 14, 18);
+      // --- South beach peninsula (thin, pointing down) ---
+      const southDist = ellipseDist(c, r, cx - 4, cy + 25, 10, 9);
 
-      // --- Small eastern peninsula ---
-      const eastPenDist = ellipseDist(c, r, cx + 28, cy + 5, 10, 8);
+      // --- East dock area (small bump) ---
+      const eastDist = ellipseDist(c, r, cx + 30, cy - 2, 8, 12);
 
-      // --- Harbor bay (subtract — creates an inlet on the south) ---
-      const bayDist = ellipseDist(c, r, cx - 5, cy + 22, 12, 10);
+      // --- North ridge ---
+      const northDist = ellipseDist(c, r, cx + 8, cy - 22, 14, 8);
 
-      // --- NE cove (subtract — creates a cove) ---
-      const coveDist = ellipseDist(c, r, cx + 18, cy - 18, 8, 7);
+      // --- Southwest cove arm (wraps around the bay) ---
+      const swArmDist = ellipseDist(c, r, cx - 24, cy + 10, 10, 15);
 
-      // Combine: land if ANY shape is close enough (union of shapes)
-      const minLand = Math.min(mainDist, southPenDist, northLobeDist, westBumpDist, eastPenDist);
+      // Union of all land shapes
+      const minLand = Math.min(mainDist, nwDist, seDist, southDist, eastDist, northDist, swArmDist);
 
-      // Noise for organic coastline (not too much — shape should be recognizable)
-      const n1 = fbm(noise1, c * 0.03, r * 0.03, 4) * 0.25;
-      const n2 = fbm(noise2, c * 0.08, r * 0.08, 3) * 0.12;
-      const n3 = fbm(noise3, c * 0.15, r * 0.15, 2) * 0.06;
+      // --- Bay cutout (between SW arm and south peninsula) ---
+      const bayDist = ellipseDist(c, r, cx - 10, cy + 18, 9, 7);
+
+      // --- North cove (small inlet) ---
+      const northCoveDist = ellipseDist(c, r, cx - 6, cy - 16, 6, 5);
+
+      // Organic noise
+      const n1 = fbm(noise1, c * 0.028, r * 0.028, 4) * 0.22;
+      const n2 = fbm(noise2, c * 0.07, r * 0.07, 3) * 0.12;
+      const n3 = fbm(noise3, c * 0.14, r * 0.14, 2) * 0.06;
 
       const landValue = minLand + n1 + n2 + n3;
-      const threshold = 0.92;
+      const threshold = 0.95;
 
       if (landValue < threshold) {
-        // Check if inside a bay/cove (subtract)
-        const bayStrength = Math.max(0, 1 - bayDist) * 0.8;
-        const coveStrength = Math.max(0, 1 - coveDist) * 0.7;
+        // Subtract bays
+        const inBay = bayDist < 0.85 && landValue > threshold * 0.55;
+        const inCove = northCoveDist < 0.75 && landValue > threshold * 0.5;
 
-        if (landValue + bayStrength * 0.6 < threshold && bayDist > 0.5) {
-          grid[r][c] = 3; // land
-        } else if (bayDist > 0.5 && coveDist > 0.5) {
-          grid[r][c] = 3; // land (not in bay or cove)
-        } else if (landValue < threshold * 0.7) {
-          grid[r][c] = 3; // deep enough inside to survive bay subtraction
+        if (!inBay && !inCove) {
+          grid[r][c] = 3;
         }
       }
     }
   }
 
-  // ---- Remove tiny islands (< 10 cells) ----
+  // Remove tiny islands (< 12 cells)
   const visited = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
@@ -149,11 +142,11 @@ export function parseElevation(): number[][] {
           stack.push([nr, nc]);
         }
       }
-      if (comp.length < 10) comp.forEach(([cr, cc]) => { grid[cr][cc] = 0; });
+      if (comp.length < 12) comp.forEach(([cr, cc]) => { grid[cr][cc] = 0; });
     }
   }
 
-  // ---- Fill tiny water holes inside the island (< 8 cells) ----
+  // Fill tiny water holes (< 8 cells)
   const visitedW = Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false));
   for (let r = 0; r < MAP_ROWS; r++) {
     for (let c = 0; c < MAP_COLS; c++) {
@@ -186,7 +179,7 @@ export function processElevation(raw: number[][]): number[][] {
   const cols = raw[0]?.length ?? 0;
   const grid: number[][] = raw.map(r => [...r]);
 
-  // Shallow water: ocean cells within 3 tiles of land
+  // Shallow water
   const distToLand: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(999));
   const queue: Array<[number, number]> = [];
   for (let r = 0; r < rows; r++) {
@@ -212,8 +205,6 @@ export function processElevation(raw: number[][]): number[][] {
       if (grid[r][c] === 0 && distToLand[r][c] <= 3) grid[r][c] = 1;
     }
   }
-
-  // Lake uitgeschakeld — komt later als aparte layer
 
   return grid;
 }
