@@ -207,13 +207,15 @@ export function processElevation(raw: number[][]): number[][] {
     }
   }
 
-  // ---- Small lake in the northeast quadrant ----
-  // Organic diamond shape, ~7×5 tiles. Elevation 4 = lake water.
+  // ---- Lake in the northeast quadrant ----
+  // Organic oval ~11×8 tiles. Elevation 4 = lake water.
   // Grass borders lake directly (no sand) → coast autotile gives cliff banks.
-  const lakeCR = 72, lakeRR = 22;
-  for (let dr = -2; dr <= 2; dr++) {
-    for (let dc = -3; dc <= 3; dc++) {
-      if (Math.abs(dr) + Math.abs(dc) > 3) continue;
+  const lakeCR = 70, lakeRR = 24;
+  for (let dr = -4; dr <= 4; dr++) {
+    for (let dc = -6; dc <= 6; dc++) {
+      // Oval: wider than tall
+      const dist = Math.sqrt(dr * dr * 1.8 + dc * dc);
+      if (dist > 5.2) continue;
       const r = lakeRR + dr, c = lakeCR + dc;
       if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === 3) {
         grid[r][c] = 4;
