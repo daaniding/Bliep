@@ -197,7 +197,7 @@ export default function CityCanvas({
         stageBg.clear();
         // Smooth gradient from lighter edges to darker center
         stageBg.rect(0, 0, app.renderer.width, app.renderer.height);
-        stageBg.fill({ color: 0x3d7a9e });
+        stageBg.fill({ color: 0x2d6585 });
       };
       drawBg();
       app.stage.addChild(stageBg);
@@ -261,7 +261,7 @@ export default function CityCanvas({
 
       // ---- Bake water frames to 6×6 blocks with subtle variation ----
       // Larger baked texture = less visible tiling pattern
-      const WATER_BAKE_SIZE = 6;
+      const WATER_BAKE_SIZE = 12;
       const bakeWaterTile = (tex: Texture, frameIdx: number) => {
         const c = new Container();
         for (let dy = 0; dy < WATER_BAKE_SIZE; dy++) {
@@ -295,7 +295,7 @@ export default function CityCanvas({
       // Smooth color base layer (no tiling pattern visible)
       const waterBase = new Graphics();
       waterBase.rect(waterLeft, waterTop, waterW, waterH);
-      waterBase.fill({ color: 0x4a90b0 });
+      waterBase.fill({ color: 0x2f6e8c });
       tileLayer.addChild(waterBase);
 
       // Tile layer 1 — subtle texture overlay
@@ -305,7 +305,7 @@ export default function CityCanvas({
         height: waterH,
       });
       water.position.set(waterLeft, waterTop);
-      water.alpha = 0.35; // subtle — just adds wave texture
+      water.alpha = 0.18; // very subtle wave texture
       tileLayer.addChild(water);
 
       // Tile layer 2 — offset, different speed for shimmer
@@ -315,7 +315,7 @@ export default function CityCanvas({
         height: waterH,
       });
       water2.position.set(waterLeft, waterTop);
-      water2.alpha = 0.2;
+      water2.alpha = 0.10;
       water2.tint = 0x70aacc;
       tileLayer.addChild(water2);
 
