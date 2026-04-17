@@ -613,53 +613,18 @@ export default function CityCanvas({
       const grassColorA = 0xFCFFF8, grassColorB = 0xECF4E0, grassColorC = 0xE0ECDA;
 
       for (const cell of grassCells) {
-        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
-        const inner = (() => {
-          // Import inline to avoid circular dep
-          const v = elevation[cell.ry]?.[cell.rx];
-          if (v !== 3) return null;
-          const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
-          const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
-          const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
-          const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-          const isW = (x: number) => x === 0 || x === 1 || x === 4;
-          if (isW(n) || isW(s) || isW(w) || isW(e)) return null;
-          const nw = elevation[cell.ry - 1]?.[cell.rx - 1] ?? 0;
-          const ne = elevation[cell.ry - 1]?.[cell.rx + 1] ?? 0;
-          const sw = elevation[cell.ry + 1]?.[cell.rx - 1] ?? 0;
-          const se = elevation[cell.ry + 1]?.[cell.rx + 1] ?? 0;
-          if (isW(nw)) return 0; if (isW(ne)) return 1;
-          if (isW(sw)) return 2; if (isW(se)) return 3;
-          return null;
-        })();
-
-        let tex: Texture;
-        let isCoast = false;
-        if (coastIdx !== null && terrain.coast.length >= 9) {
-          // Coast tile: grass + rocky cliff edge in one tile
-          tex = terrain.coast[coastIdx];
-          isCoast = true;
-        } else if (inner !== null && terrain.coastInner.length >= 4) {
-          // Inner corner: diagonal water
-          tex = terrain.coastInner[inner];
-          isCoast = true;
-        } else {
-          // Plain grass with variation
-          const r = hash(cell.gx, cell.gy, 50);
-          tex = r < 0.85 ? terrain.grass[0]
-              : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
-        }
+        // Plain grass only — coast tiles komen later als aparte layer
+        const r = hash(cell.gx, cell.gy, 50);
+        const tex = r < 0.85 ? terrain.grass[0]
+            : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
         const sprite = new Sprite(tex);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W; sprite.height = TILE_H;
-        // Tint variation for interior grass only (not coast tiles)
-        if (!isCoast) {
-          const n1 = smoothNoise(cell.gx, cell.gy);
-          const n2 = smoothNoise(cell.gx * 2.3 + 100, cell.gy * 2.3 + 100) * 0.3;
-          const combined = Math.min(1, Math.max(0, n1 + n2));
-          sprite.tint = combined < 0.5 ? lerpColor(grassColorA, grassColorB, combined * 2) : lerpColor(grassColorB, grassColorC, (combined - 0.5) * 2);
-        }
+        const n1 = smoothNoise(cell.gx, cell.gy);
+        const n2 = smoothNoise(cell.gx * 2.3 + 100, cell.gy * 2.3 + 100) * 0.3;
+        const combined = Math.min(1, Math.max(0, n1 + n2));
+        sprite.tint = combined < 0.5 ? lerpColor(grassColorA, grassColorB, combined * 2) : lerpColor(grassColorB, grassColorC, (combined - 0.5) * 2);
         tileLayer.addChild(sprite);
       }
 

@@ -213,21 +213,7 @@ export function processElevation(raw: number[][]): number[][] {
     }
   }
 
-  // Lake — small round in the northeast area
-  const lakeNoise = makeNoise2D(1337);
-  const lakeCX = Math.round(cols * 0.58);
-  const lakeCY = Math.round(rows * 0.32);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] !== 3) continue;
-      const dx = (c - lakeCX) / 4;
-      const dy = (r - lakeCY) / 3.5;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist + fbm(lakeNoise, c * 0.1, r * 0.1, 2) * 0.2 < 0.85) {
-        grid[r][c] = 4;
-      }
-    }
-  }
+  // Lake uitgeschakeld — komt later als aparte layer
 
   return grid;
 }
