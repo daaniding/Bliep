@@ -352,33 +352,16 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Sand tiles — plain fill with warm visible tints ----
-      const sandTints = [0xdcc070, 0xd4b868, 0xccb060, 0xc8a858]; // warm, visible sand
+      // ---- Sand tiles (if any remain) — plain fill ----
       for (const cell of sandCells) {
         const sprite = new Sprite(terrain.sandFill);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
-        sprite.tint = sandTints[((cell.gx * 7 + cell.gy * 13) >>> 0) % sandTints.length];
+        sprite.tint = 0xdcc070;
         tileLayer.addChild(sprite);
       }
-
-      // ---- Sand/grass transition overlay — soft edge between sand and grass ----
-      const sandEdgeOverlay = new Graphics();
-      for (const cell of sandCells) {
-        const nv = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
-        const sv = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
-        const wv = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
-        const ev = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-        const px = cell.gx * TILE_W, py = cell.gy * TILE_H;
-        // Soft green edge where sand meets grass
-        if (nv === 3) { sandEdgeOverlay.rect(px, py, TILE_W, TILE_H * 0.3); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
-        if (sv === 3) { sandEdgeOverlay.rect(px, py + TILE_H * 0.7, TILE_W, TILE_H * 0.3); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
-        if (wv === 3) { sandEdgeOverlay.rect(px, py, TILE_W * 0.3, TILE_H); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
-        if (ev === 3) { sandEdgeOverlay.rect(px + TILE_W * 0.7, py, TILE_W * 0.3, TILE_H); sandEdgeOverlay.fill({ color: 0x7cb868, alpha: 0.25 }); }
-      }
-      tileLayer.addChild(sandEdgeOverlay);
 
       // ---- Lake water — dedicated animated TilingSprite with shimmer ----
       if (lakeCells.length > 0) {
@@ -452,27 +435,49 @@ export default function CityCanvas({
       const grassColorC = 0xE0ECDA; // cool shade
 
       for (const cell of grassCells) {
-        const n = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
-        const s = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
-        const w = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
-        const e = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
-        const lakeBorderN = n === 4;
-        const lakeBorderS = s === 4;
-        const lakeBorderW = w === 4;
-        const lakeBorderE = e === 4;
-        const touchesLake = lakeBorderN || lakeBorderS || lakeBorderW || lakeBorderE;
+        const nv = elevation[cell.ry - 1]?.[cell.rx] ?? 0;
+        const sv = elevation[cell.ry + 1]?.[cell.rx] ?? 0;
+        const wv = elevation[cell.ry]?.[cell.rx - 1] ?? 0;
+        const ev = elevation[cell.ry]?.[cell.rx + 1] ?? 0;
+        // Water = ocean (0), shallow (1), or lake (4)
+        const waterN = nv <= 1 || nv === 4;
+        const waterS = sv <= 1 || sv === 4;
+        const waterW = wv <= 1 || wv === 4;
+        const waterE = ev <= 1 || ev === 4;
+        const touchesWater = waterN || waterS || waterW || waterE;
+
+        // Also check diagonal neighbors for inner corners
+        const nwv = elevation[cell.ry - 1]?.[cell.rx - 1] ?? 0;
+        const nev = elevation[cell.ry - 1]?.[cell.rx + 1] ?? 0;
+        const swv = elevation[cell.ry + 1]?.[cell.rx - 1] ?? 0;
+        const sev = elevation[cell.ry + 1]?.[cell.rx + 1] ?? 0;
+        const waterNW = nwv <= 1 || nwv === 4;
+        const waterNE = nev <= 1 || nev === 4;
+        const waterSW = swv <= 1 || swv === 4;
+        const waterSE = sev <= 1 || sev === 4;
 
         let tex: Texture;
-        if (touchesLake && terrain.coast.length >= 9) {
+        if (touchesWater && terrain.coast.length >= 9) {
+          // Coast 3×3 autotile — rocky cliff edge with foam
           let slotX = 1, slotY = 1;
-          if (lakeBorderW) slotX = 0;
-          if (lakeBorderE) slotX = 2;
-          if (lakeBorderN) slotY = 0;
-          if (lakeBorderS) slotY = 2;
+          if (waterW) slotX = 0;
+          if (waterE) slotX = 2;
+          if (waterN) slotY = 0;
+          if (waterS) slotY = 2;
           tex = terrain.coast[slotY * 3 + slotX];
+        } else if (!waterN && !waterS && !waterW && !waterE && terrain.coastInner.length >= 4) {
+          // Inner corner: cardinal neighbors are land but a diagonal is water
+          // coastInner: [NW, NE, SW, SE]
+          if (waterNW) tex = terrain.coastInner[0];
+          else if (waterNE) tex = terrain.coastInner[1];
+          else if (waterSW) tex = terrain.coastInner[2];
+          else if (waterSE) tex = terrain.coastInner[3];
+          else {
+            const r = hash(cell.gx, cell.gy, 50);
+            tex = r < 0.85 ? terrain.grass[0]
+                : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
+          }
         } else {
-          // Use primarily the first grass tile for consistency;
-          // only ~15% get a variant for subtle texture detail
           const r = hash(cell.gx, cell.gy, 50);
           tex = r < 0.85 ? terrain.grass[0]
               : terrain.grass[Math.min(Math.floor((r - 0.85) / 0.15 * terrain.grass.length), terrain.grass.length - 1)];
@@ -483,12 +488,10 @@ export default function CityCanvas({
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
-        if (!touchesLake) {
-          // Two octaves of smooth noise for natural color variation
+        if (!touchesWater && !waterNW && !waterNE && !waterSW && !waterSE) {
           const n1 = smoothNoise(cell.gx, cell.gy);
           const n2 = smoothNoise(cell.gx * 2.3 + 100, cell.gy * 2.3 + 100) * 0.3;
           const combined = Math.min(1, Math.max(0, n1 + n2));
-          // Blend between 3 colors based on noise
           if (combined < 0.5) {
             sprite.tint = lerpColor(grassColorA, grassColorB, combined * 2);
           } else {
@@ -677,55 +680,8 @@ export default function CityCanvas({
         }
       }
 
-      // ---- Animated water edges — farm tileset foam sprites ----
-      // Place AnimatedSprites on shallow water cells adjacent to land.
-      // These cycle through 4 frames of wave/foam animation from the farm pack.
-      const waterEdgeSprites: AnimatedSprite[] = [];
-      if (terrain.waterEdge) {
-        for (let ry = 0; ry < MAP_ROWS; ry++) {
-          for (let rx = 0; rx < MAP_COLS; rx++) {
-            const v = elevation[ry][rx];
-            if (v !== 0 && v !== 1) continue; // only water cells
-            const gx = worldGx(rx), gy = worldGy(ry);
-            // Check which sides border land (sand=2 or grass=3)
-            const nv = elevation[ry - 1]?.[rx] ?? 0;
-            const sv = elevation[ry + 1]?.[rx] ?? 0;
-            const wv = elevation[ry]?.[rx - 1] ?? 0;
-            const ev = elevation[ry]?.[rx + 1] ?? 0;
-            const landN = nv >= 2 && nv !== 4;
-            const landS = sv >= 2 && sv !== 4;
-            const landW = wv >= 2 && wv !== 4;
-            const landE = ev >= 2 && ev !== 4;
-            if (!landN && !landS && !landW && !landE) continue;
-
-            // Pick the right edge frames based on which side has land
-            let frames: Texture[];
-            if (landN && landW) frames = terrain.waterEdge.NW;
-            else if (landN && landE) frames = terrain.waterEdge.NE;
-            else if (landS && landW) frames = terrain.waterEdge.SW;
-            else if (landS && landE) frames = terrain.waterEdge.SE;
-            else if (landN) frames = terrain.waterEdge.N;
-            else if (landS) frames = terrain.waterEdge.S;
-            else if (landW) frames = terrain.waterEdge.W;
-            else frames = terrain.waterEdge.E;
-
-            const anim = new AnimatedSprite(frames);
-            anim.anchor.set(0, 0);
-            anim.position.set(gx * TILE_W, gy * TILE_H);
-            anim.width = TILE_W;
-            anim.height = TILE_H;
-            anim.animationSpeed = 0.06 + hash(gx, gy, 888) * 0.02; // ~3-4 FPS, slight variation
-            anim.gotoAndPlay(Math.floor(hash(gx, gy, 889) * 4)); // stagger start frame
-            tileLayer.addChild(anim);
-            waterEdgeSprites.push(anim);
-          }
-        }
-      }
-
-      // Fallback procedural foam for cells not covered by sprite edges
-      const foamCells: Array<{ px: number; py: number; phase: number }> = [];
-      const foamLayer = new Graphics();
-      tileLayer.addChild(foamLayer);
+      // Coast autotile on grass cells handles the rocky cliff + foam.
+      // No separate water edge overlay needed.
 
       // ---- Butterflies — small animated particles over flower areas ----
       type ButterflyData = { g: Graphics; baseX: number; baseY: number; phase: number; speed: number; amp: number };

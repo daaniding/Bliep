@@ -206,34 +206,8 @@ export function processElevation(raw: number[][]): number[][] {
     }
   }
 
-  // ---- Sand beach band: 2 tiles wide around OCEAN coastline ----
-  const dirs: Array<[number, number]> = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-
-  // Pass 1: grass cells directly adjacent to ocean water/shallow → sand
-  const snap1 = grid.map(r => [...r]);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (snap1[r][c] !== 3) continue;
-      for (const [dr, dc] of dirs) {
-        const nr = r + dr, nc = c + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) { grid[r][c] = 2; break; }
-        if (snap1[nr][nc] <= 1) { grid[r][c] = 2; break; }
-      }
-    }
-  }
-
-  // Pass 2: grass cells adjacent to new sand → also sand (2-tile band)
-  const snap2 = grid.map(r => [...r]);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (snap2[r][c] !== 3) continue;
-      for (const [dr, dc] of dirs) {
-        const nr = r + dr, nc = c + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-        if (snap2[nr][nc] === 2) { grid[r][c] = 2; break; }
-      }
-    }
-  }
+  // No sand band — grass goes directly to rocky cliff coast (like reference)
+  // The coast autotile tiles already show grass→rock→water transition.
 
   // ---- Lake in the northeast quadrant ----
   // Organic blob shape using noise-perturbed distance for natural edges.
