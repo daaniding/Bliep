@@ -18,7 +18,7 @@ import {
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { autotileCoastIndex, grassToSandIndex } from '@/lib/game/autotile';
+import { autotileCoastIndex } from '@/lib/game/autotile';
 import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
@@ -361,7 +361,9 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
-      // ---- Grass tiles — sand-to-grass transition edges + tint variation ----
+      // ---- Grass tiles — plain fill with regional tint variation ----
+      // No sandToGrass autotile: those tiles have cobblestone borders (path tiles),
+      // not natural beach transitions. Clean colour-change edge looks better.
       const grassTints = [
         0xFFFFFF, // natural (no tint)
         0xE5FFDD, // cool meadow
@@ -370,25 +372,13 @@ export default function CityCanvas({
         0xEEFFE0, // bright clearing
       ];
       for (const cell of grassCells) {
-        // Check if this grass cell borders sand — use sand-to-grass autotile
-        const sandIdx = grassToSandIndex(elevation, cell.rx, cell.ry);
-        const hasSandEdge = sandIdx !== null;
-
-        // The sandToGrass tiles are path autotiles (sand perspective).
-        // For a grass cell looking at sand, we mirror the index: 8 - idx.
-        // This flips N↔S and E↔W so the sand edge faces the correct direction.
-        const tex = hasSandEdge
-          ? (terrain.sandToGrass[8 - sandIdx] ?? terrain.grass[0])
-          : terrain.grass[0];
-        const sprite = new Sprite(tex);
+        const sprite = new Sprite(terrain.grass[0]);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W;
         sprite.height = TILE_H;
-        if (!hasSandEdge) {
-          const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
-          sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
-        }
+        const regionHash = hash(Math.floor(cell.gx / 5), Math.floor(cell.gy / 5), 42);
+        sprite.tint = grassTints[Math.floor(regionHash * grassTints.length)];
         tileLayer.addChild(sprite);
       }
 
