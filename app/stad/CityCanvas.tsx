@@ -653,31 +653,76 @@ export default function CityCanvas({
         const distFromEdge = grassDistFromEdge.get(`${cell.rx},${cell.ry}`) ?? maxGrassDist;
         const edgeT = Math.min(1, distFromEdge / maxGrassDist);
 
-        // Eén tile type — variatie komt van tint, niet van texture wisselen
-        const tex = terrain.grass[0];
+        // Biome noise — zachte grote vlekken
+        const biome1 = smoothNoise(cell.gx, cell.gy);
+        const biome2 = smoothNoise(cell.gx * 1.7 + 200, cell.gy * 1.7 + 200);
+        const t = Math.min(1, Math.max(0, edgeT * 0.5 + biome1 * 0.3 + biome2 * 0.2));
+
+        // TEXTURE variatie: mix verschillende grass tiles op basis van zone + random
+        const r = hash(cell.gx, cell.gy, 50);
+        let tex: Texture;
+        if (t < 0.25) {
+          // Bosrand — donkere gras tiles
+          tex = terrain.grassDark[Math.floor(r * terrain.grassDark.length)];
+        } else if (t > 0.65) {
+          // Open centrum — lichte gras tiles
+          tex = terrain.grassLight[Math.floor(r * terrain.grassLight.length)];
+        } else {
+          // Midden zone — mix van alle medium gras tiles
+          tex = terrain.grass[Math.floor(r * terrain.grass.length)];
+        }
+
         const sprite = new Sprite(tex);
         sprite.anchor.set(0, 0);
         sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
         sprite.width = TILE_W; sprite.height = TILE_H;
 
-        // Smooth biome blending: donkerder aan randen, lichter in centrum
-        // Twee noise lagen op lage frequentie = grote zachte vlekken
-        const biome1 = smoothNoise(cell.gx, cell.gy); // grote patches
-        const biome2 = smoothNoise(cell.gx * 1.7 + 200, cell.gy * 1.7 + 200); // medium patches
-
-        // Combineer edge distance + noise voor smooth gradient
-        const t = Math.min(1, Math.max(0, edgeT * 0.5 + biome1 * 0.3 + biome2 * 0.2));
-
-        // 3 kleuren: donker rand → medium → licht centrum
-        const darkGreen  = 0xc0d4a8; // bosrand
-        const medGreen   = 0xd8e8c0; // standaard weide
-        const lightGreen = 0xeaf4d8; // open veld centrum
-
+        // Subtiele tint bovenop de texture variatie
+        const darkGreen  = 0xd0deb4;
+        const medGreen   = 0xe0ecc8;
+        const lightGreen = 0xeef6dc;
         sprite.tint = t < 0.45
           ? lerpColor(darkGreen, medGreen, t / 0.45)
           : lerpColor(medGreen, lightGreen, (t - 0.45) / 0.55);
 
         tileLayer.addChild(sprite);
+      }
+
+      // ---- Animated leaf wind overlays — scattered across the island ----
+      const leafWindTex = await (async () => {
+        try {
+          const t = await (await import('pixi.js')).Assets.load<Texture>('/assets/farm/trees/spring/leaves_wind_basic_spritesheet.png');
+          if (t?.source) t.source.scaleMode = 'nearest';
+          return t;
+        } catch { return null; }
+      })();
+      if (leafWindTex && grassCells.length > 0) {
+        // Slice into frames (assume horizontal strip)
+        const fw = leafWindTex.frame.height; // square frames
+        const fCount = Math.floor(leafWindTex.frame.width / fw);
+        if (fCount > 1) {
+          const leafFrames: Texture[] = [];
+          for (let i = 0; i < fCount; i++) {
+            leafFrames.push(new Texture({ source: leafWindTex.source, frame: new Rectangle(i * fw, 0, fw, fw) }));
+          }
+          // Place ~20 animated leaf wind patches across the island
+          for (let i = 0; i < 20; i++) {
+            const cellIdx = Math.floor(hash(i, 0, 7000) * grassCells.length);
+            const cell = grassCells[cellIdx];
+            const anim = new AnimatedSprite(leafFrames);
+            anim.anchor.set(0.5, 0.5);
+            const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
+            anim.position.set(sx, sy);
+            const leafScale = (TILE_W * 2.5) / fw;
+            anim.scale.set(leafScale);
+            anim.animationSpeed = 0.08 + hash(i, 1, 7000) * 0.04;
+            anim.currentFrame = Math.floor(hash(i, 2, 7000) * leafFrames.length);
+            anim.alpha = 0.6;
+            anim.play();
+            anim.zIndex = 999980;
+            decorLayer.addChild(anim);
+          }
+        }
       }
 
       if (!SHAPE_ONLY) {
