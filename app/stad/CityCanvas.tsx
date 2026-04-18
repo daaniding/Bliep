@@ -18,7 +18,7 @@ import {
 } from 'pixi.js';
 import { loadFarmTerrain, FARM_TILE, type FarmTerrain } from '@/lib/game/farmTerrain';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
-import { autotileCoastIndex } from '@/lib/game/autotile';
+import { autotileCoastIndex, coastInnerCorner } from '@/lib/game/autotile';
 import { generateGroves, type TreePlacement } from '@/lib/game/treeGroves';
 import {
   TILE_W,
@@ -529,6 +529,11 @@ export default function CityCanvas({
       tileLayer.addChild(waterOverlay);
 
       // ---- Animated water edges — foam on water cells adjacent to land ----
+      // The tileset tile names (N/W/NW/NE/SW) refer to the tile's POSITION
+      // relative to the island in the tileset preview, NOT the direction of land.
+      // So waterEdge.N (tile above island) is used when land is to the SOUTH, etc.
+      // Only 5 valid water tiles exist: N, W, NW, NE, SW in the tileset.
+      // South/east coast transitions are handled by coast tiles on grass cells.
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
           const v = elevation[ry][rx];
@@ -540,25 +545,20 @@ export default function CityCanvas({
           const landN = nv === 3, landS = sv === 3, landW = wv === 3, landE = ev === 3;
 
           let frames: Texture[] | null = null;
-          if (landN || landS || landW || landE) {
-            if (landN && landW) frames = terrain.waterEdge.NW;
-            else if (landN && landE) frames = terrain.waterEdge.NE;
-            else if (landS && landW) frames = terrain.waterEdge.SW;
-            else if (landS && landE) frames = terrain.waterEdge.SE;
-            else if (landN) frames = terrain.waterEdge.N;
-            else if (landS) frames = terrain.waterEdge.S;
-            else if (landW) frames = terrain.waterEdge.W;
-            else if (landE) frames = terrain.waterEdge.E;
-          } else {
+          // Map: land direction → tileset position (inverted)
+          if (landS && landE) frames = terrain.waterEdge.NW;   // tile above-left
+          else if (landS && landW) frames = terrain.waterEdge.NE; // tile above-right
+          else if (landN && landE) frames = terrain.waterEdge.SW; // tile below-left
+          else if (landS) frames = terrain.waterEdge.N;           // tile above
+          else if (landE) frames = terrain.waterEdge.W;           // tile left
+          else if (!landN && !landS && !landW && !landE) {
             // Inner corners (diagonal land only)
-            const nwv = elevation[ry - 1]?.[rx - 1] ?? 0;
-            const nev = elevation[ry - 1]?.[rx + 1] ?? 0;
-            const swv = elevation[ry + 1]?.[rx - 1] ?? 0;
             const sev = elevation[ry + 1]?.[rx + 1] ?? 0;
-            if (nwv === 3) frames = terrain.waterEdge.NW;
-            else if (nev === 3) frames = terrain.waterEdge.NE;
-            else if (swv === 3) frames = terrain.waterEdge.SW;
-            else if (sev === 3) frames = terrain.waterEdge.SE;
+            const swv = elevation[ry + 1]?.[rx - 1] ?? 0;
+            const nev = elevation[ry - 1]?.[rx + 1] ?? 0;
+            if (sev === 3) frames = terrain.waterEdge.NW;   // land at SE → tile at NW pos
+            else if (swv === 3) frames = terrain.waterEdge.NE; // land at SW → tile at NE pos
+            else if (nev === 3) frames = terrain.waterEdge.SW; // land at NE → tile at SW pos
           }
           if (!frames || frames.length === 0) continue;
           const gx = worldGx(rx), gy = worldGy(ry);
@@ -652,6 +652,32 @@ export default function CityCanvas({
       for (const cell of grassCells) {
         const distFromEdge = grassDistFromEdge.get(`${cell.rx},${cell.ry}`) ?? maxGrassDist;
         const edgeT = Math.min(1, distFromEdge / maxGrassDist);
+
+        // Check if this grass cell borders water — use coast tile if so
+        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
+        const innerCorner = coastInnerCorner(elevation, cell.rx, cell.ry);
+
+        if (coastIdx !== null && terrain.coast[coastIdx]) {
+          // Coast tile: grass+stone edge facing the water
+          const sprite = new Sprite(terrain.coast[coastIdx]);
+          sprite.anchor.set(0, 0);
+          sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+          sprite.width = TILE_W; sprite.height = TILE_H;
+          tileLayer.addChild(sprite);
+          continue;
+        }
+        if (innerCorner && terrain.coastInner) {
+          const cornerMap: Record<string, number> = { NW: 0, NE: 1, SW: 2, SE: 3 };
+          const tex = terrain.coastInner[cornerMap[innerCorner]];
+          if (tex) {
+            const sprite = new Sprite(tex);
+            sprite.anchor.set(0, 0);
+            sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
+            sprite.width = TILE_W; sprite.height = TILE_H;
+            tileLayer.addChild(sprite);
+            continue;
+          }
+        }
 
         // Biome noise — zachte grote vlekken
         const biome1 = smoothNoise(cell.gx, cell.gy);
