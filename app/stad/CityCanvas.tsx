@@ -528,49 +528,9 @@ export default function CityCanvas({
       }
       tileLayer.addChild(waterOverlay);
 
-      // ---- Animated water edges — foam on water cells adjacent to land ----
-      // The tileset tile names (N/W/NW/NE/SW) refer to the tile's POSITION
-      // relative to the island in the tileset preview, NOT the direction of land.
-      // So waterEdge.N (tile above island) is used when land is to the SOUTH, etc.
-      // Only 5 valid water tiles exist: N, W, NW, NE, SW in the tileset.
-      // South/east coast transitions are handled by coast tiles on grass cells.
-      for (let ry = 0; ry < MAP_ROWS; ry++) {
-        for (let rx = 0; rx < MAP_COLS; rx++) {
-          const v = elevation[ry][rx];
-          if (v !== 0 && v !== 1) continue;
-          const nv = elevation[ry - 1]?.[rx] ?? 0;
-          const sv = elevation[ry + 1]?.[rx] ?? 0;
-          const wv = elevation[ry]?.[rx - 1] ?? 0;
-          const ev = elevation[ry]?.[rx + 1] ?? 0;
-          const landN = nv === 3, landS = sv === 3, landW = wv === 3, landE = ev === 3;
-
-          let frames: Texture[] | null = null;
-          // Map: land direction → tileset position (inverted)
-          if (landS && landE) frames = terrain.waterEdge.NW;   // tile above-left
-          else if (landS && landW) frames = terrain.waterEdge.NE; // tile above-right
-          else if (landN && landE) frames = terrain.waterEdge.SW; // tile below-left
-          else if (landS) frames = terrain.waterEdge.N;           // tile above
-          else if (landE) frames = terrain.waterEdge.W;           // tile left
-          else if (!landN && !landS && !landW && !landE) {
-            // Inner corners (diagonal land only)
-            const sev = elevation[ry + 1]?.[rx + 1] ?? 0;
-            const swv = elevation[ry + 1]?.[rx - 1] ?? 0;
-            const nev = elevation[ry - 1]?.[rx + 1] ?? 0;
-            if (sev === 3) frames = terrain.waterEdge.NW;   // land at SE → tile at NW pos
-            else if (swv === 3) frames = terrain.waterEdge.NE; // land at SW → tile at NE pos
-            else if (nev === 3) frames = terrain.waterEdge.SW; // land at NE → tile at SW pos
-          }
-          if (!frames || frames.length === 0) continue;
-          const gx = worldGx(rx), gy = worldGy(ry);
-          const anim = new AnimatedSprite(frames);
-          anim.anchor.set(0, 0);
-          anim.position.set(gx * TILE_W, gy * TILE_H);
-          anim.width = TILE_W; anim.height = TILE_H;
-          anim.animationSpeed = 0.06; anim.play();
-          anim.currentFrame = Math.floor(hash(gx, gy, 8000) * frames.length);
-          tileLayer.addChild(anim);
-        }
-      }
+      // Water edges: coast tiles on grass cells handle the stone transition.
+      // Shallow water gradient overlay provides the color transition to deep water.
+      // No separate waterEdge foam tiles needed — avoids double-edge artifacts.
 
       // ---- Lake water ----
       if (lakeCells.length > 0) {
