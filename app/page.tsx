@@ -173,20 +173,51 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="bh-stat">
-            <span className="bh-coin" />
-            <span>{coins.toLocaleString('nl-NL')}</span>
-          </div>
+          <motion.div
+            className="bh-stat"
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 480, damping: 18, delay: 0.3 }}
+          >
+            <motion.span
+              className="bh-coin"
+              animate={{ rotate: [0, -8, 8, -4, 4, 0] }}
+              transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 4, ease: 'easeInOut' }}
+            />
+            <motion.span
+              key={coins}
+              initial={{ y: -6, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+            >
+              {coins.toLocaleString('nl-NL')}
+            </motion.span>
+          </motion.div>
 
-          <Link href="/league" className="bh-stat bh-stat-link" onClick={() => vibrate(10)}>
+          <MLink
+            href="/league"
+            className="bh-stat bh-stat-link"
+            onClick={() => vibrate(10)}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            whileTap={{ scale: 0.92 }}
+            transition={{ type: 'spring', stiffness: 480, damping: 18, delay: 0.38 }}
+          >
             <svg className="bh-trophy" viewBox="0 0 20 20" aria-hidden>
               <path d="M5 3 L15 3 L15 9 Q15 13 10 14 Q5 13 5 9 Z" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.3" />
               <path d="M5 5 Q2 5 2 8 Q2 10 5 10 M15 5 Q18 5 18 8 Q18 10 15 10" fill="none" stroke="#1A0A02" strokeWidth="1.3" />
               <rect x="8" y="14" width="4" height="3" fill="#C8882A" stroke="#1A0A02" strokeWidth="1" />
               <rect x="6" y="17" width="8" height="2" fill="#8e5a18" stroke="#1A0A02" strokeWidth="1" />
             </svg>
-            <span>{trophies}</span>
-          </Link>
+            <motion.span
+              key={trophies}
+              initial={{ y: -6, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+            >
+              {trophies}
+            </motion.span>
+          </MLink>
         </motion.div>
 
         {/* SIDE RAIL — streak, settings, meer */}
@@ -274,7 +305,12 @@ export default function Home() {
               <div className="bh-chain bh-chain-r" />
               <div className="bh-opdracht-inner">
                 <div className="bh-rays" />
-                <div className="bh-seal" aria-hidden>
+                <motion.div
+                  className="bh-seal"
+                  aria-hidden
+                  animate={{ rotate: [0, -6, 6, -3, 3, 0] }}
+                  transition={{ duration: 3.2, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
+                >
                   <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
                     <path d="M6 5 L17 5 Q20 5 20 8 L20 20 Q20 23 17 23 L6 23 Q3 23 3 20 L3 8 Q3 5 6 5 Z"
                       fill="#E8D5A3" stroke="#1A0A02" strokeWidth="1.3" />
@@ -282,7 +318,7 @@ export default function Home() {
                     <path d="M7 10 L16 10 M7 13 L16 13 M7 16 L14 16" stroke="#8a6a3b" strokeWidth="1" strokeLinecap="round" />
                     <path d="M18 3 L24 8 L21 11 L15 6 Z" fill="#d43b2a" stroke="#1A0A02" strokeWidth="1.1" strokeLinejoin="round" />
                   </svg>
-                </div>
+                </motion.div>
                 <div className="bh-opdracht-text">
                   <span className="bh-opdracht-title">
                     {pick.completed ? 'Klaar' : 'Opdracht'}
@@ -295,7 +331,11 @@ export default function Home() {
                       : (chosenTask ? `${chosenTask.durationMin} min · ${chosenTask.coins} 🪙` : 'Kies je opdracht')}
                   </span>
                 </div>
-                <div className="bh-opdracht-chevron">▶</div>
+                <motion.div
+                  className="bh-opdracht-chevron"
+                  animate={opdrachtDisabled ? undefined : { x: [0, 5, 0] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                >▶</motion.div>
                 <div className="bh-shine" />
               </div>
             </motion.button>
@@ -310,7 +350,7 @@ export default function Home() {
             <div className="bh-chests">
               {/* READY (placeholder — wire to free chest state later) */}
               <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Houten kist gereed">
-                <div className="bh-chest-icon">
+                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#7a4320" stroke="#1A0A02" strokeWidth="1.5" />
                     <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="#c98c1a" stroke="#1A0A02" strokeWidth="1.5" />
@@ -319,11 +359,11 @@ export default function Home() {
                     <circle cx="21" cy="21" r="1.4" fill="#1A0A02" />
                     <path d="M21 2 L22 4 L24 5 L22 6 L21 8 L20 6 L18 5 L20 4 Z" fill="#F5C842" stroke="#1A0A02" strokeWidth=".6" />
                   </svg>
-                </div>
+                </motion.div>
                 <span className="bh-chest-status bh-chest-ready">OPEN</span>
               </motion.button>
               <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Zilveren kist">
-                <div className="bh-chest-icon">
+                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#4a5a6a" stroke="#1A0A02" strokeWidth="1.5" />
                     <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="#9aaab8" stroke="#1A0A02" strokeWidth="1.5" />
@@ -331,12 +371,12 @@ export default function Home() {
                     <rect x="17" y="14" width="8" height="12" fill="#d0dae4" stroke="#1A0A02" strokeWidth=".8" />
                     <circle cx="21" cy="21" r="1.4" fill="#1A0A02" />
                   </svg>
-                </div>
+                </motion.div>
                 <span className="bh-chest-status bh-chest-timer">2:14:38</span>
                 <span className="bh-chest-count">2</span>
               </motion.button>
               <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Gouden kist">
-                <div className="bh-chest-icon">
+                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#C8882A" stroke="#1A0A02" strokeWidth="1.5" />
                     <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.5" />
@@ -345,17 +385,17 @@ export default function Home() {
                     <circle cx="21" cy="21" r="1.4" fill="#1A0A02" />
                     <circle cx="21" cy="10" r="1.8" fill="#d43b2a" stroke="#1A0A02" strokeWidth=".6" />
                   </svg>
-                </div>
+                </motion.div>
                 <span className="bh-chest-status bh-chest-timer">8:00:00</span>
               </motion.button>
               <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-empty" aria-label="Leeg slot">
-                <div className="bh-chest-icon">
+                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="none" stroke="#5a3a22" strokeWidth="1.3" strokeDasharray="3 3" />
                     <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="none" stroke="#5a3a22" strokeWidth="1.3" strokeDasharray="3 3" />
                     <path d="M18 18 L24 24 M24 18 L18 24" stroke="#5a3a22" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
-                </div>
+                </motion.div>
                 <span className="bh-chest-status">LEEG</span>
               </motion.button>
             </div>
@@ -660,8 +700,14 @@ export default function Home() {
           z-index: 1;
         }
 
-        /* OPDRACHT hero */
-        .bh-opdracht-wrap { position: relative; padding: 0 4px 8px; }
+        /* OPDRACHT hero — lifted above base panel top so it overlaps
+           into the water fade for a smooth layered transition */
+        .bh-opdracht-wrap {
+          position: relative;
+          padding: 0 4px 8px;
+          margin-top: -28px;
+          z-index: 3;
+        }
         .bh-opdracht {
           position: relative; display: block; width: 100%;
           border: none; cursor: pointer; padding: 0;
