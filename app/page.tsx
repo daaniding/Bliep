@@ -872,7 +872,7 @@ export default function Home() {
         .bh-chest-slot {
           position: relative;
           border: none; cursor: pointer;
-          padding: 6px 4px 16px;
+          padding: 8px 4px 18px;
           border-radius: 10px;
           background:
             radial-gradient(80% 60% at 50% 0%, rgba(140,170,210,.15) 0%, transparent 70%),
@@ -883,12 +883,12 @@ export default function Home() {
             inset 0 0 0 3px rgba(10,20,30,.9),
             inset 0 1px 0 rgba(140,170,210,.18),
             0 2px 0 rgba(0,0,0,.55);
-          display: flex; flex-direction: column; align-items: center; gap: 3px;
-          min-height: 72px;
+          display: flex; flex-direction: column; align-items: center; gap: 4px;
+          min-height: 92px;
         }
         .bh-chest-icon {
-          width: 40px; height: 36px; display: grid; place-items: center;
-          filter: drop-shadow(0 2px 2px rgba(0,0,0,.5));
+          width: 82px; height: 56px; display: grid; place-items: center;
+          filter: drop-shadow(0 3px 3px rgba(0,0,0,.55));
         }
         .bh-chest-status {
           position: absolute; bottom: 3px; left: 4px; right: 4px;
@@ -1004,7 +1004,7 @@ function ChestSlot({
   const isEmpty = tier === 'empty';
   const cls = `bh-chest-slot ${isEmpty ? 'bh-chest-empty' : 'bh-chest-active'}`;
   const statusCls = `bh-chest-status ${isReady ? 'bh-chest-ready' : (!isEmpty && status.includes(':')) ? 'bh-chest-timer' : ''}`;
-  const scale = 1.2;
+  const scale = 1.7;
   const row = CHEST_ROW[tier];
   // Ready chest gently hints at opening: alternate frame 0 / 1
   const [readyFrame, setReadyFrame] = useState(0);
