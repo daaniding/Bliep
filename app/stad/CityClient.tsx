@@ -66,6 +66,9 @@ export default function CityClient() {
   const [canvasReady, setCanvasReady] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [, forceTick] = useState(0);
+  const [chopMode, setChopMode] = useState(false);
+  const chopModeRef = useRef(false);
+  useEffect(() => { chopModeRef.current = chopMode; }, [chopMode]);
   const hostRef = useRef<HTMLDivElement>(null);
 
   // Initial load
@@ -94,11 +97,12 @@ export default function CityClient() {
     return () => clearInterval(id);
   }, [loaded]);
 
-  // Tap-tree event → direct start chop (no modal)
+  // Tap-tree event → only act when chop-mode is on
   useEffect(() => {
     const onTapTree = (e: Event) => {
       const detail = (e as CustomEvent).detail as { gx: number; gy: number } | undefined;
       if (!detail) return;
+      if (!chopModeRef.current) return;
       setState(s => {
         if (!hasLumberHut(s)) { showFlash('Bouw eerst een Houthakkershut (50 🪙)'); return s; }
         if (s.chopJobs.length >= maxChoppers(s)) { showFlash('Alle houthakkers zijn bezig'); return s; }
@@ -386,12 +390,12 @@ export default function CityClient() {
 
       {/* Daily chest readiness label */}
 
-      {/* Bottom build button — premium 3D style */}
+      {/* Bottom buttons — BOUWEN + HAKKEN */}
       {!placingType && (
-        <div className="fixed bottom-5 left-0 right-0 z-20 flex items-center justify-center pointer-events-none">
+        <div className="fixed bottom-5 left-0 right-0 z-20 flex items-center justify-center gap-3 pointer-events-none">
           <button
-            onClick={() => { setDrawerOpen(true); playSfx('tap'); }}
-            className="pointer-events-auto font-display text-xl px-8 py-3.5 rounded-2xl border-4 border-[#0d0a06] active:translate-y-[3px] transition-transform"
+            onClick={() => { setDrawerOpen(true); playSfx('tap'); setChopMode(false); }}
+            className="pointer-events-auto font-display text-xl px-7 py-3.5 rounded-2xl border-4 border-[#0d0a06] active:translate-y-[3px] transition-transform"
             style={{
               background: 'linear-gradient(180deg, #ffec8c 0%, #fdd069 25%, #d19225 65%, #6e4c10 100%)',
               color: '#2a1508',
@@ -401,6 +405,22 @@ export default function CityClient() {
             }}
           >
             🏗 BOUWEN
+          </button>
+          <button
+            onClick={() => { setChopMode(m => !m); playSfx('tap'); }}
+            className="pointer-events-auto font-display text-xl px-6 py-3.5 rounded-2xl border-4 border-[#0d0a06] active:translate-y-[3px] transition-transform"
+            style={{
+              background: chopMode
+                ? 'linear-gradient(180deg, #ff9a6c 0%, #e05c2a 50%, #8a2a10 100%)'
+                : 'linear-gradient(180deg, #c4d89a 0%, #7ea05a 30%, #3e5c2a 70%, #1e3010 100%)',
+              color: chopMode ? '#fff3d0' : '#f4ffe0',
+              textShadow: '0 1px 0 rgba(0,0,0,0.4)',
+              boxShadow: chopMode
+                ? 'inset 0 3px 0 rgba(255,230,190,0.5), inset 0 -5px 0 rgba(80,20,5,0.7), 0 6px 0 #0d0a06, 0 10px 24px rgba(255,120,60,0.4), 0 10px 22px rgba(0,0,0,0.55)'
+                : 'inset 0 3px 0 rgba(220,255,180,0.5), inset 0 -5px 0 rgba(30,50,15,0.7), 0 6px 0 #0d0a06, 0 10px 24px rgba(140,200,90,0.3), 0 10px 22px rgba(0,0,0,0.55)',
+            }}
+          >
+            🪓 {chopMode ? 'STOP' : 'HAKKEN'}
           </button>
         </div>
       )}

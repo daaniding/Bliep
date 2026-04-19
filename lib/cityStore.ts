@@ -237,7 +237,8 @@ let _cachedTreeSet: { seed: number; set: Set<string> } | null = null;
 
 /** All world cells occupied by a still-standing random tree (minus chopped). */
 export function getTreeCellSet(state: CityState): Set<string> {
-  const seed = state.npcSeed;
+  // Seed must match CityCanvas' fallback: `state.npcSeed || 1`
+  const seed = state.npcSeed || 1;
   if (!_cachedTreeSet || _cachedTreeSet.seed !== seed) {
     const elev = processElevation(parseElevation());
     const offsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
