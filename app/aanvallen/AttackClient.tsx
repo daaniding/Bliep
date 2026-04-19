@@ -3,10 +3,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { CAMPS, DIFFICULTY_MULT, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, winChance, wallRefundFraction, type PveCamp, type Difficulty } from '@/lib/pveCamps';
-import { loadCity, saveCity, addCoins, spendCoins, resetCity } from '@/lib/cityStore';
+import { loadCity, saveCity, addCoins, spendCoins, resetCity, addXp } from '@/lib/cityStore';
+import { XP_SOURCES } from '@/lib/xp';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import BattleIsland from './BattleIsland';
+import LevelUpModal from '../components/modals/LevelUpModal';
+import ChestOpenModal from '../components/modals/ChestOpenModal';
+import { loadInventory, consumeChest, grantChest, type ChestKind, type ChestSlot as ChestSlotType } from '@/lib/chests';
 import type { EnemySpriteKey } from '@/lib/pveCamps';
 import type { CityState } from '@/lib/cityStore';
 
@@ -66,6 +70,8 @@ export default function AttackClient() {
   const [result, setResult] = useState<{ camp: PveCamp; won: boolean } | null>(null);
   const [kazerneLvl, setKazerneLvl] = useState(0);
   const [totalWallLevel, setTotalWallLevel] = useState(0);
+  const [levelUp, setLevelUp] = useState<{ level: number; chestKind: ChestKind } | null>(null);
+  const [openingSlot, setOpeningSlot] = useState<ChestSlotType | null>(null);
 
   // Refresh kazerne and wall stats
   useEffect(() => {
@@ -115,8 +121,20 @@ export default function AttackClient() {
     if (won) {
       const rewardCoins = Math.round(battleCamp.rewardCoins * dm.reward);
       const rewardTrophies = Math.round(battleCamp.rewardTrophies * dm.reward);
+      const xpAmount = difficulty === 'easy' ? XP_SOURCES.battleWinEasy
+        : difficulty === 'hard' ? XP_SOURCES.battleWinHard
+        : XP_SOURCES.battleWinNormal;
       const after = loadCity();
-      saveCity(addCoins(after, rewardCoins));
+      const withCoins = addCoins(after, rewardCoins);
+      const xpRes = addXp(withCoins, xpAmount);
+      saveCity(xpRes.state);
+      if (xpRes.leveledUp) {
+        const chestKind: ChestKind = xpRes.newLevel >= 10 ? 'magic'
+          : xpRes.newLevel >= 5 ? 'gold'
+          : xpRes.newLevel >= 2 ? 'bronze'
+          : 'wood';
+        window.setTimeout(() => setLevelUp({ level: xpRes.newLevel, chestKind }), 800);
+      }
       const next = { ...pveState, [battleCamp.id]: Date.now() };
       savePveState(next);
       setPveState(next);
@@ -367,6 +385,33 @@ export default function AttackClient() {
           </div>
         </div>
       )}
+
+      {/* Level-up celebration */}
+      <LevelUpModal
+        open={levelUp !== null}
+        onClose={() => setLevelUp(null)}
+        newLevel={levelUp?.level ?? 1}
+        chestKind={levelUp?.chestKind ?? 'wood'}
+        onClaim={() => {
+          if (!levelUp) return;
+          const res = grantChest(loadInventory(), levelUp.chestKind, { instant: true });
+          if (res.ok) {
+            const fresh = res.inv.slots[res.inv.slots.length - 1];
+            setLevelUp(null);
+            setOpeningSlot(fresh);
+          } else {
+            setLevelUp(null);
+          }
+        }}
+      />
+      <ChestOpenModal
+        open={openingSlot !== null}
+        kind={(openingSlot?.kind ?? 'wood') as ChestKind}
+        onClose={() => {
+          if (openingSlot) consumeChest(loadInventory(), openingSlot.id);
+          setOpeningSlot(null);
+        }}
+      />
     </div>
   );
 }

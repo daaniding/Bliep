@@ -2,6 +2,7 @@ import { BUILDINGS, buildTimeSec, farmRateFor, footprintOf, footprintsOverlap, p
 import { inBuildZone, CITY_CENTER } from './game/iso';
 import { generateGroves } from './game/treeGroves';
 import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from './game/staticMap';
+import { levelForXp } from './xp';
 
 const STORAGE_KEY = 'bliep:city:v2';
 const LEGACY_KEY = 'bliep:city:v1';
@@ -46,6 +47,10 @@ export interface CityState {
   coins: number;
   wood: number;
   speedTokens: number;
+  /** Total earned XP — drives level via lib/xp.ts. */
+  xp: number;
+  /** Cached level; derived from xp but stored for change detection. */
+  level: number;
   buildings: PlacedBuilding[];
   buildQueue: BuildQueueItem[];
   /** Active tree-chop jobs with timers. */
@@ -164,6 +169,8 @@ function defaultCity(): CityState {
     coins: 0,
     wood: 0,
     speedTokens: 0,
+    xp: 0,
+    level: 1,
     buildings,
     buildQueue: [],
     chopJobs: [],
@@ -203,11 +210,16 @@ function normalize(parsed: Partial<CityState>): CityState {
     }
   }
 
+  const xp = parsed.xp ?? 0;
+  const level = parsed.level ?? levelForXp(xp).level;
+
   return {
     version: 2,
     coins: parsed.coins ?? base.coins,
     wood: parsed.wood ?? 0,
     speedTokens: parsed.speedTokens ?? 0,
+    xp,
+    level,
     buildings,
     buildQueue: parsed.buildQueue ?? [],
     chopJobs: parsed.chopJobs ?? [],
@@ -286,6 +298,24 @@ export function spendCoins(state: CityState, amount: number): CityState {
 
 export function addCoins(state: CityState, amount: number): CityState {
   return { ...state, coins: state.coins + amount };
+}
+
+export interface XpGainResult {
+  state: CityState;
+  leveledUp: boolean;
+  newLevel: number;
+  oldLevel: number;
+}
+
+/** Add XP. Returns the new state plus level-up info so callers can trigger
+ * the LevelUpModal + chest-reward. */
+export function addXp(state: CityState, amount: number): XpGainResult {
+  if (amount <= 0) return { state, leveledUp: false, newLevel: state.level, oldLevel: state.level };
+  const newXp = state.xp + amount;
+  const newLevel = levelForXp(newXp).level;
+  const oldLevel = state.level;
+  const next: CityState = { ...state, xp: newXp, level: newLevel };
+  return { state: next, leveledUp: newLevel > oldLevel, newLevel, oldLevel };
 }
 
 export function addSpeedTokens(state: CityState, amount: number): CityState {

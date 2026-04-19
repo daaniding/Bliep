@@ -1,29 +1,14 @@
 'use client';
 
-import { useTrophies } from '@/lib/useTrophies';
+import { useXp } from '@/lib/useXp';
 
-// Clash-style level bar. Derives level from total trophies (placeholder
-// formula until we have a real XP system). Shows current level number,
-// a filled progress bar, and the "N to next level" label.
-
-// Level curve: level N needs N*50 trophies total. Level 1 = 0-49 trophies,
-// level 2 = 50-149, level 3 = 150-299, etc. Quadratic-ish.
-function levelForTrophies(t: number): { level: number; base: number; next: number } {
-  let level = 1;
-  let base = 0;
-  while (true) {
-    const cost = level * 50;
-    if (t < base + cost) return { level, base, next: base + cost };
-    base += cost;
-    level += 1;
-  }
-}
+// Clash-style level bar — level + XP progress.
+// XP is the single progression metric; trophies are battle-ranking only.
 
 export default function KingdomLevelBar() {
-  const { trophies } = useTrophies();
-  const { level, base, next } = levelForTrophies(trophies);
-  const progress = (trophies - base) / (next - base);
-  const pct = Math.max(0, Math.min(1, progress));
+  const { xp, info } = useXp();
+  const { level, base, next, progress } = info;
+  const pct = Math.max(0, Math.min(1, progress / (next - base)));
 
   return (
     <div className="flex items-center gap-2 pointer-events-auto">
@@ -88,7 +73,7 @@ export default function KingdomLevelBar() {
             textShadow: '0 1px 0 rgba(0,0,0,0.85), 0 0 4px rgba(0,0,0,0.6)',
           }}
         >
-          {trophies} / {next}
+          {xp - base} / {next - base} XP
         </div>
       </div>
     </div>

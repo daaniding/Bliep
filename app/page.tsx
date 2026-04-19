@@ -16,6 +16,7 @@ import ChestOpenModal from './components/modals/ChestOpenModal';
 import LeagueModal from './components/modals/LeagueModal';
 import PassModal from './components/modals/PassModal';
 import ChestActionModal from './components/modals/ChestActionModal';
+import LevelUpModal from './components/modals/LevelUpModal';
 import {
   loadInventory, tickInventory, consumeChest, grantChest,
   type ChestSlot as ChestSlotType, type ChestKind, type ChestInventory,
@@ -26,9 +27,10 @@ import { isLuckyDay } from '@/lib/luckyDay';
 import { vibrate } from '@/lib/juice';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
-import { loadCity, saveCity, addSpeedTokens } from '@/lib/cityStore';
+import { loadCity, saveCity, addSpeedTokens, addXp } from '@/lib/cityStore';
 import { useTrophies } from '@/lib/useTrophies';
 import { trophiesForTier } from '@/lib/trophies';
+import { XP_SOURCES } from '@/lib/xp';
 import { sfxClaim, sfxFail, sfxTap } from '@/lib/sound';
 
 function getToday(): string {
@@ -82,6 +84,7 @@ export default function Home() {
   const [actionSlot, setActionSlot] = useState<ChestSlotType | null>(null);
   const [openingSlot, setOpeningSlot] = useState<ChestSlotType | null>(null);
   const [, setNowTick] = useState(0); // drives re-renders for ticking timers
+  const [levelUp, setLevelUp] = useState<{ level: number; chestKind: ChestKind } | null>(null);
 
   const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
   const showPickerModal = !chosenTask && !pick.completed;
@@ -145,7 +148,25 @@ export default function Home() {
   function handleClaim(coinAmount: number) {
     sfxClaim();
     award(coinAmount);
-    saveCity(addSpeedTokens(loadCity(), 1));
+    // XP + level-up detection from task tier
+    let leveledUpInfo: { level: number; chestKind: ChestKind } | null = null;
+    if (chosenTask) {
+      const xpAmount = chosenTask.tier === 'easy' ? XP_SOURCES.taskEasy
+        : chosenTask.tier === 'medium' ? XP_SOURCES.taskMedium
+        : XP_SOURCES.taskHard;
+      const xpRes = addXp(loadCity(), xpAmount);
+      saveCity(addSpeedTokens(xpRes.state, 1));
+      if (xpRes.leveledUp) {
+        // Scale reward chest with level
+        const chestKind: ChestKind = xpRes.newLevel >= 10 ? 'magic'
+          : xpRes.newLevel >= 5 ? 'gold'
+          : xpRes.newLevel >= 2 ? 'bronze'
+          : 'wood';
+        leveledUpInfo = { level: xpRes.newLevel, chestKind };
+      }
+    } else {
+      saveCity(addSpeedTokens(loadCity(), 1));
+    }
     if (chosenTask) awardTrophies(trophiesForTier(chosenTask.tier), `Taak voltooid (${chosenTask.tier})`);
     const next = { ...pick, completed: true, outcome: 'won' as const };
     saveDailyPick(next); setPick(next); completeStreak(); setShowTimerModal(false);
@@ -164,6 +185,10 @@ export default function Home() {
       } else {
         window.setTimeout(() => showFloater('Kistenkast vol 📦', '#e07070'), 700);
       }
+    }
+    // Show LevelUpModal after the task-reward floaters have played
+    if (leveledUpInfo) {
+      window.setTimeout(() => setLevelUp(leveledUpInfo), 1400);
     }
   }
   function handleAbort() {
@@ -530,6 +555,28 @@ export default function Home() {
             setChestInv(consumeChest(loadInventory(), openingSlot.id));
           }
           setOpeningSlot(null);
+        }}
+      />
+
+      {/* Level-up celebration */}
+      <LevelUpModal
+        open={levelUp !== null}
+        onClose={() => setLevelUp(null)}
+        newLevel={levelUp?.level ?? 1}
+        chestKind={levelUp?.chestKind ?? 'wood'}
+        onClaim={() => {
+          if (!levelUp) return;
+          // Grant the level-up chest as instant-ready so user can open immediately
+          const res = grantChest(loadInventory(), levelUp.chestKind, { instant: true });
+          if (res.ok) {
+            setChestInv(res.inv);
+            // Find the freshly-added slot to route into ChestOpenModal
+            const fresh = res.inv.slots[res.inv.slots.length - 1];
+            setLevelUp(null);
+            setOpeningSlot(fresh);
+          } else {
+            setLevelUp(null);
+          }
         }}
       />
 
