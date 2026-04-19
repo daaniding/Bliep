@@ -593,7 +593,7 @@ export default function AttackClient() {
 
   return (
     <div className="game-shell" style={{ paddingBottom: 'calc(130px + env(safe-area-inset-bottom, 0px))' }}>
-      <main className="relative z-10 pt-12 max-w-[520px] mx-auto px-4">
+      <main className="relative z-10 pt-8 max-w-[520px] mx-auto px-4">
         {/* Header */}
         <motion.div
           initial={{ y: -12, opacity: 0 }}
@@ -627,13 +627,21 @@ export default function AttackClient() {
           initial={{ y: 8, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.05 }}
-          className="mb-4"
+          className="mb-3"
         >
           <p className="game-section-label">Strijdveld</p>
           <h1 className="game-h1 mt-1">Aanvallen</h1>
-          <p className="game-body-italic text-[13px] mt-2 leading-relaxed">
-            Huur huurlingen, val kampen aan. <b style={{ color: '#fdd069', fontStyle: 'normal' }}>Kazerne lvl {kazerneLvl}</b> bepaalt je kans, <b style={{ color: '#fdd069', fontStyle: 'normal' }}>muren {totalWallLevel}</b> geven {Math.round(wallRefundFraction(totalWallLevel) * 100)}% refund bij verlies.
-          </p>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <div className="game-pill" style={{ padding: '4px 10px', fontSize: 10, letterSpacing: '0.1em' }}>
+              🛡 KAZERNE <span className="tabular-nums" style={{ color: '#fff6dc' }}>{kazerneLvl}</span>
+            </div>
+            <div className="game-pill" style={{ padding: '4px 10px', fontSize: 10, letterSpacing: '0.1em' }}>
+              🧱 MUREN <span className="tabular-nums" style={{ color: '#fff6dc' }}>{totalWallLevel}</span>
+            </div>
+            <div className="game-pill" style={{ padding: '4px 10px', fontSize: 10, letterSpacing: '0.1em' }}>
+              ↩ <span className="tabular-nums" style={{ color: '#fff6dc' }}>{Math.round(wallRefundFraction(totalWallLevel) * 100)}%</span> REFUND
+            </div>
+          </div>
         </motion.div>
 
         {kazerneLvl === 0 && coins < 20 && (
@@ -684,7 +692,7 @@ export default function AttackClient() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {CAMPS.map((camp, idx) => {
             const cooldownLeft = cooldownRemainingMs(camp, pveState);
             const onCd = cooldownLeft > 0;
@@ -697,90 +705,101 @@ export default function AttackClient() {
                 key={camp.id}
                 initial={{ y: 8, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 26, delay: 0.1 + idx * 0.04 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 26, delay: 0.08 + idx * 0.03 }}
                 whileTap={disabled ? undefined : { scale: 0.99 }}
                 disabled={disabled}
                 onClick={() => handleAttack(camp)}
-                className="game-panel game-panel-corners relative overflow-hidden text-left"
+                className="game-panel relative overflow-hidden text-left flex items-center gap-3"
                 style={{
-                  padding: 14,
+                  padding: '10px 12px',
                   cursor: disabled ? 'default' : 'pointer',
                   opacity: disabled ? 0.55 : 1,
                 }}
               >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-3 min-w-0">
+                {/* Sprite frame */}
+                <div
+                  className="flex-shrink-0 flex items-center justify-center"
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: 10,
+                    background: 'radial-gradient(circle at 30% 28%, rgba(253,208,105,0.18) 0%, rgba(26,15,5,0.9) 100%)',
+                    border: '2.5px solid #0d0a06',
+                    boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.2), 0 2px 0 #0d0a06',
+                  }}
+                >
+                  <SpritePreview spriteKey={camp.spriteKey} size={38} />
+                </div>
+
+                {/* Middle: name + rewards */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p
+                      className="game-h2 truncate"
+                      style={{ fontSize: 15, lineHeight: 1.1 }}
+                    >
+                      {camp.name}
+                    </p>
                     <div
-                      className="flex-shrink-0 flex items-center justify-center"
+                      className="flex-shrink-0"
                       style={{
-                        width: 54,
-                        height: 54,
-                        borderRadius: 12,
-                        background: 'radial-gradient(circle at 30% 28%, rgba(253,208,105,0.18) 0%, rgba(26,15,5,0.9) 100%)',
-                        border: '2.5px solid #0d0a06',
-                        boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.2), 0 2px 0 #0d0a06',
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        background: 'rgba(13,10,6,0.75)',
+                        border: `1.5px solid ${chanceColor}66`,
+                        color: chanceColor,
+                        fontFamily: 'var(--font-lilita), sans-serif',
+                        fontSize: 10,
+                        letterSpacing: '0.04em',
+                        textShadow: '0 1px 0 #0d0a06',
+                        lineHeight: 1.2,
                       }}
                     >
-                      <SpritePreview spriteKey={camp.spriteKey} size={42} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="game-h2" style={{ fontSize: 17 }}>{camp.name}</p>
-                      <p className="game-body-italic text-[11px] mt-0.5">
-                        Verdediging {camp.defense}
-                      </p>
+                      {chance}%
                     </div>
                   </div>
+                  <div
+                    className="flex items-center gap-2 mt-1.5 flex-wrap"
+                    style={{ fontSize: 11, fontFamily: 'var(--font-lilita), sans-serif', letterSpacing: '0.03em' }}
+                  >
+                    <span style={{ color: '#a08560' }}>
+                      <span style={{ color: '#fdd069', textShadow: '0 1px 0 #0d0a06' }}>{camp.hireCost}</span> 🪙
+                    </span>
+                    <span style={{ color: '#a08560' }}>→</span>
+                    <span style={{ color: '#5ea05c', textShadow: '0 1px 0 #0d0a06' }}>+{camp.rewardCoins}</span>
+                    <span style={{ color: '#c9a0ff', textShadow: '0 1px 0 #0d0a06' }}>+{camp.rewardTrophies}🏆</span>
+                  </div>
+                  {onCd && (
+                    <p
+                      className="font-display mt-1"
+                      style={{ fontSize: 10, color: '#a08560', letterSpacing: '0.08em' }}
+                    >
+                      ⏳ {fmtCooldown(cooldownLeft)}
+                    </p>
+                  )}
+                  {!onCd && tooPoor && (
+                    <p
+                      className="font-display mt-1"
+                      style={{ fontSize: 10, color: '#e07260', letterSpacing: '0.08em' }}
+                    >
+                      NIET GENOEG COINS
+                    </p>
+                  )}
+                </div>
+
+                {/* Chevron */}
+                {!disabled && (
                   <div
                     className="flex-shrink-0"
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: 999,
-                      background: 'rgba(13,10,6,0.7)',
-                      border: `1.5px solid ${chanceColor}66`,
-                      color: chanceColor,
-                      fontFamily: 'var(--font-lilita), sans-serif',
-                      fontSize: 11,
-                      letterSpacing: '0.05em',
+                      color: '#fdd069',
+                      fontSize: 18,
+                      opacity: 0.75,
                       textShadow: '0 1px 0 #0d0a06',
                     }}
                   >
-                    {chance}%
+                    ›
                   </div>
-                </div>
-                <p className="game-body-italic text-[12px] leading-snug mb-3">
-                  {camp.description}
-                </p>
-                <div className="flex items-center justify-between gap-2">
-                  <div
-                    className="flex items-center gap-1.5"
-                    style={{ fontSize: 12, fontFamily: 'var(--font-lilita), sans-serif', color: '#a08560', letterSpacing: '0.04em' }}
-                  >
-                    <span>KOST</span>
-                    <span style={{ color: '#fdd069', textShadow: '0 1px 0 #0d0a06' }}>{camp.hireCost} 🪙</span>
-                  </div>
-                  <div
-                    className="flex items-center gap-3"
-                    style={{ fontSize: 12, fontFamily: 'var(--font-lilita), sans-serif', letterSpacing: '0.04em' }}
-                  >
-                    <span style={{ color: '#5ea05c', textShadow: '0 1px 0 #0d0a06' }}>+{camp.rewardCoins} 🪙</span>
-                    <span style={{ color: '#c9a0ff', textShadow: '0 1px 0 #0d0a06' }}>+{camp.rewardTrophies} 🏆</span>
-                  </div>
-                </div>
-                {onCd && (
-                  <p
-                    className="text-center mt-3 font-display"
-                    style={{ fontSize: 11, color: '#a08560', letterSpacing: '0.08em' }}
-                  >
-                    ⏳ COOLDOWN {fmtCooldown(cooldownLeft)}
-                  </p>
-                )}
-                {!onCd && tooPoor && (
-                  <p
-                    className="text-center mt-3 font-display"
-                    style={{ fontSize: 11, color: '#e07260', letterSpacing: '0.08em' }}
-                  >
-                    NIET GENOEG COINS
-                  </p>
                 )}
               </motion.button>
             );
