@@ -353,7 +353,6 @@ export default function CityClient() {
       <BuildQueueBar state={state} onSpeedTap={handleSpeedToken} />
 
       {/* Daily chest readiness label */}
-      <ChestStatus state={state} />
 
       {/* Bottom build button — premium 3D style */}
       {!placingType && (

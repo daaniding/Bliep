@@ -674,19 +674,19 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
-      // ---- Central cobblestone plaza under the windmill (6×6 tiles) ----
+      // ---- Central cobblestone plaza under the windmill (7×7 symmetric) ----
+      const PLAZA_RADIUS = 3; // produces 7×7 tiles centered on CITY_CENTER
       if (terrain.stonePath.length > 0) {
-        const plazaRadius = 3; // 6×6 centered
-        for (let dy = -plazaRadius; dy < plazaRadius; dy++) {
-          for (let dx = -plazaRadius; dx < plazaRadius; dx++) {
+        const baseTile = terrain.stonePath[0];
+        for (let dy = -PLAZA_RADIUS; dy <= PLAZA_RADIUS; dy++) {
+          for (let dx = -PLAZA_RADIUS; dx <= PLAZA_RADIUS; dx++) {
             const pgx = CITY_CENTER.gx + dx;
             const pgy = CITY_CENTER.gy + dy;
             const prx = pgx - mapOffsetGx;
             const pry = pgy - mapOffsetGy;
             if (prx < 0 || prx >= MAP_COLS || pry < 0 || pry >= MAP_ROWS) continue;
             if (elevation[pry][prx] !== 3) continue;
-            const tex = terrain.stonePath[Math.floor(hash(pgx, pgy, 900) * terrain.stonePath.length)];
-            const stone = new Sprite(tex);
+            const stone = new Sprite(baseTile);
             stone.anchor.set(0, 0);
             stone.position.set(pgx * TILE_W, pgy * TILE_H);
             stone.width = TILE_W; stone.height = TILE_H;
@@ -1175,13 +1175,39 @@ export default function CityCanvas({
         const mx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
         const my = CITY_CENTER.gy * TILE_H + TILE_H;
         mill.position.set(mx, my);
-        // 96×128 sprite → 6 tiles wide (TILE_W=64)
         const millScale = (6 * TILE_W) / terrain.windmill.frameW;
         mill.scale.set(millScale);
         mill.animationSpeed = 0.12;
         mill.play();
         mill.zIndex = my;
         buildingLayer.addChild(mill);
+      }
+
+      // ---- Gate on south edge of plaza ----
+      const gateTex = await (async () => {
+        try {
+          const t = await (await import('pixi.js')).Assets.load<Texture>('/assets/farm/fence/gate_spring_summer_autumn-Sheet.png');
+          if (t?.source) t.source.scaleMode = 'nearest';
+          return t;
+        } catch { return null; }
+      })();
+      if (gateTex) {
+        // Sheet is a horizontal strip; use first frame (closed gate)
+        const frameH = gateTex.frame.height;
+        const frameCount = Math.max(1, Math.floor(gateTex.frame.width / frameH));
+        const frameW = Math.floor(gateTex.frame.width / frameCount);
+        const gate = new Sprite(new Texture({
+          source: gateTex.source,
+          frame: new Rectangle(0, 0, frameW, frameH),
+        }));
+        gate.anchor.set(0.5, 1.0);
+        const gsx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
+        const gsy = (CITY_CENTER.gy + 4) * TILE_H + TILE_H / 2;
+        gate.position.set(gsx, gsy);
+        const gateScale = (2 * TILE_W) / frameW;
+        gate.scale.set(gateScale);
+        gate.zIndex = gsy;
+        buildingLayer.addChild(gate);
       }
 
       // ---- Centering and zoom ----

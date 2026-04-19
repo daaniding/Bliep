@@ -93,8 +93,8 @@ export function generateGroves(
     const cd = centerDist(cell.gx, cell.gy);
     const ed = distFromEdge(cell.rx, cell.ry);
 
-    // Center clear zone — bigger open area for building
-    if (cd < 12) continue;
+    // Plaza clear zone only — trees hug the plaza edge
+    if (cd < 5) continue;
     // Must be at least 2 tiles from water edge
     if (ed < 2) continue;
 
@@ -158,8 +158,8 @@ export function generateGroves(
       if (rx < 0 || rx >= mapCols || ry < 0 || ry >= mapRows) continue;
       if (elevation[ry][rx] !== 3) continue;
 
-      // Don't place in center clear zone
-      if (centerDist(gx, gy) < 12) continue;
+      // Don't place inside plaza clear zone
+      if (centerDist(gx, gy) < 5) continue;
 
       usedCells.add(key);
 
@@ -220,11 +220,11 @@ export function generateGroves(
   // ---- Step 3: Dense outer ring fill — every grass cell far from center ----
   for (const cell of grassCells) {
     const cd = centerDist(cell.gx, cell.gy);
-    if (cd < 22) continue;
+    if (cd < 18) continue;
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 2) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.30) continue; // 30% fill rate for outer ring
+    if (rand() > 0.65) continue; // 65% fill rate — dense outer forest
 
     const r = rand();
     placements.push({
@@ -259,11 +259,11 @@ export function generateGroves(
   // ---- Step 5: Mid-ring fill — moderate coverage ----
   for (const cell of grassCells) {
     const cd = centerDist(cell.gx, cell.gy);
-    if (cd < 14 || cd > 22) continue;
+    if (cd < 8 || cd > 18) continue;
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 3) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.10) continue; // 10% fill rate for mid ring
+    if (rand() > 0.50) continue; // 50% fill rate for mid ring — dense around plaza
 
     const r = rand();
     placements.push({
@@ -280,11 +280,11 @@ export function generateGroves(
   // ---- Step 6: Sparse individuals outside groves ----
   for (const cell of grassCells) {
     const cd = centerDist(cell.gx, cell.gy);
-    if (cd < 12) continue;
+    if (cd < 5) continue;
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 2) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.04) continue; // 4% of remaining cells
+    if (rand() > 0.25) continue; // 25% of remaining cells — fill the forest
 
     const r = rand();
     placements.push({
