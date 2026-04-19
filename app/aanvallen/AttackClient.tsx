@@ -87,12 +87,11 @@ function PreBattleLobby({ camp, coins, kazerneLvl, onStart, onClose }: PreBattle
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-30 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-30 flex items-center justify-center"
       style={{
         background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgba(30,10,5,0.7), rgba(0,0,0,0.92))',
         backdropFilter: 'blur(6px)',
-        overflowY: 'auto',
-        padding: 14,
+        padding: 12,
       }}
       onClick={onClose}
     >
@@ -101,11 +100,11 @@ function PreBattleLobby({ camp, coins, kazerneLvl, onStart, onClose }: PreBattle
         animate={{ y: 0, opacity: 1, scale: 1 }}
         transition={{ type: 'spring', stiffness: 320, damping: 26 }}
         onClick={e => e.stopPropagation()}
-        className="game-panel game-panel-corners relative"
+        className="game-panel game-panel-corners relative flex flex-col"
         style={{
-          width: 'min(480px, 100%)',
-          margin: 'auto',
-          padding: 16,
+          width: 'min(460px, 100%)',
+          maxHeight: 'calc(100dvh - 24px)',
+          padding: 14,
         }}
       >
         {/* Close */}
@@ -132,244 +131,204 @@ function PreBattleLobby({ camp, coins, kazerneLvl, onStart, onClose }: PreBattle
           </svg>
         </button>
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
+        {/* Scrollable inner content */}
+        <div style={{ overflowY: 'auto', minHeight: 0, paddingRight: 2 }}>
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="flex-shrink-0 flex items-center justify-center"
+              style={{
+                width: 54,
+                height: 54,
+                borderRadius: 12,
+                background: 'radial-gradient(circle at 30% 28%, rgba(253,208,105,0.22) 0%, rgba(26,15,5,0.9) 100%)',
+                border: '2.5px solid #0d0a06',
+                boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.2), 0 2px 0 #0d0a06',
+              }}
+            >
+              <SpritePreview spriteKey={camp.spriteKey} size={40} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="game-section-label">Aanval gepland</p>
+              <h3 className="game-h2 mt-0.5" style={{ fontSize: 18 }}>{camp.name}</h3>
+              <p className="game-body-italic text-[11px] mt-0.5">
+                Def {camp.defense} · {chance}% kans · {totalEnemies} vijanden
+              </p>
+            </div>
+          </div>
+
+          {/* Wave breakdown — compact */}
           <div
-            className="flex-shrink-0 flex items-center justify-center"
             style={{
-              width: 62,
-              height: 62,
-              borderRadius: 14,
-              background: 'radial-gradient(circle at 30% 28%, rgba(253,208,105,0.22) 0%, rgba(26,15,5,0.9) 100%)',
-              border: '2.5px solid #0d0a06',
-              boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.2), 0 3px 0 #0d0a06',
+              padding: 8,
+              borderRadius: 10,
+              background: 'linear-gradient(180deg, rgba(40,28,16,0.55) 0%, rgba(20,12,6,0.75) 100%)',
+              border: '1.5px solid rgba(253,208,105,0.22)',
+              marginBottom: 10,
             }}
           >
-            <SpritePreview spriteKey={camp.spriteKey} size={48} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="game-section-label">Aanval gepland</p>
-            <h3 className="game-h2 mt-0.5">{camp.name}</h3>
-            <p className="game-body-italic text-[11px] mt-1">Verdediging {camp.defense} · {chance}% kans</p>
-          </div>
-        </div>
-
-        {/* Wave breakdown — the star of the show */}
-        <div
-          style={{
-            padding: 10,
-            borderRadius: 12,
-            background: 'linear-gradient(180deg, rgba(40,28,16,0.55) 0%, rgba(20,12,6,0.75) 100%)',
-            border: '1.5px solid rgba(253,208,105,0.22)',
-            marginBottom: 12,
-          }}
-        >
-          <div className="flex items-center justify-between mb-2 px-1">
-            <p className="game-section-label">Waves</p>
-            <p
-              className="font-display tabular-nums"
-              style={{ fontSize: 12, color: '#fdd069', textShadow: '0 1px 0 #0d0a06', letterSpacing: '0.05em' }}
-            >
-              {totalEnemies} VIJANDEN
-            </p>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            {waves.map((w, idx) => {
-              const meta = TIER_META[w.tier];
-              return (
-                <motion.div
-                  key={idx}
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 + idx * 0.06 }}
-                  className="flex items-center gap-2.5"
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: 8,
-                    background: 'rgba(13,10,6,0.55)',
-                    border: '1px solid rgba(253,208,105,0.15)',
-                  }}
-                >
+            <p className="game-section-label mb-1.5 px-1">Waves</p>
+            <div className="flex flex-col gap-1">
+              {waves.map((w, idx) => {
+                const meta = TIER_META[w.tier];
+                return (
                   <div
-                    className="flex-shrink-0 flex items-center justify-center font-display"
+                    key={idx}
+                    className="flex items-center gap-2"
                     style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
-                      border: '2px solid #0d0a06',
-                      color: '#fdd069',
-                      fontSize: 11,
-                      textShadow: '0 1px 0 #0d0a06',
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      background: 'rgba(13,10,6,0.55)',
+                      border: '1px solid rgba(253,208,105,0.12)',
                     }}
                   >
-                    {idx + 1}
-                  </div>
-                  <span style={{ fontSize: 18, lineHeight: 1 }}>{meta.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="font-display truncate"
-                      style={{ fontSize: 12, color: meta.color, textShadow: '0 1px 0 #0d0a06', letterSpacing: '0.03em' }}
+                    <div
+                      className="flex-shrink-0 flex items-center justify-center font-display"
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+                        border: '1.5px solid #0d0a06',
+                        color: '#fdd069',
+                        fontSize: 10,
+                        textShadow: '0 1px 0 #0d0a06',
+                      }}
+                    >
+                      {idx + 1}
+                    </div>
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>{meta.icon}</span>
+                    <div
+                      className="flex-1 min-w-0 font-display truncate"
+                      style={{ fontSize: 11, color: meta.color, textShadow: '0 1px 0 #0d0a06', letterSpacing: '0.03em' }}
                     >
                       {meta.label}
-                    </p>
+                    </div>
+                    <div
+                      className="font-display tabular-nums"
+                      style={{ fontSize: 12, color: '#fff6dc', textShadow: '0 1px 0 #0d0a06' }}
+                    >
+                      ×{w.count}
+                    </div>
                   </div>
-                  <div
-                    className="font-display tabular-nums"
-                    style={{
-                      fontSize: 13,
-                      color: '#fff6dc',
-                      textShadow: '0 1px 0 #0d0a06',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    ×{w.count}
-                  </div>
-                </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rewards one-liner */}
+          <div
+            className="flex items-center justify-between mb-2.5"
+            style={{
+              padding: '8px 12px',
+              borderRadius: 10,
+              background: 'rgba(40,70,40,0.35)',
+              border: '1.5px solid rgba(120,180,120,0.3)',
+              fontFamily: 'var(--font-lilita), sans-serif',
+              fontSize: 12,
+              letterSpacing: '0.04em',
+            }}
+          >
+            <span style={{ color: '#8ab49a' }}>WINST</span>
+            <span style={{ color: '#a8d8b4', textShadow: '0 1px 0 #0d0a06' }} className="tabular-nums">
+              +{rewardCoins} 🪙 · +{rewardTrophies} 🏆
+            </span>
+          </div>
+
+          {kazerneLvl === 0 && (
+            <div
+              style={{
+                padding: 8,
+                borderRadius: 8,
+                background: 'rgba(90,30,20,0.35)',
+                border: '1.5px solid rgba(180,80,60,0.4)',
+                marginBottom: 10,
+              }}
+            >
+              <p
+                className="font-display"
+                style={{ fontSize: 11, color: '#ffb5a0', textShadow: '0 1px 0 #0d0a06', letterSpacing: '0.04em' }}
+              >
+                ⚠ Geen verdediging — bouw kazerne/toren!
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* STICKY BOTTOM — altijd zichtbaar: difficulty + start */}
+        <div
+          className="flex-shrink-0"
+          style={{
+            paddingTop: 10,
+            marginTop: 6,
+            borderTop: '1.5px solid rgba(253,208,105,0.2)',
+          }}
+        >
+          {/* Difficulty tabs */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => {
+              const dmL = DIFFICULTY_MULT[d];
+              const active = difficulty === d;
+              return (
+                <button
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                  className="font-display"
+                  style={{
+                    padding: '8px 6px',
+                    borderRadius: 10,
+                    border: '2.5px solid #0d0a06',
+                    cursor: 'pointer',
+                    background: active
+                      ? `linear-gradient(180deg, ${dmL.color}ee 0%, ${dmL.color}88 100%)`
+                      : 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+                    boxShadow: active
+                      ? `inset 0 2px 0 rgba(255,255,255,0.35), 0 2px 0 #0d0a06, 0 0 14px ${dmL.color}77`
+                      : 'inset 0 2px 0 rgba(255,230,160,0.18), 0 2px 0 #0d0a06',
+                    color: active ? '#0d0a06' : '#fdd069',
+                    fontSize: 11,
+                    letterSpacing: '0.08em',
+                    textShadow: active ? '0 1px 0 rgba(255,255,255,0.4)' : '0 1px 0 #0d0a06',
+                  }}
+                >
+                  {dmL.label.toUpperCase()}
+                </button>
               );
             })}
           </div>
-        </div>
 
-        {/* Rewards summary */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
           <div
+            className="flex items-center justify-between mb-2 px-1"
             style={{
-              padding: '8px 10px',
-              borderRadius: 10,
-              background: 'rgba(40,70,40,0.45)',
-              border: '1.5px solid rgba(120,180,120,0.35)',
+              fontFamily: 'var(--font-lilita), sans-serif',
+              fontSize: 12,
+              letterSpacing: '0.04em',
             }}
           >
-            <p className="game-section-label" style={{ color: '#8ab49a' }}>Winst</p>
-            <p
-              className="font-display mt-0.5 tabular-nums"
-              style={{ fontSize: 14, color: '#a8d8b4', textShadow: '0 1px 0 #0d0a06' }}
+            <span style={{ color: '#a08560' }}>HUURKOST</span>
+            <span
+              style={{ color: canAfford ? '#fdd069' : '#e07260', textShadow: '0 1px 0 #0d0a06' }}
+              className="tabular-nums"
             >
-              +{rewardCoins} 🪙 +{rewardTrophies} 🏆
-            </p>
+              {cost} 🪙
+            </span>
           </div>
-          <div
+
+          <motion.button
+            whileTap={canAfford ? { scale: 0.97 } : undefined}
+            disabled={!canAfford}
+            onClick={() => onStart(difficulty)}
+            className="game-btn-blood w-full"
             style={{
-              padding: '8px 10px',
-              borderRadius: 10,
-              background: 'rgba(90,30,20,0.45)',
-              border: '1.5px solid rgba(180,80,60,0.35)',
+              padding: '12px 16px',
+              fontSize: 14,
+              opacity: canAfford ? 1 : 0.5,
+              cursor: canAfford ? 'pointer' : 'default',
             }}
           >
-            <p className="game-section-label" style={{ color: '#e07260' }}>Verlies</p>
-            <p
-              className="font-display mt-0.5 tabular-nums"
-              style={{ fontSize: 14, color: '#ffb5a0', textShadow: '0 1px 0 #0d0a06' }}
-            >
-              −3 🏆
-            </p>
-          </div>
+            {canAfford ? '⚔ AANVAL STARTEN' : 'NIET GENOEG COINS'}
+          </motion.button>
         </div>
-
-        {kazerneLvl === 0 && (
-          <div
-            style={{
-              padding: 10,
-              borderRadius: 10,
-              background: 'rgba(90,30,20,0.35)',
-              border: '1.5px solid rgba(180,80,60,0.4)',
-              marginBottom: 12,
-            }}
-          >
-            <p
-              className="font-display"
-              style={{ fontSize: 12, color: '#ffb5a0', textShadow: '0 1px 0 #0d0a06', letterSpacing: '0.04em' }}
-            >
-              ⚠ Geen verdediging!
-            </p>
-            <p className="game-body-italic text-[11px] mt-0.5" style={{ color: '#c98a80' }}>
-              Bouw Kazerne + Wachttoren voor soldaten + boogschutters.
-            </p>
-          </div>
-        )}
-
-        {/* Difficulty tabs */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => {
-            const dmL = DIFFICULTY_MULT[d];
-            const active = difficulty === d;
-            return (
-              <button
-                key={d}
-                onClick={() => setDifficulty(d)}
-                className="font-display"
-                style={{
-                  padding: '8px 6px',
-                  borderRadius: 10,
-                  border: '2.5px solid #0d0a06',
-                  cursor: 'pointer',
-                  background: active
-                    ? `linear-gradient(180deg, ${dmL.color}ee 0%, ${dmL.color}88 100%)`
-                    : 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
-                  boxShadow: active
-                    ? `inset 0 2px 0 rgba(255,255,255,0.35), 0 2px 0 #0d0a06, 0 0 14px ${dmL.color}77`
-                    : 'inset 0 2px 0 rgba(255,230,160,0.18), 0 2px 0 #0d0a06',
-                  color: active ? '#0d0a06' : '#fdd069',
-                  fontSize: 11,
-                  letterSpacing: '0.08em',
-                  textShadow: active ? '0 1px 0 rgba(255,255,255,0.4)' : '0 1px 0 #0d0a06',
-                }}
-              >
-                {dmL.label.toUpperCase()}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Cost row */}
-        <div
-          className="flex items-center justify-between mb-3 px-1"
-          style={{
-            fontFamily: 'var(--font-lilita), sans-serif',
-            fontSize: 13,
-            letterSpacing: '0.04em',
-          }}
-        >
-          <span style={{ color: '#a08560' }}>HUURKOST</span>
-          <span
-            style={{ color: canAfford ? '#fdd069' : '#e07260', textShadow: '0 1px 0 #0d0a06' }}
-            className="tabular-nums"
-          >
-            {cost} 🪙
-          </span>
-        </div>
-
-        {/* Start battle */}
-        <motion.button
-          whileTap={canAfford ? { scale: 0.97 } : undefined}
-          disabled={!canAfford}
-          onClick={() => onStart(difficulty)}
-          className="game-btn-blood w-full"
-          style={{
-            padding: '14px 16px',
-            fontSize: 15,
-            opacity: canAfford ? 1 : 0.5,
-            cursor: canAfford ? 'pointer' : 'default',
-          }}
-        >
-          {canAfford ? '⚔ AANVAL STARTEN' : 'NIET GENOEG COINS'}
-        </motion.button>
-        <button
-          onClick={onClose}
-          className="w-full py-2 mt-1"
-          style={{
-            fontSize: 11,
-            color: '#a08560',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            letterSpacing: '0.12em',
-            fontFamily: 'var(--font-lilita), sans-serif',
-          }}
-        >
-          ANNULEER
-        </button>
       </motion.div>
     </motion.div>
   );
