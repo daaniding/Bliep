@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { DailyTask, TaskTier } from '@/lib/dailyTasks';
 
 interface Props {
@@ -20,10 +22,28 @@ export default function BookPicker({ tasks, onPick }: Props) {
     (a, b) => order.indexOf(a.tier) - order.indexOf(b.tier),
   );
 
-  return (
+  // Lock body scroll + mount-gate for portal (SSR-safe)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
+
+  if (!mounted) return null;
+
+  const overlay = (
     <div
-      className="fixed inset-0 z-[9999] grid place-items-center p-6 overflow-y-auto"
+      className="fixed inset-0 grid place-items-center p-6 overflow-y-auto"
+      onTouchMove={(e) => e.preventDefault()}
       style={{
+        zIndex: 2147483647,
         backgroundColor: '#0a0604',
         backgroundImage:
           'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,0,0,.55) 0%, rgba(0,0,0,.88) 70%, rgba(0,0,0,.96) 100%), ' +
@@ -199,6 +219,8 @@ export default function BookPicker({ tasks, onPick }: Props) {
       `}</style>
     </div>
   );
+
+  return createPortal(overlay, document.body);
 }
 
 /* ---------- subcomponents ---------- */
