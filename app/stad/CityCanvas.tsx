@@ -218,6 +218,32 @@ export default function CityCanvas({
         towerSheetsRef.current = sheets;
       }
 
+      // ---- Load enemy animations (orc only for MVP) ----
+      type EnemySheet = { walk: Texture[]; dead: Texture[] };
+      const enemySheets: Record<string, EnemySheet | null> = { orc: null };
+      {
+        const pixi = await import('pixi.js');
+        async function loadStrip(url: string, count: number): Promise<Texture[] | null> {
+          try {
+            const tex = await pixi.Assets.load<Texture>(url);
+            if (!tex) return null;
+            if (tex.source) tex.source.scaleMode = 'nearest';
+            const fw = Math.floor(tex.frame.width / count);
+            const fh = tex.frame.height;
+            const out: Texture[] = [];
+            for (let i = 0; i < count; i++) {
+              const t = new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, fh) });
+              if (t.source) t.source.scaleMode = 'nearest';
+              out.push(t);
+            }
+            return out;
+          } catch { return null; }
+        }
+        const walk = await loadStrip('/assets/enemies/orc/Walk.png', 7);
+        const dead = await loadStrip('/assets/enemies/orc/Dead.png', 4);
+        if (walk && dead) enemySheets.orc = { walk, dead };
+      }
+
       // ---- Stage background (smooth ocean gradient — not tiled) ----
       const stageBg = new Graphics();
       const drawBg = () => {
@@ -1134,6 +1160,278 @@ export default function CityCanvas({
         }
       };
       app.ticker.add(animateFireflies);
+
+      // ============================================================
+      // BATTLE SYSTEM (MVP: orc waves + towers auto-fire)
+      // ============================================================
+      type BattleEnemy = {
+        id: string;
+        sprite: AnimatedSprite;
+        x: number; y: number;
+        hp: number; maxHp: number;
+        state: 'walk' | 'dying';
+        dyingAt: number;
+        scaleFacing: number;
+      };
+      type BattleArrow = {
+        g: Graphics;
+        x: number; y: number;
+        tx: number; ty: number;
+        speed: number;
+        damage: number;
+        targetId: string;
+        life: number;
+      };
+      const battleEnemies: BattleEnemy[] = [];
+      const battleArrows: BattleArrow[] = [];
+      const towerFireAt = new Map<string, number>();
+      let battleActive = false;
+      let battleWave = 0;
+      let battleSpawnLeft = 0;
+      let battleCastleHp = 100;
+      const BATTLE_CASTLE_MAX = 100;
+      let nextSpawnAt = 0;
+      let battleDifficulty: 'easy' | 'medium' | 'hard' = 'medium';
+
+      const castleHpBar = new Graphics();
+      castleHpBar.zIndex = 9999999;
+      castleHpBar.visible = false;
+      overlayLayer.addChild(castleHpBar);
+
+      const emitHUD = () => {
+        window.dispatchEvent(new CustomEvent('bliep:battle-hud', {
+          detail: {
+            phase: battleActive ? 'active' : 'idle',
+            wave: battleWave,
+            castleHp: battleCastleHp,
+            castleMaxHp: BATTLE_CASTLE_MAX,
+            enemiesLeft: battleSpawnLeft + battleEnemies.filter(e => e.state === 'walk').length,
+          },
+        }));
+      };
+
+      const startBattle = (wave: number, difficulty: 'easy' | 'medium' | 'hard') => {
+        if (battleActive) return;
+        if (!enemySheets.orc) return;
+        battleActive = true;
+        battleWave = wave;
+        battleDifficulty = difficulty;
+        battleCastleHp = BATTLE_CASTLE_MAX;
+        const base = 4 + wave * 2;
+        const size = difficulty === 'easy' ? Math.max(3, Math.floor(base * 0.7)) : difficulty === 'hard' ? Math.floor(base * 1.4) : base;
+        battleSpawnLeft = size;
+        nextSpawnAt = Date.now() + 500;
+        emitHUD();
+      };
+      const onStartWave = (e: Event) => {
+        const detail = (e as CustomEvent).detail as { wave: number; difficulty: 'easy'|'medium'|'hard' } | undefined;
+        if (!detail) return;
+        startBattle(detail.wave, detail.difficulty);
+      };
+      window.addEventListener('bliep:battle-start', onStartWave);
+
+      const cleanupBattle = () => {
+        for (const e of battleEnemies) {
+          if (e.sprite.parent) e.sprite.parent.removeChild(e.sprite);
+          e.sprite.destroy();
+        }
+        battleEnemies.length = 0;
+        for (const a of battleArrows) {
+          if (a.g.parent) a.g.parent.removeChild(a.g);
+          a.g.destroy();
+        }
+        battleArrows.length = 0;
+      };
+
+      const battleTick = (ticker: { deltaTime?: number }) => {
+        if (!battleActive) {
+          castleHpBar.visible = false;
+          return;
+        }
+        const dt = ticker.deltaTime ?? 1;
+        const now = Date.now();
+        const castleX = CITY_CENTER.gx * TILE_W + TILE_W / 2;
+        const castleY = CITY_CENTER.gy * TILE_H + TILE_H;
+        const castleBaseY = CITY_CENTER.gy * TILE_H - TILE_H * 2; // approx top of castle
+
+        // Spawn
+        if (battleSpawnLeft > 0 && now >= nextSpawnAt && enemySheets.orc) {
+          battleSpawnLeft--;
+          nextSpawnAt = now + 900;
+          // Pick a random grass cell far from center as spawn point
+          const candidates = grassCells.filter(c => {
+            const d = Math.hypot(c.gx - CITY_CENTER.gx, c.gy - CITY_CENTER.gy);
+            return d > 22;
+          });
+          const cell = candidates[Math.floor(Math.random() * candidates.length)] || grassCells[0];
+          const spawnX = cell.gx * TILE_W + TILE_W / 2;
+          const spawnY = cell.gy * TILE_H + TILE_H / 2;
+
+          const sprite = new AnimatedSprite(enemySheets.orc.walk);
+          sprite.anchor.set(0.5, 0.9);
+          sprite.position.set(spawnX, spawnY);
+          sprite.animationSpeed = 0.12;
+          sprite.play();
+          const fw = enemySheets.orc.walk[0].width;
+          const fh = enemySheets.orc.walk[0].height;
+          const baseScale = (TILE_W * 1.3) / Math.max(fw, fh);
+          sprite.scale.set(baseScale);
+          decorLayer.addChild(sprite);
+
+          const diffMul = battleDifficulty === 'easy' ? 0.7 : battleDifficulty === 'hard' ? 1.5 : 1.0;
+          const maxHp = Math.round(40 * diffMul + battleWave * 5);
+          battleEnemies.push({
+            id: `e-${now}-${Math.random().toString(36).slice(2, 6)}`,
+            sprite,
+            x: spawnX, y: spawnY,
+            hp: maxHp, maxHp,
+            state: 'walk',
+            dyingAt: 0,
+            scaleFacing: baseScale,
+          });
+        }
+
+        // Move walking enemies
+        const movedEnemies: BattleEnemy[] = [];
+        for (const e of battleEnemies) {
+          if (e.state === 'dying') {
+            if (now - e.dyingAt > 800) {
+              if (e.sprite.parent) e.sprite.parent.removeChild(e.sprite);
+              e.sprite.destroy();
+              continue;
+            }
+            movedEnemies.push(e);
+            continue;
+          }
+          const dx = castleX - e.x;
+          const dy = castleY - e.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          if (dist < 50) {
+            // Reached castle → damage and remove
+            battleCastleHp = Math.max(0, battleCastleHp - 10);
+            if (e.sprite.parent) e.sprite.parent.removeChild(e.sprite);
+            e.sprite.destroy();
+            emitHUD();
+            continue;
+          }
+          const sp = 0.9 * dt;
+          e.x += (dx / dist) * sp;
+          e.y += (dy / dist) * sp;
+          e.sprite.position.set(e.x, e.y);
+          const facing = dx < 0 ? -1 : 1;
+          e.sprite.scale.x = facing * Math.abs(e.scaleFacing);
+          e.sprite.scale.y = Math.abs(e.scaleFacing);
+          e.sprite.zIndex = Math.floor(e.y);
+          movedEnemies.push(e);
+        }
+        battleEnemies.length = 0;
+        battleEnemies.push(...movedEnemies);
+
+        // Tower firing
+        const towers = stateRef.current.buildings.filter(b => b.id.startsWith('defense-tower-'));
+        for (const t of towers) {
+          const tx = t.gx * TILE_W + TILE_W;
+          const ty = t.gy * TILE_H + TILE_H / 2;
+          const last = towerFireAt.get(t.id) ?? 0;
+          if (now - last < 1400) continue;
+          let nearest: BattleEnemy | null = null;
+          let nearestDist = 400;
+          for (const e of battleEnemies) {
+            if (e.state !== 'walk') continue;
+            const d = Math.hypot(e.x - tx, e.y - ty);
+            if (d < nearestDist) { nearestDist = d; nearest = e; }
+          }
+          if (nearest) {
+            towerFireAt.set(t.id, now);
+            const g = new Graphics();
+            g.circle(0, 0, 4).fill({ color: 0xfff0a0 }).stroke({ color: 0x8a5a18, width: 1 });
+            g.position.set(tx, ty);
+            g.zIndex = 999998;
+            overlayLayer.addChild(g);
+            const towerLevel = Math.max(1, Math.min(7, t.level));
+            const damage = 20 + towerLevel * 6;
+            battleArrows.push({
+              g, x: tx, y: ty, tx: nearest.x, ty: nearest.y,
+              speed: 10, damage, targetId: nearest.id, life: 0,
+            });
+          }
+        }
+
+        // Arrows fly
+        const keepArrows: BattleArrow[] = [];
+        for (const a of battleArrows) {
+          const target = battleEnemies.find(e => e.id === a.targetId && e.state === 'walk');
+          if (target) { a.tx = target.x; a.ty = target.y; }
+          const dx = a.tx - a.x;
+          const dy = a.ty - a.y;
+          const d = Math.hypot(dx, dy) || 1;
+          a.x += (dx / d) * a.speed * dt;
+          a.y += (dy / d) * a.speed * dt;
+          a.g.position.set(a.x, a.y);
+          a.life += dt;
+          if (target && Math.hypot(target.x - a.x, target.y - a.y) < 22) {
+            target.hp -= a.damage;
+            if (a.g.parent) a.g.parent.removeChild(a.g);
+            a.g.destroy();
+            if (target.hp <= 0 && target.state === 'walk' && enemySheets.orc) {
+              target.state = 'dying';
+              target.dyingAt = now;
+              const dying = new AnimatedSprite(enemySheets.orc.dead);
+              dying.anchor.set(0.5, 0.9);
+              dying.position.set(target.x, target.y);
+              dying.scale.set(target.scaleFacing);
+              dying.scale.x = target.sprite.scale.x;
+              dying.loop = false;
+              dying.animationSpeed = 0.15;
+              dying.play();
+              dying.zIndex = Math.floor(target.y);
+              decorLayer.addChild(dying);
+              if (target.sprite.parent) target.sprite.parent.removeChild(target.sprite);
+              target.sprite.destroy();
+              target.sprite = dying;
+            }
+            continue;
+          }
+          if (a.life > 180 || !target) {
+            if (a.g.parent) a.g.parent.removeChild(a.g);
+            a.g.destroy();
+            continue;
+          }
+          keepArrows.push(a);
+        }
+        battleArrows.length = 0;
+        battleArrows.push(...keepArrows);
+
+        // Castle HP bar
+        castleHpBar.visible = true;
+        castleHpBar.clear();
+        castleHpBar.rect(-45, 0, 90, 8).fill({ color: 0x0d0a06 }).stroke({ color: 0xfdd069, width: 2 });
+        const hpPct = Math.max(0, battleCastleHp / BATTLE_CASTLE_MAX);
+        const hpColor = hpPct > 0.5 ? 0x5ad04a : hpPct > 0.25 ? 0xfdd069 : 0xdd3322;
+        castleHpBar.rect(-44, 1, 88 * hpPct, 6).fill({ color: hpColor });
+        castleHpBar.position.set(castleX, castleBaseY - 10);
+
+        // Win/lose check
+        if (battleCastleHp <= 0) {
+          battleActive = false;
+          cleanupBattle();
+          window.dispatchEvent(new CustomEvent('bliep:battle-end', { detail: { won: false, wave: battleWave } }));
+          emitHUD();
+          return;
+        }
+        if (battleSpawnLeft === 0 && battleEnemies.every(e => e.state === 'dying')) {
+          // wait for dying anims to finish — or just declare victory
+          if (battleEnemies.length === 0) {
+            battleActive = false;
+            window.dispatchEvent(new CustomEvent('bliep:battle-end', { detail: { won: true, wave: battleWave } }));
+            emitHUD();
+            return;
+          }
+        }
+
+        emitHUD();
+      };
+      app.ticker.add(battleTick);
 
       // ---- Clouds layer — varied depth and layering ----
       const cloudLayer = new Container();

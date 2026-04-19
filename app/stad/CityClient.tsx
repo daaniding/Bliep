@@ -69,6 +69,13 @@ export default function CityClient() {
   const [chopMode, setChopMode] = useState(false);
   const chopModeRef = useRef(false);
   useEffect(() => { chopModeRef.current = chopMode; }, [chopMode]);
+  const [battleHUD, setBattleHUD] = useState<{ phase: string; wave: number; castleHp: number; castleMaxHp: number; enemiesLeft: number } | null>(null);
+  const [showDiffModal, setShowDiffModal] = useState(false);
+  const [waveNum, setWaveNum] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const saved = Number(localStorage.getItem('bliep:next-wave') || '1');
+    return Number.isFinite(saved) && saved > 0 ? saved : 1;
+  });
   const hostRef = useRef<HTMLDivElement>(null);
 
   // Initial load
@@ -96,6 +103,40 @@ export default function CityClient() {
     }, 1000);
     return () => clearInterval(id);
   }, [loaded]);
+
+  // Battle HUD sync
+  useEffect(() => {
+    const onHud = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d) setBattleHUD(d);
+    };
+    const onEnd = (e: Event) => {
+      const d = (e as CustomEvent).detail as { won: boolean; wave: number };
+      setBattleHUD(null);
+      if (d.won) {
+        const reward = 100 + d.wave * 30;
+        setState(s => ({ ...s, coins: s.coins + reward, wood: s.wood + 10 }));
+        showFlash(`🏆 Wave ${d.wave} gewonnen! +${reward} 🪙`);
+        const next = d.wave + 1;
+        localStorage.setItem('bliep:next-wave', String(next));
+        setWaveNum(next);
+      } else {
+        showFlash(`💀 Wave ${d.wave} verloren...`);
+      }
+    };
+    window.addEventListener('bliep:battle-hud', onHud);
+    window.addEventListener('bliep:battle-end', onEnd);
+    return () => {
+      window.removeEventListener('bliep:battle-hud', onHud);
+      window.removeEventListener('bliep:battle-end', onEnd);
+    };
+  }, []);
+
+  function startBattle(difficulty: 'easy' | 'medium' | 'hard') {
+    setShowDiffModal(false);
+    window.dispatchEvent(new CustomEvent('bliep:battle-start', { detail: { wave: waveNum, difficulty } }));
+    playSfx('battle');
+  }
 
   // Tap-tree event → only act when chop-mode is on
   useEffect(() => {
@@ -422,6 +463,63 @@ export default function CityClient() {
           >
             🪓 {chopMode ? 'STOP' : 'HAKKEN'}
           </button>
+          <button
+            onClick={() => { setShowDiffModal(true); playSfx('tap'); }}
+            disabled={!!battleHUD}
+            className="pointer-events-auto font-display text-xl px-6 py-3.5 rounded-2xl border-4 border-[#0d0a06] active:translate-y-[3px] transition-transform disabled:opacity-60"
+            style={{
+              background: 'linear-gradient(180deg, #ff9090 0%, #e03030 40%, #8a1010 100%)',
+              color: '#fff3d0',
+              textShadow: '0 1px 0 rgba(0,0,0,0.4)',
+              boxShadow: 'inset 0 3px 0 rgba(255,200,200,0.5), inset 0 -5px 0 rgba(80,5,5,0.7), 0 6px 0 #0d0a06, 0 10px 24px rgba(255,80,80,0.4), 0 10px 22px rgba(0,0,0,0.55)',
+            }}
+          >
+            ⚔ WAVE {waveNum}
+          </button>
+        </div>
+      )}
+
+      {/* Battle HUD during active wave */}
+      {battleHUD && battleHUD.phase === 'active' && (
+        <div className="fixed z-30 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 110px)', left: '50%', transform: 'translateX(-50%)' }}>
+          <div className="font-display px-4 py-2 rounded-full border-2 border-[#5a1010] flex items-center gap-3" style={{ background: 'linear-gradient(180deg, #3a1010 0%, #1c0606 100%)', color: '#ffc0a0', textShadow: '0 1px 0 #0d0a06', boxShadow: 'inset 0 2px 0 rgba(255,180,180,0.3), 0 3px 0 #0d0a06' }}>
+            <span className="text-xs tracking-widest">⚔ WAVE {battleHUD.wave}</span>
+            <span className="text-xs opacity-80">💀 {battleHUD.enemiesLeft}</span>
+            <span className="text-xs opacity-80">❤ {battleHUD.castleHp}/{battleHUD.castleMaxHp}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Difficulty modal */}
+      {showDiffModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowDiffModal(false)}>
+          <div className="w-[min(340px,92%)] rounded-2xl border-2 border-[#5a1010] p-5" style={{ background: 'linear-gradient(180deg, #3a1818 0%, #1c0606 100%)', boxShadow: 'inset 0 2px 0 rgba(255,200,200,0.25), 0 8px 0 #0d0a06, 0 14px 30px rgba(0,0,0,0.7)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">⚔</div>
+              <div className="font-display text-[#ffc0a0] text-lg mb-1">Wave {waveNum}</div>
+              <div className="text-[#c09080] text-xs">Kies je moeilijkheidsgraad</div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {(['easy', 'medium', 'hard'] as const).map(diff => (
+                <button
+                  key={diff}
+                  onClick={() => startBattle(diff)}
+                  className="w-full py-2.5 rounded-lg font-display text-sm border-2 border-[#5a1010]"
+                  style={{
+                    background: diff === 'easy' ? 'linear-gradient(180deg, #88dd6a 0%, #3e7a2a 100%)'
+                             : diff === 'medium' ? 'linear-gradient(180deg, #fdd069 0%, #a86a1a 100%)'
+                             : 'linear-gradient(180deg, #ff6a5a 0%, #a02010 100%)',
+                    color: '#fff3d0',
+                    textShadow: '0 1px 0 rgba(0,0,0,0.4)',
+                    boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.3), 0 3px 0 #0d0a06',
+                  }}
+                >
+                  {diff === 'easy' ? '🌱 MAKKELIJK' : diff === 'medium' ? '⚖ GEMIDDELD' : '🔥 MOEILIJK'}
+                </button>
+              ))}
+              <button className="mt-1 py-2 text-[#c09080] text-xs font-display" onClick={() => setShowDiffModal(false)}>Annuleer</button>
+            </div>
+          </div>
         </div>
       )}
 
