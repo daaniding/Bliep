@@ -214,20 +214,19 @@ export default function CityCanvas({
       tileLayerRef.current = tileLayer;
       if (duskFilter) tileLayer.filters = [duskFilter];
 
-      const decorLayer = new Container();
-      decorLayer.sortableChildren = true;
-      world.addChild(decorLayer);
-      decorLayerRef.current = decorLayer;
-      if (duskFilter) decorLayer.filters = [duskFilter];
-
-      // No animal layer — NPCs come with buildings, not ambient.
-
+      // Buildings first, so trees in decorLayer naturally overlap from the front.
       const buildingLayer = new Container();
       buildingLayer.sortableChildren = true;
       world.addChild(buildingLayer);
       buildingLayerRef.current = buildingLayer;
       if (duskFilter) buildingLayer.filters = [duskFilter];
       npcLayerRef.current = buildingLayer;
+
+      const decorLayer = new Container();
+      decorLayer.sortableChildren = true;
+      world.addChild(decorLayer);
+      decorLayerRef.current = decorLayer;
+      if (duskFilter) decorLayer.filters = [duskFilter];
 
       const overlayLayer = new Container();
       overlayLayer.sortableChildren = true;
@@ -1344,20 +1343,20 @@ export default function CityCanvas({
 
       // Chest sprite removed — chests open via inventory/topbar flow.
 
-      // ---- Windmill focal point (animated, dead-center on plaza) ----
-      // Placed in decorLayer so tree y-sort can overlap naturally.
-      if (terrain.windmill && terrain.windmill.frames.length > 0) {
-        const mill = new AnimatedSprite(terrain.windmill.frames);
-        mill.anchor.set(0.5, 1.0);
-        const mx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
-        const my = CITY_CENTER.gy * TILE_H + TILE_H;
-        mill.position.set(mx, my);
-        const millScale = (6 * TILE_W) / terrain.windmill.frameW;
-        mill.scale.set(millScale);
-        mill.animationSpeed = 0.12;
-        mill.play();
-        mill.zIndex = my;
-        decorLayer.addChild(mill);
+      // ---- Central castle focal point (Tiny Swords) ----
+      {
+        const castleTex = getTopdownTexture(atlas, 'ts:yellow:castle');
+        if (castleTex && castleTex !== Texture.EMPTY) {
+          const castle = new Sprite(castleTex);
+          castle.anchor.set(0.5, 1.0);
+          const cx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
+          const cy = CITY_CENTER.gy * TILE_H + TILE_H;
+          castle.position.set(cx, cy);
+          const castleScale = (7 * TILE_W) / Math.max(castleTex.width, castleTex.height);
+          castle.scale.set(castleScale);
+          castle.zIndex = cy;
+          decorLayer.addChild(castle);
+        }
       }
 
       // ---- Plaza decor: haystacks, bales, crates scattered around plaza ----

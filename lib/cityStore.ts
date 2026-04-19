@@ -95,16 +95,67 @@ export function resetCity(): CityState {
   return d;
 }
 
+/** Compute 4 defense tower positions at N/S/W/E edges of the island. */
+function computeDefenseTowerPositions(): Array<{ id: string; gx: number; gy: number }> {
+  const elev = processElevation(parseElevation());
+  const offsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
+  const offsetGy = CITY_CENTER.gy - Math.floor(MAP_ROWS / 2);
+  const isGrass = (rx: number, ry: number) => elev[ry]?.[rx] === 3;
+  const mid_rx = Math.floor(MAP_COLS / 2);
+  const mid_ry = Math.floor(MAP_ROWS / 2);
+
+  const scan = (dRx: number, dRy: number) => {
+    let rx = mid_rx, ry = mid_ry;
+    let lastGrass: { rx: number; ry: number } | null = null;
+    for (let i = 0; i < 60; i++) {
+      if (isGrass(rx, ry)) lastGrass = { rx, ry };
+      rx += dRx; ry += dRy;
+      if (rx < 0 || rx >= MAP_COLS || ry < 0 || ry >= MAP_ROWS) break;
+    }
+    if (!lastGrass) return null;
+    // Pull back 3 tiles so 2×2 footprint sits fully on grass
+    return {
+      gx: offsetGx + lastGrass.rx - 3 * dRx,
+      gy: offsetGy + lastGrass.ry - 3 * dRy,
+    };
+  };
+  const directions: Array<{ id: string; dRx: number; dRy: number }> = [
+    { id: 'defense-tower-N', dRx: 0, dRy: -1 },
+    { id: 'defense-tower-S', dRx: 0, dRy: 1 },
+    { id: 'defense-tower-W', dRx: -1, dRy: 0 },
+    { id: 'defense-tower-E', dRx: 1, dRy: 0 },
+  ];
+  const out: Array<{ id: string; gx: number; gy: number }> = [];
+  for (const d of directions) {
+    const p = scan(d.dRx, d.dRy);
+    if (p) out.push({ id: d.id, ...p });
+  }
+  return out;
+}
+
 function defaultCity(): CityState {
+  const towers = computeDefenseTowerPositions();
+  const buildings: PlacedBuilding[] = towers.map(t => ({
+    id: t.id, type: 'tower', gx: t.gx, gy: t.gy, level: 1,
+  }));
+  // Clear trees under each tower footprint
+  const choppedTrees: string[] = [];
+  for (const t of towers) {
+    for (let dy = 0; dy < 2; dy++) {
+      for (let dx = 0; dx < 2; dx++) {
+        choppedTrees.push(`${t.gx + dx},${t.gy + dy}`);
+      }
+    }
+  }
   return {
     version: 2,
     coins: 0,
     wood: 0,
     speedTokens: 0,
-    buildings: [],
+    buildings,
     buildQueue: [],
     chopJobs: [],
-    choppedTrees: [],
+    choppedTrees,
     chest: { lastOpenAt: 0 },
     npcSeed: Math.floor(Math.random() * 100000),
     lastProductionTickAt: Date.now(),
@@ -115,7 +166,25 @@ function defaultCity(): CityState {
 function normalize(parsed: Partial<CityState>): CityState {
   const base = defaultCity();
   // Strip legacy start-house if present in saved state
-  const buildings = (parsed.buildings ?? base.buildings).filter(b => b.id !== 'start-house');
+  let buildings = (parsed.buildings ?? base.buildings).filter(b => b.id !== 'start-house');
+  let choppedTrees = parsed.choppedTrees ?? [];
+  // Inject defense towers if missing (migrate old saves)
+  const existingIds = new Set(buildings.map(b => b.id));
+  const defenseIds = ['defense-tower-N', 'defense-tower-S', 'defense-tower-W', 'defense-tower-E'];
+  if (!defenseIds.every(id => existingIds.has(id))) {
+    const towers = computeDefenseTowerPositions();
+    const addedCells: string[] = [];
+    for (const t of towers) {
+      if (existingIds.has(t.id)) continue;
+      buildings = [...buildings, { id: t.id, type: 'tower', gx: t.gx, gy: t.gy, level: 1 }];
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          addedCells.push(`${t.gx + dx},${t.gy + dy}`);
+        }
+      }
+    }
+    choppedTrees = [...choppedTrees, ...addedCells];
+  }
 
   return {
     version: 2,
@@ -125,7 +194,7 @@ function normalize(parsed: Partial<CityState>): CityState {
     buildings,
     buildQueue: parsed.buildQueue ?? [],
     chopJobs: parsed.chopJobs ?? [],
-    choppedTrees: parsed.choppedTrees ?? [],
+    choppedTrees,
     chest: parsed.chest ?? base.chest,
     npcSeed: parsed.npcSeed ?? base.npcSeed,
     lastProductionTickAt: parsed.lastProductionTickAt ?? Date.now(),
