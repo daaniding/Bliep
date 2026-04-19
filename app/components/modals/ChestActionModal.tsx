@@ -7,8 +7,8 @@ import {
   type ChestSlot,
   KIND_LABEL, KIND_ROW, KIND_COLOR,
   UNLOCK_MS, INSTANT_UNLOCK_COST,
-  remainingMs, formatRemaining, isUnlocking as invIsUnlocking,
-  loadInventory, startUnlock, finishUnlock,
+  remainingMs, formatRemaining,
+  loadInventory, startUnlock, finishUnlock, dismissChest,
 } from '@/lib/chests';
 import { addResource, resourceCount } from '@/lib/resources';
 import { sfxTap, sfxClaim, sfxFail } from '@/lib/sound';
@@ -27,14 +27,14 @@ const philosopher = "var(--font-philosopher), 'Philosopher', serif";
 export default function ChestActionModal({ open, onClose, slot, onReady }: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [gems, setGems] = useState(0);
-  const [someoneUnlocking, setSomeoneUnlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDismiss, setConfirmDismiss] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setGems(resourceCount('gems'));
-    setSomeoneUnlocking(invIsUnlocking(loadInventory()));
     setError(null);
+    setConfirmDismiss(false);
     const id = window.setInterval(() => {
       setNow(Date.now());
     }, 1000);
@@ -52,11 +52,6 @@ export default function ChestActionModal({ open, onClose, slot, onReady }: Props
 
   function handleStart() {
     if (!slot) return;
-    if (someoneUnlocking) {
-      sfxFail();
-      setError('Er is al een kist aan het ontgrendelen');
-      return;
-    }
     sfxTap();
     const { ok, reason } = startUnlock(loadInventory(), slot.id);
     if (!ok) {
@@ -64,6 +59,17 @@ export default function ChestActionModal({ open, onClose, slot, onReady }: Props
       setError(reason ?? 'Kan niet starten');
       return;
     }
+    onClose();
+  }
+
+  function handleDismiss() {
+    if (!slot) return;
+    if (!confirmDismiss) {
+      setConfirmDismiss(true);
+      return;
+    }
+    sfxTap();
+    dismissChest(loadInventory(), slot.id);
     onClose();
   }
 
@@ -147,14 +153,22 @@ export default function ChestActionModal({ open, onClose, slot, onReady }: Props
         {/* actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
           {slot.state === 'waiting' && (
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              onClick={handleStart}
-              disabled={someoneUnlocking}
-              style={bigButton(someoneUnlocking)}
-            >
-              {someoneUnlocking ? 'ANDERE KIST ACTIEF' : 'START ONTGRENDELEN'}
-            </motion.button>
+            <>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={handleStart}
+                style={bigButton(false)}
+              >
+                START ONTGRENDELEN
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={handleDismiss}
+                style={secondaryButton(confirmDismiss ? '#8a2a1a' : undefined)}
+              >
+                {confirmDismiss ? '⚠️ BEVESTIG WEGGOOIEN' : 'WEGGOOIEN'}
+              </motion.button>
+            </>
           )}
           {slot.state === 'unlocking' && remaining > 0 && (
             <motion.button
@@ -224,5 +238,23 @@ function bigButton(disabled: boolean): React.CSSProperties {
     fontWeight: 900,
     fontSize: 14,
     letterSpacing: '0.1em',
+  };
+}
+
+function secondaryButton(accent?: string): React.CSSProperties {
+  return {
+    padding: '9px 14px',
+    borderRadius: 10,
+    border: 'none',
+    cursor: 'pointer',
+    background: 'rgba(42,22,8,0.08)',
+    boxShadow: accent
+      ? `inset 0 0 0 1.5px ${accent}`
+      : 'inset 0 0 0 1px rgba(42,22,8,0.35)',
+    color: accent ?? '#5a3a22',
+    fontFamily: cinzel,
+    fontWeight: 800,
+    fontSize: 12,
+    letterSpacing: '0.08em',
   };
 }

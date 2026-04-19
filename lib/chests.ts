@@ -125,13 +125,12 @@ export function remainingMs(slot: ChestSlot, now = Date.now()): number {
   return Math.max(0, slot.unlockStartedAt + slot.unlockMs - now);
 }
 
-export function isUnlocking(inv: ChestInventory): boolean {
-  return inv.slots.some((s) => s.state === 'unlocking');
+export function isInventoryFull(inv: ChestInventory): boolean {
+  return inv.slots.length >= MAX_SLOTS;
 }
 
-/** Start unlocking a chest (Clash rule: only one at a time). */
+/** Start unlocking a chest. All 4 slots can unlock in parallel. */
 export function startUnlock(inv: ChestInventory, slotId: string): { ok: boolean; inv: ChestInventory; reason?: string } {
-  if (isUnlocking(inv)) return { ok: false, inv, reason: 'Er is al een kist aan het ontgrendelen' };
   const slots = inv.slots.map((s) =>
     s.id === slotId && s.state === 'waiting'
       ? { ...s, state: 'unlocking' as const, unlockStartedAt: Date.now(), unlockMs: UNLOCK_MS[s.kind] }
@@ -140,6 +139,13 @@ export function startUnlock(inv: ChestInventory, slotId: string): { ok: boolean;
   const next = { slots };
   saveInventory(next);
   return { ok: true, inv: next };
+}
+
+/** Throw away a chest without opening it (frees a slot). */
+export function dismissChest(inv: ChestInventory, slotId: string): ChestInventory {
+  const next = { slots: inv.slots.filter((s) => s.id !== slotId) };
+  saveInventory(next);
+  return next;
 }
 
 /** Skip the remaining unlock time (caller handles gem cost). */
@@ -159,9 +165,12 @@ export function consumeChest(inv: ChestInventory, slotId: string): ChestInventor
   return next;
 }
 
-/** Add a new chest to inventory (stops at MAX_SLOTS). */
-export function grantChest(inv: ChestInventory, kind: ChestKind): { ok: boolean; inv: ChestInventory } {
-  if (inv.slots.length >= MAX_SLOTS) return { ok: false, inv };
+/** Add a new chest to inventory. Returns ok:false when inventory is full —
+    caller must dismiss a chest or pay gems to instant-open one first. */
+export function grantChest(inv: ChestInventory, kind: ChestKind): { ok: boolean; inv: ChestInventory; reason?: string } {
+  if (inv.slots.length >= MAX_SLOTS) {
+    return { ok: false, inv, reason: 'Je schatkamer is vol — maak een slot vrij' };
+  }
   const next: ChestInventory = {
     slots: [...inv.slots, { id: uid(), kind, state: 'waiting' }],
   };
