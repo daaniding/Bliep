@@ -171,58 +171,93 @@ export default function LeagueClient() {
   const myRank = sortedMembers.findIndex(m => m.clientId === clientId);
 
   return (
-    <div className="min-h-dvh bg-surface relative pb-16">
-      <main className="relative z-10 pt-14 max-w-[560px] mx-auto px-5">
+    <div className="game-shell pb-16">
+      <main className="relative z-10 pt-12 max-w-[520px] mx-auto px-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-faint text-xs font-medium tracking-wider uppercase hover:text-ink transition-colors">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <motion.div
+          initial={{ y: -12, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+          className="flex items-center justify-between mb-5"
+        >
+          <Link
+            href="/"
+            className="game-pill"
+            style={{ padding: '6px 12px', fontSize: 11, letterSpacing: '0.15em' }}
+          >
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Terug
+            TERUG
           </Link>
-          <div className="flex items-center gap-1 bg-[#7A2E1A]/10 rounded-full px-3 py-1.5">
-            <span className="text-xs">🏆</span>
-            <span className="text-[#7a2e1a] text-xs font-bold tabular-nums">{trophies}</span>
+          <div className="game-pill" style={{ padding: '6px 12px' }}>
+            <span style={{ fontSize: 13 }}>🏆</span>
+            <span className="tabular-nums">{trophies}</span>
           </div>
-        </div>
+        </motion.div>
 
-        <h1 className="font-serif text-3xl text-ink tracking-tight italic mb-1">Friend League</h1>
-        <p className="text-muted text-sm mb-4">Speel met een groepje vrienden op een ranglijst van trofeeën.</p>
+        <motion.div
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.05 }}
+          className="mb-5"
+        >
+          <p className="game-section-label">Friend League</p>
+          <h1 className="game-h1 mt-1">Ranglijst</h1>
+          <p className="game-body-italic text-[13px] mt-1.5">
+            Speel met een groepje vrienden op één ranglijst van trofeeën.
+          </p>
+        </motion.div>
 
         {!user && (
-          <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 mb-4 text-center">
-            <p className="text-ink text-sm font-medium mb-1">📱 Maak een account voor cross-device</p>
-            <p className="text-muted text-xs leading-relaxed mb-3">
-              Zonder account word je herkend per apparaat. Met account zien je vrienden jou op elke telefoon en laptop.
+          <motion.div
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="game-panel game-panel-corners mb-4 text-center"
+            style={{ padding: '14px 14px 12px' }}
+          >
+            <p className="font-display" style={{ fontSize: 14, color: '#fff6dc', textShadow: '0 1px 0 #0d0a06' }}>
+              📱 Cross-device account
             </p>
-            <Link href="/signup" className="inline-block bg-accent text-white text-xs font-semibold px-4 py-2 rounded-full">
-              Account maken
+            <p className="game-body-italic text-[12px] mb-3 leading-relaxed mt-1">
+              Zonder account ben je herkenbaar per apparaat. Met account zien je vrienden jou overal.
+            </p>
+            <Link href="/signup" className="game-btn-gold inline-flex" style={{ padding: '8px 16px', fontSize: 12 }}>
+              ACCOUNT MAKEN
             </Link>
-          </div>
+          </motion.div>
         )}
 
         {/* Display name setup */}
         {!displayName && (
-          <section className="card-elevated p-5 mb-4">
-            <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Eerst even</p>
-            <label className="block text-ink text-sm font-medium mb-2">Hoe wil je heten in de league?</label>
+          <motion.section
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="game-panel game-panel-corners mb-4"
+            style={{ padding: 14 }}
+          >
+            <p className="game-section-label mb-2">Eerst even</p>
+            <label className="block font-display mb-2" style={{ fontSize: 14, color: '#fff6dc', textShadow: '0 1px 0 #0d0a06' }}>
+              Hoe wil je heten?
+            </label>
             <input
               type="text"
               value={pendingDisplayName}
               onChange={e => setPendingDisplayName(e.target.value)}
               placeholder="Bijv. Daan"
               maxLength={24}
-              className="w-full bg-subtle border border-transparent rounded-xl px-4 py-3 text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/30 focus:bg-white transition-all text-sm mb-3"
+              className="game-pill-input mb-3"
             />
             <button
               onClick={handleSetName}
               disabled={!pendingDisplayName.trim()}
-              className="w-full bg-accent text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-50 text-sm"
+              className="game-btn-gold w-full text-sm"
             >
-              Opslaan
+              OPSLAAN
             </button>
-          </section>
+          </motion.section>
         )}
 
         {/* Tabs for switching league */}
@@ -232,9 +267,22 @@ export default function LeagueClient() {
               <button
                 key={code}
                 onClick={() => { setActiveCode(code); setView('view'); }}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                  code === activeCode ? 'bg-accent text-white' : 'bg-subtle text-muted hover:text-ink'
-                }`}
+                className="shrink-0 font-display"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 999,
+                  border: '2px solid #0d0a06',
+                  fontSize: 11,
+                  letterSpacing: '0.12em',
+                  cursor: 'pointer',
+                  background: code === activeCode
+                    ? 'linear-gradient(180deg, #ffe58a 0%, #fdd069 50%, #a3701a 100%)'
+                    : 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+                  color: code === activeCode ? '#0d0a06' : '#fdd069',
+                  boxShadow: code === activeCode
+                    ? 'inset 0 2px 0 rgba(255,255,255,0.45), 0 2px 0 #6e4c10'
+                    : 'inset 0 2px 0 rgba(255,230,160,0.2), 0 2px 0 #0d0a06',
+                }}
               >
                 {code}
               </button>
@@ -244,102 +292,127 @@ export default function LeagueClient() {
 
         {/* Menu */}
         {displayName && view === 'menu' && (
-          <section className="space-y-3">
+          <section className="flex flex-col gap-3">
             {myLeagues.length === 0 && (
-              <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 mb-2">
-                <p className="text-ink text-sm font-medium mb-1">👋 Eerste keer hier?</p>
-                <p className="text-muted text-xs leading-relaxed">
-                  Een Friend League is een klein groepje vrienden waar je trofeeën van iedereen kunt zien. Maak er één en stuur de 6-letter code naar je broer, vriendin of collega — dan zien jullie elkaars score op de ranglijst.
+              <motion.div
+                initial={{ y: 8, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="game-panel game-panel-corners"
+                style={{ padding: 14 }}
+              >
+                <p className="font-display" style={{ fontSize: 14, color: '#fff6dc', textShadow: '0 1px 0 #0d0a06' }}>
+                  👋 Eerste keer hier?
                 </p>
-              </div>
+                <p className="game-body-italic text-[12px] leading-relaxed mt-1">
+                  Een Friend League is een klein groepje vrienden waar je elkaars trofeeën ziet. Maak er één en stuur de 6-letter code naar vrienden.
+                </p>
+              </motion.div>
             )}
-            <button
+            <motion.button
+              initial={{ y: 8, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.14 }}
               onClick={() => { setError(null); setView('create'); }}
-              className="w-full card-elevated p-5 text-left active:scale-[0.99] transition-transform"
+              className="game-panel game-panel-corners text-left"
+              style={{ padding: 16, cursor: 'pointer' }}
             >
-              <p className="font-serif text-lg text-ink italic">+ Nieuwe league maken</p>
-              <p className="text-muted text-xs mt-1">Krijg een 6-letter code om met vrienden te delen</p>
-            </button>
-            <button
+              <p className="game-h2">+ Nieuwe league</p>
+              <p className="game-body-italic text-[12px] mt-1">
+                Krijg een 6-letter code om met vrienden te delen.
+              </p>
+            </motion.button>
+            <motion.button
+              initial={{ y: 8, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.18 }}
               onClick={() => { setError(null); setView('join'); }}
-              className="w-full card-elevated p-5 text-left active:scale-[0.99] transition-transform"
+              className="game-panel game-panel-corners text-left"
+              style={{ padding: 16, cursor: 'pointer' }}
             >
-              <p className="font-serif text-lg text-ink italic">→ Joinen met code</p>
-              <p className="text-muted text-xs mt-1">Heb je een code van een vriend? Vul hem hier in</p>
-            </button>
+              <p className="game-h2">→ Joinen met code</p>
+              <p className="game-body-italic text-[12px] mt-1">
+                Heb je een code van een vriend? Vul hem hier in.
+              </p>
+            </motion.button>
           </section>
         )}
 
         {/* Create form */}
         {displayName && view === 'create' && (
-          <section className="card-elevated p-5">
-            <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Nieuwe league</p>
+          <section className="game-panel game-panel-corners" style={{ padding: 14 }}>
+            <p className="game-section-label mb-2">Nieuwe league</p>
             <input
               type="text"
               value={createName}
               onChange={e => setCreateName(e.target.value)}
               placeholder="Naam (bv. 'De Bliepers')"
               maxLength={40}
-              className="w-full bg-subtle rounded-xl px-4 py-3 text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/30 focus:bg-white transition-all text-sm mb-3"
+              className="game-pill-input mb-3"
             />
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="w-full bg-accent text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-50 text-sm mb-2"
+              className="game-btn-gold w-full text-sm mb-2"
             >
-              {loading ? 'Aanmaken...' : 'Aanmaken'}
+              {loading ? 'AANMAKEN…' : 'AANMAKEN'}
             </button>
-            <button onClick={() => setView('menu')} className="w-full text-faint text-xs font-medium py-2">Terug</button>
+            <button onClick={() => setView('menu')} className="w-full text-[11px] py-2" style={{ color: '#a08560', background: 'transparent', border: 'none', cursor: 'pointer', letterSpacing: '0.1em' }}>
+              TERUG
+            </button>
           </section>
         )}
 
         {/* Join form */}
         {displayName && view === 'join' && (
-          <section className="card-elevated p-5">
-            <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Joinen met code</p>
+          <section className="game-panel game-panel-corners" style={{ padding: 14 }}>
+            <p className="game-section-label mb-2">Joinen met code</p>
             <input
               type="text"
               value={joinCode}
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
               placeholder="ABCDEF"
               maxLength={6}
-              className="w-full bg-subtle rounded-xl px-4 py-3 text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/30 focus:bg-white transition-all text-sm mb-3 font-mono tracking-widest text-center text-lg"
+              className="game-pill-input mb-3"
+              style={{ textAlign: 'center', fontFamily: 'monospace', letterSpacing: '0.3em', fontSize: 18, fontWeight: 700 }}
             />
             <button
               onClick={handleJoin}
               disabled={loading || joinCode.length < 6}
-              className="w-full bg-accent text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-50 text-sm mb-2"
+              className="game-btn-gold w-full text-sm mb-2"
             >
-              {loading ? 'Joinen...' : 'Joinen'}
+              {loading ? 'JOINEN…' : 'JOINEN'}
             </button>
-            <button onClick={() => setView('menu')} className="w-full text-faint text-xs font-medium py-2">Terug</button>
+            <button onClick={() => setView('menu')} className="w-full text-[11px] py-2" style={{ color: '#a08560', background: 'transparent', border: 'none', cursor: 'pointer', letterSpacing: '0.1em' }}>
+              TERUG
+            </button>
           </section>
         )}
 
         {error && (
-          <p className="text-[#7a2e1a] text-sm text-center mt-3">{error}</p>
+          <p className="text-center mt-3" style={{ color: '#e07260', fontSize: 13, fontFamily: 'var(--font-philosopher), serif', fontStyle: 'italic' }}>{error}</p>
         )}
 
         {/* League view */}
         {displayName && view === 'view' && activeLeague && (
           <section>
             {/* League header card */}
-            <div className="card-elevated p-5 mb-4 relative overflow-hidden">
+            <div className="game-panel game-panel-corners mb-4 relative overflow-hidden" style={{ padding: 14 }}>
               <div
                 aria-hidden
-                className="absolute inset-0 pointer-events-none opacity-[0.08]"
+                className="absolute inset-0 pointer-events-none opacity-40"
                 style={{
-                  background: 'radial-gradient(ellipse at 80% 0%, #E8B84A 0%, transparent 60%)',
+                  background: 'radial-gradient(ellipse at 80% 0%, rgba(253,208,105,0.35) 0%, transparent 60%)',
                 }}
               />
               <div className="relative flex items-start justify-between mb-3">
                 <div>
-                  <p className="text-muted text-[11px] font-semibold uppercase tracking-wider">League</p>
-                  <h2 className="font-serif text-xl text-ink italic">{activeLeague.name}</h2>
-                  <p className="text-faint text-[11px] mt-1">{Object.keys(activeLeague.members).length} leden</p>
+                  <p className="game-section-label">League</p>
+                  <h2 className="game-h2 mt-1">{activeLeague.name}</h2>
+                  <p className="game-body-italic text-[11px] mt-1">{Object.keys(activeLeague.members).length} leden</p>
                 </div>
-                <div className="bg-accent/10 px-3 py-1.5 rounded-full">
-                  <p className="font-mono text-accent font-bold text-sm tracking-widest">{activeLeague.code}</p>
+                <div className="game-pill" style={{ padding: '5px 12px', fontFamily: 'monospace', letterSpacing: '0.18em' }}>
+                  {activeLeague.code}
                 </div>
               </div>
               <div className="relative grid grid-cols-2 gap-2">
@@ -349,9 +422,10 @@ export default function LeagueClient() {
                     setCopyFeedback(true);
                     window.setTimeout(() => setCopyFeedback(false), 1600);
                   }}
-                  className="bg-subtle text-ink font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform"
+                  className="game-btn-dark text-xs"
+                  style={{ padding: '8px 10px' }}
                 >
-                  {copyFeedback ? '✓ Gekopieerd' : '📋 Code kopiëren'}
+                  {copyFeedback ? '✓ GEKOPIEERD' : '📋 CODE'}
                 </button>
                 <button
                   onClick={() => {
@@ -365,20 +439,23 @@ export default function LeagueClient() {
                       window.setTimeout(() => setCopyFeedback(false), 1600);
                     }
                   }}
-                  className="bg-accent text-white font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform"
+                  className="game-btn-gold text-xs"
+                  style={{ padding: '8px 10px' }}
                 >
-                  🔗 Deel link
+                  🔗 DEEL LINK
                 </button>
               </div>
             </div>
 
             {/* Leaderboard */}
-            <div className="card-elevated p-4 overflow-hidden">
+            <div className="game-panel game-panel-corners overflow-hidden" style={{ padding: 14 }}>
               <div className="flex items-center justify-between mb-3 px-1">
-                <p className="text-muted text-[11px] font-semibold uppercase tracking-wider">Ranglijst</p>
-                <p className="text-faint text-[11px] tabular-nums">
-                  {myRank >= 0 ? `Jij #${myRank + 1}` : ''}
-                </p>
+                <p className="game-section-label">Ranglijst</p>
+                {myRank >= 0 && (
+                  <p className="tabular-nums" style={{ fontSize: 11, color: '#fdd069', fontFamily: 'var(--font-lilita), sans-serif', letterSpacing: '0.08em' }}>
+                    JIJ #{myRank + 1}
+                  </p>
+                )}
               </div>
               <motion.div className="flex flex-col gap-2" layout>
                 <AnimatePresence initial={false}>
@@ -386,8 +463,9 @@ export default function LeagueClient() {
                     const isMe = m.clientId === clientId;
                     const rank = idx + 1;
                     const isTop3 = rank <= 3;
-                    const rankColor = rank === 1 ? '#E8B84A' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#6a4f2e';
+                    const rankColor = rank === 1 ? '#fdd069' : rank === 2 ? '#d8d8d8' : rank === 3 ? '#cd8a4a' : '#6a4f2e';
                     const firstLetter = (m.name || '?').charAt(0).toUpperCase();
+                    const hue = (m.clientId.charCodeAt(0) * 17 + m.clientId.charCodeAt(m.clientId.length - 1)) % 360;
                     return (
                       <motion.div
                         key={m.clientId}
@@ -396,67 +474,98 @@ export default function LeagueClient() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ type: 'spring', stiffness: 340, damping: 26 }}
-                        className="relative flex items-center gap-3 p-3 rounded-xl"
+                        className="relative flex items-center gap-3"
                         style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
                           background: isMe
-                            ? 'linear-gradient(90deg, rgba(232,184,74,0.18) 0%, rgba(232,184,74,0.05) 100%)'
+                            ? 'linear-gradient(90deg, rgba(253,208,105,0.28) 0%, rgba(253,208,105,0.06) 100%)'
                             : isTop3
-                              ? `linear-gradient(90deg, ${rankColor}18 0%, transparent 70%)`
-                              : 'rgba(245,240,230,0.4)',
-                          border: isMe ? '1.5px solid rgba(232,184,74,0.45)' : isTop3 ? `1px solid ${rankColor}40` : '1px solid transparent',
-                          boxShadow: isTop3 ? `0 0 0 0 transparent, 0 2px 6px ${rankColor}22` : 'none',
+                              ? `linear-gradient(90deg, ${rankColor}22 0%, rgba(26,15,5,0.6) 80%)`
+                              : 'linear-gradient(180deg, rgba(40,28,16,0.55) 0%, rgba(26,16,8,0.75) 100%)',
+                          border: isMe ? '2px solid #fdd069' : isTop3 ? `1.5px solid ${rankColor}66` : '1.5px solid rgba(253,208,105,0.18)',
+                          boxShadow: isMe
+                            ? 'inset 0 1px 0 rgba(255,255,255,0.15), 0 0 16px rgba(253,208,105,0.35)'
+                            : isTop3 ? `0 0 12px ${rankColor}33` : 'inset 0 1px 0 rgba(255,255,255,0.05)',
                         }}
                       >
                         {/* Rank badge */}
                         <div
-                          className="relative flex-shrink-0 flex items-center justify-center font-bold text-sm"
+                          className="relative flex-shrink-0 flex items-center justify-center font-display"
                           style={{
-                            width: 32,
-                            height: 32,
+                            width: 34,
+                            height: 34,
                             borderRadius: '50%',
                             background: isTop3
-                              ? `radial-gradient(circle at 30% 28%, #fff6dc 0%, ${rankColor} 60%, #3a2a18 100%)`
-                              : 'rgba(120,90,50,0.15)',
-                            color: isTop3 ? '#2a1a06' : '#6a4f2e',
-                            border: isTop3 ? '1.5px solid #3a2a18' : '1px solid rgba(120,90,50,0.25)',
-                            boxShadow: isTop3 ? 'inset 0 1px 0 rgba(255,255,255,0.35)' : 'none',
+                              ? `radial-gradient(circle at 30% 28%, #fff6dc 0%, ${rankColor} 55%, #3a2a18 100%)`
+                              : 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+                            color: isTop3 ? '#2a1a06' : '#b69560',
+                            border: '2px solid #0d0a06',
+                            boxShadow: isTop3
+                              ? 'inset 0 2px 0 rgba(255,255,255,0.35), 0 2px 0 #6e4c10'
+                              : 'inset 0 2px 0 rgba(255,230,160,0.18), 0 2px 0 #0d0a06',
                             textShadow: isTop3 ? '0 1px 0 rgba(255,255,255,0.4)' : 'none',
+                            fontSize: 14,
                           }}
                         >
                           {rank}
                         </div>
                         {/* Avatar letter */}
                         <div
-                          className="flex-shrink-0 flex items-center justify-center"
+                          className="flex-shrink-0 flex items-center justify-center font-display"
                           style={{
-                            width: 34,
-                            height: 34,
+                            width: 36,
+                            height: 36,
                             borderRadius: '50%',
                             background: isMe
-                              ? 'linear-gradient(180deg, #E8B84A, #8a6320)'
-                              : `hsl(${(m.clientId.charCodeAt(0) * 17 + m.clientId.charCodeAt(m.clientId.length - 1)) % 360} 45% 60%)`,
-                            color: '#fff',
-                            fontWeight: 800,
-                            fontSize: 14,
-                            fontFamily: "'Lilita One', sans-serif",
-                            border: '2px solid rgba(58,42,24,0.25)',
-                            textShadow: '0 1px 0 rgba(0,0,0,0.3)',
+                              ? 'radial-gradient(circle at 30% 28%, #fff6dc 0%, #fdd069 40%, #a3701a 100%)'
+                              : `radial-gradient(circle at 30% 28%, hsl(${hue} 55% 72%) 0%, hsl(${hue} 45% 50%) 60%, hsl(${hue} 40% 28%) 100%)`,
+                            color: isMe ? '#2a1a06' : '#fff6dc',
+                            fontSize: 15,
+                            border: '2.5px solid #0d0a06',
+                            boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.35), 0 2px 0 #0d0a06',
+                            textShadow: isMe ? '0 1px 0 rgba(255,255,255,0.4)' : '0 1px 0 rgba(0,0,0,0.4)',
                           }}
                         >
                           {firstLetter}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-medium text-sm truncate ${isMe ? 'text-ink' : 'text-muted'}`}>
+                          <p
+                            className="truncate font-display"
+                            style={{
+                              fontSize: 14,
+                              color: isMe ? '#fff6dc' : '#fff6dc',
+                              textShadow: '0 1px 0 #0d0a06',
+                              lineHeight: 1.2,
+                            }}
+                          >
                             {m.name}
-                            {isMe && <span className="text-accent text-[10px] ml-1.5 font-bold">· JIJ</span>}
+                            {isMe && <span style={{ color: '#fdd069', fontSize: 10, marginLeft: 6, letterSpacing: '0.08em' }}>· JIJ</span>}
                           </p>
                           {isTop3 && (
-                            <p className="text-[10px] font-bold tracking-wider" style={{ color: rankColor }}>
-                              {rank === 1 ? '👑 LEIDER' : rank === 2 ? '⚔️ TWEEDE' : '🥉 DERDE'}
+                            <p
+                              style={{
+                                fontSize: 9,
+                                fontFamily: 'var(--font-cinzel), serif',
+                                letterSpacing: '0.18em',
+                                fontWeight: 800,
+                                color: rankColor,
+                                textTransform: 'uppercase',
+                                marginTop: 2,
+                              }}
+                            >
+                              {rank === 1 ? '👑 Leider' : rank === 2 ? '⚔ Tweede' : '🥉 Derde'}
                             </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 text-sm font-bold text-[#7a2e1a] tabular-nums">
+                        <div
+                          className="flex items-center gap-1 font-display tabular-nums"
+                          style={{
+                            color: '#fdd069',
+                            fontSize: 15,
+                            textShadow: '0 1px 0 #0d0a06',
+                          }}
+                        >
                           <motion.span
                             key={m.trophies}
                             initial={{ y: -4, opacity: 0 }}
@@ -473,7 +582,7 @@ export default function LeagueClient() {
                 </AnimatePresence>
               </motion.div>
               {myRank === -1 && (
-                <p className="text-[11px] text-faint mt-3 text-center">
+                <p className="game-body-italic text-center mt-3" style={{ fontSize: 11 }}>
                   Je staat nog niet in deze league als lid. Verlaat en join opnieuw met je naam.
                 </p>
               )}
@@ -483,28 +592,31 @@ export default function LeagueClient() {
               <button
                 onClick={() => activeCode && refreshLeague(activeCode)}
                 disabled={loading}
-                className="flex-1 bg-subtle text-ink font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform disabled:opacity-50"
+                className="game-btn-dark flex-1 text-xs"
+                style={{ padding: '8px 10px' }}
               >
-                {loading ? 'Vernieuwen...' : '↻ Vernieuwen'}
+                {loading ? 'VERNIEUWEN…' : '↻ VERNIEUW'}
               </button>
               <button
                 onClick={() => setView('menu')}
-                className="flex-1 bg-subtle text-ink font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform"
+                className="game-btn-dark flex-1 text-xs"
+                style={{ padding: '8px 10px' }}
               >
-                Andere league
+                ANDERE
               </button>
               <button
                 onClick={handleLeaveLeague}
-                className="flex-1 text-[#7a2e1a] font-medium py-2.5 rounded-xl text-xs"
+                className="game-btn-dark flex-1 text-xs"
+                style={{ padding: '8px 10px', color: '#e07260', borderColor: '#7a2e1a' }}
               >
-                Verlaten
+                VERLATEN
               </button>
             </div>
           </section>
         )}
 
         {displayName && view === 'view' && !activeLeague && !loading && (
-          <p className="text-muted text-sm text-center mt-8">League laden...</p>
+          <p className="game-body-italic text-center mt-8" style={{ fontSize: 13 }}>League laden…</p>
         )}
       </main>
     </div>

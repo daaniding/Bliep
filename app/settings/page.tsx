@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { getDisplayName, setDisplayName, getMyLeagues, forgetLeague } from '@/lib/league';
 import { useTrophies } from '@/lib/useTrophies';
 import { useCoins } from '@/lib/useCoins';
@@ -129,226 +130,342 @@ export default function SettingsPage() {
   }
 
   if (loading) return (
-    <div className="min-h-dvh flex items-center justify-center bg-surface">
-      <div className="w-10 h-10 rounded-2xl bg-accent/20 animate-soft-pulse" />
+    <div className="game-shell flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-4 border-[#fdd069]/30 border-t-[#fdd069] animate-spin" />
     </div>
   );
 
-  const inputClasses = "w-full bg-subtle border border-transparent rounded-xl px-4 py-3 text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/30 focus:bg-white transition-all text-sm";
-
   return (
-    <div className="min-h-dvh bg-surface">
-      <main className="relative z-10 px-5 pt-14 pb-10 max-w-[560px] mx-auto">
-        <header className="mb-8 animate-fade-up">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-faint text-xs font-medium tracking-wider uppercase hover:text-ink transition-colors">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <div className="game-shell">
+      <main className="relative z-10 px-4 pt-12 pb-24 max-w-[520px] mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ y: -12, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+          className="flex items-center justify-between mb-6"
+        >
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 game-pill"
+            style={{ padding: '6px 12px', fontSize: 11, letterSpacing: '0.15em' }}
+          >
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Terug
+            TERUG
           </Link>
-          <h1 className="font-serif text-3xl text-ink tracking-tight italic mt-4">Instellingen</h1>
-        </header>
+        </motion.div>
 
-        <div className="space-y-4 stagger">
+        <motion.div
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.05 }}
+          className="mb-6"
+        >
+          <p className="game-section-label">Instellingen</p>
+          <h1 className="game-h1 mt-1">Jouw koninkrijk</h1>
+        </motion.div>
+
+        <div className="flex flex-col gap-4">
+
+          {/* Stats panel */}
+          <Section label="Stats" index={0}>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <StatPill icon="🛡" value={String(levelInfo.level)} label="Level" tint="#fdd069" />
+              <StatPill icon="⚡" value={String(xp)} label="XP" tint="#c0e8ff" />
+              <StatPill icon="🏆" value={String(trophies)} label="Trofeeën" tint="#c9a0ff" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <StatPill icon="🪙" value={String(coins)} label="Coins" tint="#fdd069" small />
+              <StatPill icon="🔥" value={String(streak.current)} label="Streak" tint="#ff9a5a" small />
+              <StatPill icon="📅" value={String(streak.history.length)} label="Dagen" tint="#c9a970" small />
+            </div>
+          </Section>
+
           {/* Account */}
-          <section className="animate-fade-up card p-5">
-            <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Account</p>
+          <Section label="Account" index={1}>
             {user ? (
               <>
-                <div className="bg-subtle rounded-xl p-4 mb-3">
-                  <p className="text-ink font-semibold text-sm">{user.displayName}</p>
-                  <p className="text-faint text-xs mt-0.5">@{user.username}</p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full bg-subtle text-[#7a2e1a] font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform"
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: 'rgba(40,28,16,0.55)',
+                    border: '1.5px solid rgba(253,208,105,0.25)',
+                    marginBottom: 10,
+                  }}
                 >
-                  Uitloggen
+                  <p className="font-display" style={{ fontSize: 15, color: '#fff6dc', textShadow: '0 1px 0 #0d0a06' }}>
+                    {user.displayName}
+                  </p>
+                  <p style={{ fontSize: 11, color: '#a08560', fontFamily: 'var(--font-philosopher), serif', fontStyle: 'italic', marginTop: 2 }}>
+                    @{user.username}
+                  </p>
+                </div>
+                <button onClick={handleLogout} className="game-btn-dark w-full text-sm">
+                  UITLOGGEN
                 </button>
               </>
             ) : (
               <>
-                <p className="text-muted text-xs mb-3">Maak een account zodat je trofeeën en league-stand op elk apparaat hetzelfde zijn.</p>
+                <p className="game-body-italic text-xs mb-3 leading-relaxed">
+                  Maak een account zodat je trofeeën en league-stand op elk apparaat hetzelfde zijn.
+                </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Link href="/login" className="text-center bg-subtle text-ink font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
-                    Inloggen
+                  <Link href="/login" className="game-btn-dark text-center text-sm">
+                    INLOGGEN
                   </Link>
-                  <Link href="/signup" className="text-center bg-accent text-white font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
-                    Account maken
+                  <Link href="/signup" className="game-btn-gold text-center text-sm">
+                    ACCOUNT MAKEN
                   </Link>
                 </div>
               </>
             )}
-          </section>
+          </Section>
 
-          {/* Stats */}
-          <section className="animate-fade-up card p-5">
-            <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-4">Jouw stats</p>
-            <div className="grid grid-cols-3 gap-2 text-center mb-3">
-              <div>
-                <p className="text-2xl font-serif text-ink">{levelInfo.level}</p>
-                <p className="text-[10px] text-faint mt-0.5">🛡 Level</p>
-              </div>
-              <div>
-                <p className="text-2xl font-serif text-ink">{xp}</p>
-                <p className="text-[10px] text-faint mt-0.5">⚡ XP</p>
-              </div>
-              <div>
-                <p className="text-2xl font-serif text-ink">{trophies}</p>
-                <p className="text-[10px] text-faint mt-0.5">🏆 Trofeeën</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-xl font-serif text-ink">{coins}</p>
-                <p className="text-[10px] text-faint mt-0.5">🪙 Coins</p>
-              </div>
-              <div>
-                <p className="text-xl font-serif text-ink">{streak.current}</p>
-                <p className="text-[10px] text-faint mt-0.5">🔥 Streak</p>
-              </div>
-              <div>
-                <p className="text-xl font-serif text-ink">{streak.history.length}</p>
-                <p className="text-[10px] text-faint mt-0.5">Totaal</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Sound */}
-          <section className="animate-fade-up card p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-ink text-sm font-medium">Geluidseffecten</p>
-                <p className="text-[11px] text-faint mt-0.5">Tap, claim, win chimes</p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !sfxOn;
-                  setSfxEnabled(next);
-                  setSfxOn(next);
-                  if (next) sfxTap();
-                }}
-                className={`relative w-12 h-7 rounded-full transition-all duration-300 ${sfxOn ? 'bg-accent' : 'bg-text-tertiary/20'}`}
-                aria-label="Geluid toggle"
-              >
-                <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${sfxOn ? 'translate-x-5' : 'translate-x-0'}`} />
-              </button>
-            </div>
-          </section>
-
-          {/* Display name for league */}
-          <section className="animate-fade-up card p-5">
-            <label className="block text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Naam in Friend League</label>
+          {/* Display name */}
+          <Section label="League naam" index={2}>
             <input
               type="text"
               value={displayName}
               onChange={e => setDisplayNameState(e.target.value)}
               placeholder="Bijv. Daan"
               maxLength={24}
-              className={inputClasses}
+              className="game-pill-input"
             />
-            <p className="text-[11px] text-faint mt-2">Hoe je verschijnt op de ranglijst van vrienden</p>
+            <p className="game-body-italic text-xs mt-2 mb-3">
+              Hoe je verschijnt op de ranglijst van vrienden.
+            </p>
             <button
               onClick={handleSaveDisplayName}
               disabled={!displayName.trim()}
-              className="mt-3 w-full bg-accent text-white font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+              className="game-btn-gold w-full text-sm"
             >
-              {saved ? 'Opgeslagen!' : 'Opslaan'}
+              {saved ? '✓ OPGESLAGEN' : 'OPSLAAN'}
             </button>
-          </section>
+          </Section>
 
-          {/* My leagues */}
+          {/* Leagues */}
           {leagues.length > 0 && (
-            <section className="animate-fade-up card p-5">
-              <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Jouw leagues</p>
-              <div className="space-y-2">
+            <Section label="Jouw leagues" index={3}>
+              <div className="flex flex-col gap-2">
                 {leagues.map(code => (
-                  <div key={code} className="flex items-center justify-between bg-subtle rounded-xl px-4 py-2.5">
-                    <Link href="/league" className="font-mono font-bold text-sm text-ink tracking-widest">
+                  <div
+                    key={code}
+                    className="flex items-center justify-between"
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: 'rgba(40,28,16,0.55)',
+                      border: '1.5px solid rgba(253,208,105,0.22)',
+                    }}
+                  >
+                    <Link
+                      href="/league"
+                      className="font-mono tabular-nums"
+                      style={{ fontSize: 14, color: '#fdd069', letterSpacing: '0.18em', fontWeight: 700 }}
+                    >
                       {code}
                     </Link>
-                    <button onClick={() => handleLeaveLeague(code)} className="text-[#7a2e1a] text-xs font-medium">
-                      Verlaat
+                    <button
+                      onClick={() => handleLeaveLeague(code)}
+                      style={{ fontSize: 11, color: '#e07260', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      Verlaten
                     </button>
                   </div>
                 ))}
               </div>
-            </section>
+            </Section>
           )}
 
           {/* Notifications */}
           {endpoint && (
-            <section className="animate-fade-up card p-5">
+            <Section label="Meldingen" index={4}>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-ink text-sm font-medium">Notificaties</p>
-                  <p className="text-[11px] text-faint mt-0.5">Ontvang dagelijks een Bliep</p>
+                  <p className="font-display" style={{ fontSize: 14, color: '#fff6dc', textShadow: '0 1px 0 #0d0a06' }}>
+                    Dagelijkse Bliep
+                  </p>
+                  <p className="game-body-italic text-[11px] mt-0.5">
+                    Herinner me aan mijn opdracht
+                  </p>
                 </div>
-                <button
-                  onClick={() => setSettings(s => ({ ...s, notifications: !s.notifications }))}
-                  className={`relative w-12 h-7 rounded-full transition-all duration-300 ${settings.notifications ? 'bg-accent' : 'bg-text-tertiary/20'}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${settings.notifications ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
+                <Toggle
+                  on={settings.notifications}
+                  onToggle={() => setSettings(s => ({ ...s, notifications: !s.notifications }))}
+                />
               </div>
               <input
                 type="text"
                 value={settings.name}
                 onChange={e => setSettings(s => ({ ...s, name: e.target.value }))}
                 placeholder="Naam voor begroeting (optioneel)"
-                className={inputClasses}
+                className="game-pill-input"
               />
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="mt-3 w-full bg-accent text-white font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+                className="game-btn-gold w-full text-sm mt-3"
               >
-                {saving ? 'Opslaan...' : 'Opslaan'}
+                {saving ? 'OPSLAAN…' : 'OPSLAAN'}
               </button>
-            </section>
+            </Section>
           )}
 
-          {!endpoint && (
-            <section className="animate-fade-up card p-5 text-center">
-              <p className="text-muted text-sm mb-1">Notificaties staan uit</p>
-              <p className="text-[11px] text-faint">Zet ze aan op de homepagina voor meer instellingen.</p>
-            </section>
-          )}
+          {/* Sound */}
+          <Section label="Geluid" index={5}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-display" style={{ fontSize: 14, color: '#fff6dc', textShadow: '0 1px 0 #0d0a06' }}>
+                  Geluidseffecten
+                </p>
+                <p className="game-body-italic text-[11px] mt-0.5">
+                  Tap, claim, win chimes
+                </p>
+              </div>
+              <Toggle
+                on={sfxOn}
+                onToggle={() => {
+                  const next = !sfxOn;
+                  setSfxEnabled(next);
+                  setSfxOn(next);
+                  if (next) sfxTap();
+                }}
+              />
+            </div>
+          </Section>
 
           {/* Danger zone */}
-          <section className="animate-fade-up card p-5 border border-[#C75B3D]/20">
-            <p className="text-[#7a2e1a] text-[11px] font-semibold uppercase tracking-wider mb-2">Reset</p>
-            <p className="text-muted text-xs mb-3">Wist alles op dit apparaat: stad, coins, trofeeën, streak, league memberships. Niet ongedaan te maken.</p>
+          <Section label="Gevaar" index={6} danger>
+            <p className="game-body-italic text-xs mb-3 leading-relaxed">
+              Wist alles op dit apparaat: stad, coins, trofeeën, streak, quests, pass-claims en leagues. Niet ongedaan te maken.
+            </p>
             {!confirmReset ? (
               <button
                 onClick={() => setConfirmReset(true)}
-                className="w-full bg-[#C75B3D]/10 text-[#7a2e1a] font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform"
+                className="game-btn-dark w-full text-sm"
+                style={{ color: '#e07260', borderColor: '#7a2e1a' }}
               >
-                Reset alles
+                RESET ALLES
               </button>
             ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleResetAll}
-                  className="flex-1 bg-[#C75B3D] text-white font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform"
-                >
-                  Ja, alles wissen
+              <div className="flex gap-2">
+                <button onClick={handleResetAll} className="game-btn-blood flex-1 text-sm">
+                  JA, WISSEN
                 </button>
-                <button
-                  onClick={() => setConfirmReset(false)}
-                  className="flex-1 bg-subtle text-ink font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform"
-                >
-                  Annuleer
+                <button onClick={() => setConfirmReset(false)} className="game-btn-dark flex-1 text-sm">
+                  ANNULEER
                 </button>
               </div>
             )}
-          </section>
-        </div>
+          </Section>
 
-        <footer className="mt-14 pb-6 text-center">
-          <p className="text-[10px] text-faint tracking-[0.2em] uppercase font-medium">Bliep · prototype</p>
-        </footer>
+        </div>
       </main>
     </div>
+  );
+}
+
+// ---------- sub-components ----------
+
+function Section({ label, children, index, danger }: { label: string; children: React.ReactNode; index: number; danger?: boolean }) {
+  return (
+    <motion.section
+      initial={{ y: 10, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 26, delay: 0.1 + index * 0.04 }}
+      className="game-panel game-panel-corners"
+      style={{
+        padding: 14,
+        ...(danger ? { borderColor: '#7a2e1a' } : null),
+      }}
+    >
+      <p className="game-section-label mb-2" style={danger ? { color: '#e07260' } : undefined}>
+        {label}
+      </p>
+      {children}
+    </motion.section>
+  );
+}
+
+function StatPill({ icon, value, label, tint, small }: { icon: string; value: string; label: string; tint: string; small?: boolean }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center"
+      style={{
+        padding: small ? '8px 6px' : '10px 6px',
+        borderRadius: 12,
+        background: 'linear-gradient(180deg, rgba(60,40,22,0.65) 0%, rgba(30,18,10,0.85) 100%)',
+        border: '2px solid #0d0a06',
+        boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.14), 0 2px 0 #0d0a06',
+      }}
+    >
+      <div style={{ fontSize: small ? 18 : 22, lineHeight: 1, marginBottom: 3 }}>{icon}</div>
+      <div
+        className="font-display tabular-nums"
+        style={{
+          fontSize: small ? 15 : 19,
+          color: tint,
+          textShadow: '0 1px 0 #0d0a06',
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          fontFamily: 'var(--font-cinzel), serif',
+          fontSize: 8,
+          letterSpacing: '0.16em',
+          color: '#8a6a3e',
+          textTransform: 'uppercase',
+          marginTop: 3,
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      className="relative"
+      style={{
+        width: 52,
+        height: 30,
+        borderRadius: 999,
+        border: '2.5px solid #0d0a06',
+        background: on
+          ? 'linear-gradient(180deg, #ffe58a 0%, #fdd069 50%, #a3701a 100%)'
+          : 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+        boxShadow: on
+          ? 'inset 0 2px 0 rgba(255,255,255,0.5), 0 2px 0 #6e4c10, 0 0 14px rgba(253,208,105,0.45)'
+          : 'inset 0 2px 6px rgba(0,0,0,0.55)',
+        cursor: 'pointer',
+        transition: 'background 200ms',
+      }}
+      aria-label="Toggle"
+    >
+      <motion.span
+        animate={{ x: on ? 22 : 0 }}
+        transition={{ type: 'spring', stiffness: 520, damping: 28 }}
+        style={{
+          position: 'absolute',
+          top: 2,
+          left: 2,
+          width: 22,
+          height: 22,
+          borderRadius: '50%',
+          background: on ? '#fff6dc' : '#b69560',
+          border: '1.5px solid #0d0a06',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 3px rgba(0,0,0,0.4)',
+        }}
+      />
+    </button>
   );
 }
