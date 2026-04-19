@@ -38,6 +38,7 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
   const doneRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const cycleRequestRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -399,9 +400,52 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       let cinematicTime = 0;
       const targetZoom = fitScale * 1.5; // don't zoom too far out
 
+      // ---- Follow-cycle state ----
+      let followedEnemyId: number | null = null;
+      let lastCycleReq = 0;
+
       // ---- Main ticker ----
       app.ticker.add((ticker) => {
         const rawDt = ticker.deltaTime / 60;
+
+        // Cycle-enemy button request: advance to next alive enemy
+        if (cycleRequestRef.current !== lastCycleReq) {
+          lastCycleReq = cycleRequestRef.current;
+          const alive = battle.enemies.filter(e => e.state !== 'dead');
+          if (alive.length === 0) {
+            followedEnemyId = null;
+          } else {
+            const currentIdx = followedEnemyId !== null
+              ? alive.findIndex(e => e.id === followedEnemyId)
+              : -1;
+            followedEnemyId = alive[(currentIdx + 1) % alive.length].id;
+          }
+        }
+
+        // Auto-advance if followed enemy died or no longer exists
+        if (followedEnemyId !== null) {
+          const current = battle.enemies.find(e => e.id === followedEnemyId);
+          if (!current || current.state === 'dead') {
+            const alive = battle.enemies.filter(e => e.state !== 'dead');
+            followedEnemyId = alive.length > 0 ? alive[0].id : null;
+          }
+        }
+
+        // Camera follow override (skips other camera code below)
+        let followActive = false;
+        if (followedEnemyId !== null && battle.phase !== 'countdown' && battle.phase !== 'resolve') {
+          const e = battle.enemies.find(en => en.id === followedEnemyId);
+          if (e && e.state !== 'dead') {
+            followActive = true;
+            const followZoom = fitScale * 2.4;
+            zoom += (followZoom - zoom) * rawDt * 2.5;
+            const targetCamX = W / 2 - e.x * zoom;
+            const targetCamY = H / 2 - e.y * zoom;
+            camX += (targetCamX - camX) * rawDt * 5;
+            camY += (targetCamY - camY) * rawDt * 5;
+            applyCamera();
+          }
+        }
 
         // Cinematic zoom-out
         cinematicTime += rawDt;
@@ -717,12 +761,14 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
         }
 
         // ---- Camera shake (only during attacks, scaled by timeScale) ----
-        if (battle.phase === 'battle' && battle.enemies.some(e => e.state === 'attack')) {
-          const intensity = battle.timeScale < 0.5 ? 5 : 3; // stronger shake in slow-mo
-          world.x = camX + (Math.random() - 0.5) * intensity;
-          world.y = camY + (Math.random() - 0.5) * intensity * 0.7;
-        } else if (battle.phase !== 'countdown') {
-          world.x = camX; world.y = camY;
+        if (!followActive) {
+          if (battle.phase === 'battle' && battle.enemies.some(e => e.state === 'attack')) {
+            const intensity = battle.timeScale < 0.5 ? 5 : 3;
+            world.x = camX + (Math.random() - 0.5) * intensity;
+            world.y = camY + (Math.random() - 0.5) * intensity * 0.7;
+          } else if (battle.phase !== 'countdown') {
+            world.x = camX; world.y = camY;
+          }
         }
 
         // ---- Resolve ----
@@ -757,5 +803,30 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <div ref={hostRef} style={{ width: '100%', height: '100%', touchAction: 'none' }} />;
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={hostRef} style={{ width: '100%', height: '100%', touchAction: 'none' }} />
+      <button
+        onClick={() => { cycleRequestRef.current += 1; }}
+        style={{
+          position: 'absolute',
+          right: 14,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
+          padding: '10px 16px',
+          borderRadius: 14,
+          border: '3px solid #0d0a06',
+          background: 'linear-gradient(180deg, #fdd069 0%, #b8791f 100%)',
+          color: '#1c0f06',
+          fontFamily: '"Lilita One", sans-serif',
+          fontSize: 14,
+          letterSpacing: '0.04em',
+          boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.45), 0 4px 0 #0d0a06, 0 7px 14px rgba(0,0,0,0.45)',
+          cursor: 'pointer',
+          zIndex: 50,
+        }}
+      >
+        ▶ VOLG
+      </button>
+    </div>
+  );
 }

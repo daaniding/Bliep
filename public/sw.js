@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bliep-v3';
+const CACHE_NAME = 'bliep-v5';
 const STATIC_ASSETS = [
   '/',
   '/icon-192.png',
