@@ -984,11 +984,12 @@ export default function Home() {
 }
 
 /* ======================== ChestSlot ======================== */
-const CHEST_TIER_FILTER: Record<'wood' | 'silver' | 'gold' | 'empty', string> = {
-  wood:   'saturate(0.55) brightness(0.95) hue-rotate(-14deg)',
-  silver: 'grayscale(0.95) brightness(1.08) contrast(1.02)',
-  gold:   'saturate(1.15) brightness(1.04)',
-  empty:  'grayscale(1) brightness(0.45) opacity(0.45)',
+// 240×256 sheet, 5 cols × 8 rows, each cell 48×32. Pick row per tier.
+const CHEST_ROW: Record<'wood' | 'silver' | 'gold' | 'empty', number> = {
+  wood:   0, // brown
+  silver: 6, // blue/silver
+  gold:   4, // red/gold royal
+  empty:  0, // rendered grayed out below
 };
 
 function ChestSlot({
@@ -1003,6 +1004,8 @@ function ChestSlot({
   const isEmpty = tier === 'empty';
   const cls = `bh-chest-slot ${isEmpty ? 'bh-chest-empty' : 'bh-chest-active'}`;
   const statusCls = `bh-chest-status ${isReady ? 'bh-chest-ready' : (!isEmpty && status.includes(':')) ? 'bh-chest-timer' : ''}`;
+  const scale = 1.2; // 48*1.2 = ~58px wide frame
+  const row = CHEST_ROW[tier];
   return (
     <motion.button
       whileTap={onClick ? { scale: 0.94 } : undefined}
@@ -1019,17 +1022,17 @@ function ChestSlot({
         transition={isReady
           ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
           : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+        style={{ filter: isEmpty ? 'grayscale(1) brightness(0.5) opacity(0.45)' : undefined }}
       >
-        <img
-          src="/assets/icons-rpg/kist.png"
-          alt=""
-          draggable={false}
+        <div
           style={{
-            width: 44,
-            height: 'auto',
-            display: 'block',
-            filter: CHEST_TIER_FILTER[tier],
-            imageRendering: 'auto',
+            width: 48 * scale,
+            height: 32 * scale,
+            backgroundImage: 'url(/assets/chests/chests.png)',
+            backgroundSize: `${240 * scale}px ${256 * scale}px`,
+            backgroundPosition: `0px -${row * 32 * scale}px`,
+            backgroundRepeat: 'no-repeat',
+            imageRendering: 'pixelated',
           }}
         />
       </motion.div>

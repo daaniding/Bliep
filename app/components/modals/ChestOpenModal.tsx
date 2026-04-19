@@ -73,11 +73,32 @@ function rollRewards(kind: ChestKind): Reward[] {
   return out;
 }
 
-const CHEST_SKIN: Record<ChestKind, { label: string; filter: string; glow: string; accent: string; taps: number }> = {
-  wood:   { label: 'HOUTEN KIST',   filter: 'saturate(0.55) brightness(0.95) hue-rotate(-14deg)', glow: '#c98c1a', accent: '#7a4320', taps: 2 },
-  silver: { label: 'ZILVEREN KIST', filter: 'grayscale(0.95) brightness(1.08) contrast(1.02)',    glow: '#d0dae4', accent: '#9aaab8', taps: 3 },
-  gold:   { label: 'GOUDEN KIST',   filter: 'saturate(1.2) brightness(1.06)',                     glow: '#ffe07a', accent: '#F5C842', taps: 4 },
+// Sprite sheet: 240x256, 5 cols × 8 rows, each frame 48×32.
+// Each chest tier uses one animation row (5 frames, closed → fully open).
+const SHEET_W = 240;
+const SHEET_H = 256;
+const FRAME_W = 48;
+const FRAME_H = 32;
+const FRAME_COUNT = 5;
+
+const CHEST_SKIN: Record<ChestKind, { label: string; glow: string; accent: string; taps: number; row: number }> = {
+  wood:   { label: 'HOUTEN KIST',   glow: '#c98c1a', accent: '#7a4320', taps: 2, row: 0 }, // brown
+  silver: { label: 'ZILVEREN KIST', glow: '#d0dae4', accent: '#9aaab8', taps: 3, row: 6 }, // blue/silver
+  gold:   { label: 'GOUDEN KIST',   glow: '#ffe07a', accent: '#F5C842', taps: 4, row: 4 }, // red/gold royal
 };
+
+function chestSpriteStyle(row: number, frame: number, scale: number): React.CSSProperties {
+  return {
+    width: FRAME_W * scale,
+    height: FRAME_H * scale,
+    backgroundImage: 'url(/assets/chests/chests.png)',
+    backgroundSize: `${SHEET_W * scale}px ${SHEET_H * scale}px`,
+    backgroundPosition: `-${frame * FRAME_W * scale}px -${row * FRAME_H * scale}px`,
+    backgroundRepeat: 'no-repeat',
+    imageRendering: 'pixelated',
+    display: 'block',
+  };
+}
 
 type Phase = 'idle' | 'charging' | 'burst' | 'reveal' | 'done';
 
@@ -163,12 +184,13 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
 
   // Tap progress 0..1 (how close the lid is to breaking)
   const tapProgress = Math.min(taps / tapsNeeded, 1);
-  // Lid tilt scales with tap count
-  const tiltPerTap = [0, -16, -28, -40, -55];
-  const currentTilt = phase === 'burst' ? -72
-    : phase === 'reveal' || phase === 'done' ? -65
-    : tiltPerTap[Math.min(taps, tiltPerTap.length - 1)];
-  const currentLiftY = phase === 'burst' ? -14 : phase === 'reveal' || phase === 'done' ? -12 : -taps * 1.5;
+  // Frame index (0..4) based on phase + taps
+  const currentFrame = phase === 'burst' || phase === 'reveal' || phase === 'done'
+    ? FRAME_COUNT - 1
+    : phase === 'charging'
+      ? Math.min(FRAME_COUNT - 1, Math.round(tapProgress * (FRAME_COUNT - 1)))
+      : 0;
+  const spriteScale = 4;
 
   // Modal body shake variants
   const bodyVariants = useMemo(() => ({
@@ -288,25 +310,25 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
             }}
           />
 
-          {/* chest — split lid + body */}
+          {/* chest — sprite-sheet frame stepping */}
           <motion.button
             onClick={tapChest}
             disabled={phase === 'burst' || phase === 'reveal' || phase === 'done'}
             aria-label="Sla op kist"
             animate={
               phase === 'idle'
-                ? { y: [0, -5, 0], scale: 1 }
+                ? { y: [0, -5, 0], scale: 1, rotate: 0 }
                 : phase === 'charging'
-                  ? { y: [0, -3, 0], scale: [1, 1.06, 1] }
+                  ? { y: [0, -4, 0], scale: [1, 1.08, 1], rotate: [0, -3, 3, 0] }
                   : phase === 'burst'
-                    ? { y: [0, -26, -10], scale: [1, 1.3, 1.15] }
-                    : { y: -4, scale: 0.95, opacity: 0.65 }
+                    ? { y: [0, -26, -10], scale: [1, 1.35, 1.2], rotate: 0 }
+                    : { y: -4, scale: 1, rotate: 0 }
             }
             transition={
               phase === 'idle'
                 ? { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
                 : phase === 'charging'
-                  ? { duration: 0.28, ease: 'easeOut' }
+                  ? { duration: 0.32, ease: 'easeOut' }
                   : phase === 'burst'
                     ? { duration: 0.75, ease: 'easeOut' }
                     : { type: 'spring', stiffness: 240, damping: 22 }
@@ -317,62 +339,29 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
               background: 'transparent', border: 'none', padding: 0,
               cursor: (phase === 'idle' || phase === 'charging') ? 'pointer' : 'default',
               filter: `drop-shadow(0 10px 16px rgba(0,0,0,0.6)) drop-shadow(0 0 22px ${glow}aa)`,
-              perspective: 700,
             }}
           >
-            <div style={{ position: 'relative', width: 160, height: 164, transformStyle: 'preserve-3d' }}>
-              {/* inside glow, grows with taps */}
+            <div style={{ position: 'relative' }}>
+              {/* inside glow behind chest */}
               <motion.div
                 animate={{
-                  opacity: phase === 'idle' ? 0 : phase === 'burst' ? 1 : 0.25 + tapProgress * 0.75,
-                  scaleY: phase === 'burst' ? 1.2 : 0.5 + tapProgress * 0.6,
+                  opacity: phase === 'idle' ? 0 : phase === 'burst' ? 1 : 0.3 + tapProgress * 0.7,
+                  scale: phase === 'burst' ? 1.6 : 0.7 + tapProgress * 0.5,
                 }}
-                transition={{ duration: 0.35 }}
+                transition={{ duration: 0.4 }}
                 style={{
                   position: 'absolute',
-                  left: '12%', right: '12%',
-                  top: '28%', height: '32%',
-                  background: `radial-gradient(ellipse at center, #fff6d0 0%, ${glow} 45%, ${glow}00 80%)`,
-                  filter: 'blur(6px)',
+                  left: '50%', top: '35%',
+                  translate: '-50% -50%',
+                  width: '80%', height: '60%',
+                  background: `radial-gradient(ellipse at center, #fff6d0 0%, ${glow} 40%, ${glow}00 80%)`,
+                  filter: 'blur(8px)',
                   borderRadius: '50%',
                   pointerEvents: 'none',
                   zIndex: 1,
-                  transformOrigin: '50% 100%',
                 }}
               />
-
-              {/* body */}
-              <img
-                src="/assets/icons-rpg/kist.png"
-                alt=""
-                draggable={false}
-                style={{
-                  position: 'absolute', inset: 0,
-                  width: '100%', height: '100%',
-                  display: 'block',
-                  filter: skin.filter,
-                  clipPath: 'inset(44% 0 0 0)',
-                  zIndex: 2,
-                }}
-              />
-
-              {/* lid */}
-              <motion.img
-                src="/assets/icons-rpg/kist.png"
-                alt=""
-                draggable={false}
-                animate={{ rotateX: currentTilt, y: currentLiftY }}
-                transition={{ type: 'spring', stiffness: 320, damping: 18, mass: 0.7 }}
-                style={{
-                  position: 'absolute', inset: 0,
-                  width: '100%', height: '100%',
-                  display: 'block',
-                  filter: skin.filter,
-                  clipPath: 'inset(0 0 56% 0)',
-                  transformOrigin: '50% 44%',
-                  zIndex: 3,
-                }}
-              />
+              <div style={{ ...chestSpriteStyle(skin.row, currentFrame, spriteScale), position: 'relative', zIndex: 2 }} />
             </div>
           </motion.button>
 
