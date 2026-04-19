@@ -1835,9 +1835,6 @@ export default function CityCanvas({
   }
 
   function syncBuildings() {
-    // TEMP: hide buildings while focusing on ocean
-    const HIDE_BUILDINGS = true;
-    if (HIDE_BUILDINGS) return;
     const layer = buildingLayerRef.current;
     const npcLayer = npcLayerRef.current;
     const overlay = overlayLayerRef.current;
