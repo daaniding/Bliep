@@ -74,26 +74,30 @@ function rollRewards(kind: ChestKind): Reward[] {
 }
 
 // Sprite sheet: 240x256, 5 cols × 8 rows, each frame 48×32.
-// Each chest tier uses one animation row (5 frames, closed → fully open).
+// Each chest tier spans 2 rows = 10 frames: the first row (0-4) opens the
+// chest, the second row (5-9) flips the lid off and the wood falls apart.
 const SHEET_W = 240;
 const SHEET_H = 256;
 const FRAME_W = 48;
 const FRAME_H = 32;
-const FRAME_COUNT = 5;
+const COLS = 5;
+const FRAME_COUNT = 10; // 2 rows × 5 cols per tier
 
-const CHEST_SKIN: Record<ChestKind, { label: string; glow: string; accent: string; taps: number; row: number }> = {
-  wood:   { label: 'HOUTEN KIST',   glow: '#c98c1a', accent: '#7a4320', taps: 2, row: 0 }, // brown
-  silver: { label: 'ZILVEREN KIST', glow: '#d0dae4', accent: '#9aaab8', taps: 3, row: 6 }, // blue/silver
-  gold:   { label: 'GOUDEN KIST',   glow: '#ffe07a', accent: '#F5C842', taps: 4, row: 4 }, // red/gold royal
+const CHEST_SKIN: Record<ChestKind, { label: string; glow: string; accent: string; taps: number; baseRow: number }> = {
+  wood:   { label: 'HOUTEN KIST',   glow: '#c98c1a', accent: '#7a4320', taps: 2, baseRow: 0 }, // rows 0-1 brown
+  silver: { label: 'ZILVEREN KIST', glow: '#d0dae4', accent: '#9aaab8', taps: 3, baseRow: 6 }, // rows 6-7 blue/silver
+  gold:   { label: 'GOUDEN KIST',   glow: '#ffe07a', accent: '#F5C842', taps: 4, baseRow: 4 }, // rows 4-5 red/gold
 };
 
-function chestSpriteStyle(row: number, frame: number, scale: number): React.CSSProperties {
+function chestSpriteStyle(baseRow: number, frame: number, scale: number): React.CSSProperties {
+  const col = frame % COLS;
+  const row = baseRow + Math.floor(frame / COLS);
   return {
     width: FRAME_W * scale,
     height: FRAME_H * scale,
     backgroundImage: 'url(/assets/chests/chests.png)',
     backgroundSize: `${SHEET_W * scale}px ${SHEET_H * scale}px`,
-    backgroundPosition: `-${frame * FRAME_W * scale}px -${row * FRAME_H * scale}px`,
+    backgroundPosition: `-${col * FRAME_W * scale}px -${row * FRAME_H * scale}px`,
     backgroundRepeat: 'no-repeat',
     imageRendering: 'pixelated',
     display: 'block',
@@ -182,11 +186,10 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
     window.setTimeout(onClose, 420);
   }
 
-  // Tap progress 0..1 (how close the lid is to breaking)
+  // Tap progress 0..1
   const tapProgress = Math.min(taps / tapsNeeded, 1);
 
-  // During burst, play the sprite sheet animation frame-by-frame instead
-  // of snapping to the last frame.
+  // During burst, PLAY all 10 sprite frames (chest opens + lid falls off)
   const [burstFrame, setBurstFrame] = useState(0);
   useEffect(() => {
     if (phase !== 'burst') { setBurstFrame(0); return; }
@@ -200,17 +203,19 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
       } else {
         setBurstFrame(idx);
       }
-    }, 70);
+    }, 65);
     return () => window.clearInterval(id);
   }, [phase]);
 
+  // Charging uses only the first half (frames 0..4) — chest opens gradually.
+  // After burst the lid is gone (frame 9).
   const currentFrame =
     phase === 'burst'
       ? burstFrame
       : phase === 'reveal' || phase === 'done'
         ? FRAME_COUNT - 1
         : phase === 'charging'
-          ? Math.min(FRAME_COUNT - 1, Math.round(tapProgress * (FRAME_COUNT - 1)))
+          ? Math.min(4, Math.round(tapProgress * 4))
           : 0;
   const spriteScale = 4;
 
@@ -383,7 +388,7 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
                   zIndex: 1,
                 }}
               />
-              <div style={{ ...chestSpriteStyle(skin.row, currentFrame, spriteScale), position: 'relative', zIndex: 2 }} />
+              <div style={{ ...chestSpriteStyle(skin.baseRow, currentFrame, spriteScale), position: 'relative', zIndex: 2 }} />
             </div>
           </motion.button>
 
