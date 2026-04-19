@@ -921,14 +921,26 @@ export default function CityCanvas({
       }
 
       // Remove trees already chopped (from saved state)
-      for (const k of stateRef.current.choppedTrees) {
-        const list = treeSpritesByCell.get(k);
-        if (list) {
-          for (const s of list) {
-            decorLayer.removeChild(s);
-            s.destroy();
+      {
+        const destroyed = new Set<Sprite>();
+        for (const k of stateRef.current.choppedTrees) {
+          const list = treeSpritesByCell.get(k);
+          if (list) {
+            for (const s of list) {
+              decorLayer.removeChild(s);
+              destroyed.add(s);
+              s.destroy();
+            }
+            treeSpritesByCell.delete(k);
           }
-          treeSpritesByCell.delete(k);
+        }
+        // Also drop them from swayTrees so the wind-sway ticker doesn't
+        // touch .position on a destroyed sprite (transform becomes null
+        // after destroy → "Cannot set properties of null").
+        if (destroyed.size > 0) {
+          for (let i = swayTrees.length - 1; i >= 0; i--) {
+            if (destroyed.has(swayTrees[i].sprite)) swayTrees.splice(i, 1);
+          }
         }
       }
 
@@ -1247,6 +1259,7 @@ export default function CityCanvas({
 
         // Animate tree sway — subtle horizontal oscillation
         for (const ts of swayTrees) {
+          if (ts.sprite.destroyed) continue;
           ts.sprite.position.x = ts.baseX + Math.sin(t * 0.6 + ts.phase) * 1.8;
         }
 
