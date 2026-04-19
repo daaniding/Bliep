@@ -720,8 +720,8 @@ export default function CityCanvas({
         const edgeT = Math.min(1, distFromEdge / maxGrassDist);
         const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
 
-        // --- Layer 1: Grass tufts (45% van cellen) — breekt het grid op ---
-        if (hash(cell.gx, cell.gy, 100) < 0.45 && terrain.grassTufts.length > 0) {
+        // --- Layer 1: Grass tufts (60% van cellen) — breekt het grid op ---
+        if (hash(cell.gx, cell.gy, 100) < 0.60 && terrain.grassTufts.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 101) * terrain.grassTufts.length);
           const sprite = new Sprite(terrain.grassTufts[idx]);
           sprite.anchor.set(0.5, 0.8);
@@ -750,8 +750,8 @@ export default function CityCanvas({
           decorLayer.addChild(sprite);
         }
 
-        // --- Layer 3: Witte bloemen (18% — meer in open centrum) ---
-        const flowerChance = edgeT > 0.4 ? 0.18 : 0.06;
+        // --- Layer 3: Witte bloemen (meer in open centrum) ---
+        const flowerChance = edgeT > 0.4 ? 0.25 : 0.10;
         if (hash(cell.gx, cell.gy, 200) < flowerChance && terrain.flowersWhite.length > 0) {
           const idx = Math.floor(hash(cell.gx, cell.gy, 201) * terrain.flowersWhite.length);
           const sprite = new Sprite(terrain.flowersWhite[idx]);
@@ -889,14 +889,98 @@ export default function CityCanvas({
       } // end SHAPE_ONLY
       } // end HIDE_ISLAND
 
-      // ---- Always-night overlay — darken everything for moonlit vibe ----
+      // ---- Day/night cycle overlay — 10 min per full day ----
+      // Phase 0-0.5 = day, 0.5-1.0 = night, smooth transitions in-between.
+      let nightOverlay: Graphics | null = null;
       if (mode !== 'preview') {
-        const night = new Graphics();
-        night.rect(0, 0, GRID_SIZE * TILE_W, GRID_SIZE * TILE_H);
-        night.fill({ color: 0x1a2850, alpha: 0.55 });
-        night.blendMode = 'multiply';
-        world.addChild(night);
+        nightOverlay = new Graphics();
+        nightOverlay.rect(0, 0, GRID_SIZE * TILE_W, GRID_SIZE * TILE_H);
+        nightOverlay.fill({ color: 0xffffff, alpha: 1 });
+        nightOverlay.blendMode = 'multiply';
+        nightOverlay.tint = 0xffffff;
+        world.addChild(nightOverlay);
       }
+      const DAY_CYCLE_MS = 10 * 60 * 1000; // 10 min real time
+      const cycleStart = Date.now();
+      const updateDayNight = () => {
+        if (!nightOverlay) return;
+        const elapsed = (Date.now() - cycleStart) % DAY_CYCLE_MS;
+        const t = elapsed / DAY_CYCLE_MS; // 0..1
+        // Phases: 0-0.4 day, 0.4-0.55 dusk, 0.55-0.85 night, 0.85-1 dawn
+        let alpha = 0;
+        let color = 0xffffff; // multiply-neutral = no change
+        if (t < 0.4) {
+          alpha = 0; color = 0xffffff;
+        } else if (t < 0.55) {
+          // dusk — warm orange fade to dark blue
+          const k = (t - 0.4) / 0.15;
+          alpha = k * 0.6;
+          // blend from soft orange to deep blue-purple
+          const r = Math.round(255 + (60 - 255) * k);
+          const g = Math.round(180 + (70 - 180) * k);
+          const b = Math.round(120 + (150 - 120) * k);
+          color = (r << 16) | (g << 8) | b;
+        } else if (t < 0.85) {
+          alpha = 0.6;
+          color = 0x3c4696;
+        } else {
+          // dawn — dark blue fade back to day
+          const k = (t - 0.85) / 0.15;
+          alpha = 0.6 * (1 - k);
+          const r = Math.round(60 + (255 - 60) * k);
+          const g = Math.round(70 + (180 - 70) * k);
+          const b = Math.round(150 + (140 - 150) * k);
+          color = (r << 16) | (g << 8) | b;
+        }
+        nightOverlay.tint = color;
+        nightOverlay.alpha = alpha;
+      };
+      updateDayNight();
+      app.ticker.add(updateDayNight);
+
+      // ---- Fireflies — visible at night, floating glowy specks ----
+      type Firefly = { g: Graphics; baseX: number; baseY: number; phase: number; speed: number; amp: number; twinkle: number };
+      const fireflies: Firefly[] = [];
+      if (mode !== 'preview' && grassCells.length > 0) {
+        const fireflyLayer = new Container();
+        world.addChild(fireflyLayer);
+        for (let i = 0; i < 40; i++) {
+          const cell = grassCells[Math.floor(hash(i, 0, 7777) * grassCells.length)];
+          const { sx, sy } = gridToScreen(cell.gx, cell.gy, 0, 0);
+          const g = new Graphics();
+          g.circle(0, 0, 3).fill({ color: 0xfff2a0 });
+          g.circle(0, 0, 6).fill({ color: 0xfff2a0, alpha: 0.3 });
+          g.blendMode = 'add';
+          const bx = sx + (hash(i, 1, 7777) - 0.5) * TILE_W * 0.8;
+          const by = sy + (hash(i, 2, 7777) - 0.5) * TILE_H * 0.8 - 18;
+          g.position.set(bx, by);
+          g.alpha = 0;
+          fireflyLayer.addChild(g);
+          fireflies.push({
+            g, baseX: bx, baseY: by,
+            phase: hash(i, 3, 7777) * Math.PI * 2,
+            speed: 0.4 + hash(i, 4, 7777) * 0.4,
+            amp: 10 + hash(i, 5, 7777) * 18,
+            twinkle: hash(i, 6, 7777) * Math.PI * 2,
+          });
+        }
+      }
+      const animateFireflies = (ticker: { deltaTime?: number }) => {
+        if (fireflies.length === 0) return;
+        const dt = ticker.deltaTime ?? 1;
+        const now = Date.now() / 1000;
+        // Only show when night overlay is dark (night or dusk)
+        const nightStrength = nightOverlay ? nightOverlay.alpha / 0.6 : 0;
+        for (const f of fireflies) {
+          f.phase += 0.02 * f.speed * dt;
+          f.twinkle += 0.04 * dt;
+          f.g.position.x = f.baseX + Math.cos(f.phase) * f.amp;
+          f.g.position.y = f.baseY + Math.sin(f.phase * 1.3) * f.amp * 0.6;
+          const twinkle = 0.6 + Math.sin(f.twinkle + now) * 0.4;
+          f.g.alpha = nightStrength * twinkle * 0.9;
+        }
+      };
+      app.ticker.add(animateFireflies);
 
       // ---- Clouds layer — varied depth and layering ----
       const cloudLayer = new Container();
@@ -1183,13 +1267,9 @@ export default function CityCanvas({
         sprite.zIndex = py;
         decorLayer.addChild(sprite);
       };
-      // Plaza is 9×9 centered at (CITY_CENTER.gx, CITY_CENTER.gy), radius 4
-      // Windmill occupies roughly top-center. Decor goes on south half + corners.
+      // Only 2 subtle props flanking the windmill — keep plaza open and clean.
       placeDecor('farm:hay_stack', CITY_CENTER.gx - 3, CITY_CENTER.gy + 3, 3, 2);
-      placeDecor('farm:hay_bale',  CITY_CENTER.gx + 2, CITY_CENTER.gy + 3, 2, 2);
-      placeDecor('farm:crate',     CITY_CENTER.gx - 4, CITY_CENTER.gy + 1, 2, 2);
-      placeDecor('farm:crate',     CITY_CENTER.gx + 3, CITY_CENTER.gy + 1, 2, 2);
-      placeDecor('farm:hay_bale',  CITY_CENTER.gx,     CITY_CENTER.gy + 4, 2, 2);
+      placeDecor('farm:crate',     CITY_CENTER.gx + 3, CITY_CENTER.gy + 3, 2, 2);
 
       // ---- Centering and zoom ----
       let islandMinX = Infinity, islandMaxX = -Infinity;

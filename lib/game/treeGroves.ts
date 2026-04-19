@@ -284,7 +284,9 @@ export function generateGroves(
     const ed = distFromEdge(cell.rx, cell.ry);
     if (ed < 2) continue;
     if (usedCells.has(`${cell.gx},${cell.gy}`)) continue;
-    if (rand() > 0.25) continue; // 25% of remaining cells — fill the forest
+    // Boost density near plaza (cd 5-10) so trees hug the plaza edge
+    const closeBonus = cd < 10 ? 0.25 : 0;
+    if (rand() > 0.35 + closeBonus) continue;
 
     const r = rand();
     placements.push({
