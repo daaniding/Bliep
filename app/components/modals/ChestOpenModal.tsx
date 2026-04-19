@@ -297,21 +297,21 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
             }}
           />
 
-          {/* chest image */}
+          {/* chest — split into lid + body so the lid can actually open */}
           <motion.button
             onClick={openChest}
             disabled={phase !== 'idle'}
             aria-label="Open kist"
             animate={
               phase === 'idle'
-                ? { y: [0, -5, 0], rotate: 0, scale: 1 }
+                ? { y: [0, -5, 0], scale: 1 }
                 : phase === 'anticipation'
-                  ? { y: 0, rotate: 0, scale: [1, 0.88, 1.04], filter: 'brightness(1.2)' }
+                  ? { y: [0, -4, -2], scale: [1, 0.96, 1.05] }
                   : phase === 'shake'
-                    ? { rotate: [0, -12, 12, -10, 10, -6, 6, -3, 3, 0], scale: [1, 1.08, 1.12, 1.08, 1.1, 1.05, 1], y: [0, -4, -6, -4, -2, 0] }
+                    ? { y: [0, -4, -6, -4, -2, 0], scale: [1, 1.06, 1.1, 1.06, 1.08, 1.04, 1] }
                     : phase === 'burst'
-                      ? { rotate: 0, scale: [1, 1.55, 1.35], y: [0, -28, -14], opacity: [1, 1, 0.85] }
-                      : { rotate: 0, scale: 0.85, y: 8, opacity: 0.55 }
+                      ? { y: [0, -26, -12], scale: [1, 1.28, 1.16] }
+                      : { y: 8, scale: 0.9, opacity: 0.55 }
             }
             transition={
               phase === 'idle'
@@ -325,25 +325,93 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
                       : { type: 'spring', stiffness: 240, damping: 22 }
             }
             whileHover={phase === 'idle' ? { scale: 1.05, y: -3 } : undefined}
+            whileTap={phase === 'idle' ? { scale: 0.96 } : undefined}
             style={{
               position: 'relative', zIndex: 3,
               background: 'transparent', border: 'none', padding: 0,
               cursor: phase === 'idle' ? 'pointer' : 'default',
               filter: `drop-shadow(0 10px 16px rgba(0,0,0,0.6)) drop-shadow(0 0 22px ${glow}aa)`,
+              perspective: 700,
             }}
           >
-            <img
-              src="/assets/icons-rpg/kist.png"
-              alt=""
-              draggable={false}
-              style={{
-                width: 160,
-                height: 'auto',
-                display: 'block',
-                filter: skin.filter,
-                imageRendering: 'auto',
-              }}
-            />
+            <div style={{ position: 'relative', width: 160, height: 164, transformStyle: 'preserve-3d' }}>
+              {/* inside glow (appears at the lid-hinge line when lid lifts) */}
+              <AnimatePresence>
+                {(phase === 'shake' || phase === 'burst' || phase === 'reveal' || phase === 'done') && (
+                  <motion.div
+                    initial={{ opacity: 0, scaleY: 0.3 }}
+                    animate={{
+                      opacity: phase === 'shake' ? 0.7 : phase === 'burst' ? 1 : 0.8,
+                      scaleY: phase === 'shake' ? 0.6 : 1,
+                    }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.35 }}
+                    style={{
+                      position: 'absolute',
+                      left: '12%', right: '12%',
+                      top: '28%', height: '28%',
+                      background: `radial-gradient(ellipse at center, #fff6d0 0%, ${glow} 45%, ${glow}00 80%)`,
+                      filter: 'blur(6px)',
+                      borderRadius: '50%',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                      transformOrigin: '50% 100%',
+                    }}
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* body — bottom 55% of the chest image */}
+              <img
+                src="/assets/icons-rpg/kist.png"
+                alt=""
+                draggable={false}
+                style={{
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%',
+                  display: 'block',
+                  filter: skin.filter,
+                  clipPath: 'inset(44% 0 0 0)',
+                  zIndex: 2,
+                }}
+              />
+
+              {/* lid — top 45% of the chest image, hinged at its bottom edge */}
+              <motion.img
+                src="/assets/icons-rpg/kist.png"
+                alt=""
+                draggable={false}
+                animate={
+                  phase === 'idle'
+                    ? { rotateX: 0, y: 0 }
+                    : phase === 'anticipation'
+                      ? { rotateX: -14, y: -3 }
+                      : phase === 'shake'
+                        ? { rotateX: [-14, -22, -16, -26, -18, -22, -16], y: [-3, -5, -4, -6, -5, -6, -4] }
+                        : phase === 'burst'
+                          ? { rotateX: [-22, -75, -62], y: [-5, -14, -10], scale: [1, 1.04, 1] }
+                          : { rotateX: -62, y: -10 }
+                }
+                transition={
+                  phase === 'anticipation'
+                    ? { duration: 0.4, ease: 'easeOut' }
+                    : phase === 'shake'
+                      ? { duration: 1.05, ease: 'easeInOut' }
+                      : phase === 'burst'
+                        ? { duration: 0.7, ease: 'easeOut' }
+                        : { type: 'spring', stiffness: 280, damping: 22 }
+                }
+                style={{
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%',
+                  display: 'block',
+                  filter: skin.filter,
+                  clipPath: 'inset(0 0 56% 0)',
+                  transformOrigin: '50% 44%',
+                  zIndex: 3,
+                }}
+              />
+            </div>
           </motion.button>
 
           {/* burst sparkles (spiral explosion) */}
