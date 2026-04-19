@@ -613,32 +613,6 @@ export default function CityCanvas({
         const distFromEdge = grassDistFromEdge.get(`${cell.rx},${cell.ry}`) ?? maxGrassDist;
         const edgeT = Math.min(1, distFromEdge / maxGrassDist);
 
-        // Check if this grass cell borders water — use coast tile if so
-        const coastIdx = autotileCoastIndex(elevation, cell.rx, cell.ry);
-        const innerCorner = coastInnerCorner(elevation, cell.rx, cell.ry);
-
-        if (coastIdx !== null && terrain.coast[coastIdx]) {
-          // Coast tile: grass+stone edge facing the water
-          const sprite = new Sprite(terrain.coast[coastIdx]);
-          sprite.anchor.set(0, 0);
-          sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
-          sprite.width = TILE_W; sprite.height = TILE_H;
-          tileLayer.addChild(sprite);
-          continue;
-        }
-        if (innerCorner && terrain.coastInner) {
-          const cornerMap: Record<string, number> = { NW: 0, NE: 1, SW: 2, SE: 3 };
-          const tex = terrain.coastInner[cornerMap[innerCorner]];
-          if (tex) {
-            const sprite = new Sprite(tex);
-            sprite.anchor.set(0, 0);
-            sprite.position.set(cell.gx * TILE_W, cell.gy * TILE_H);
-            sprite.width = TILE_W; sprite.height = TILE_H;
-            tileLayer.addChild(sprite);
-            continue;
-          }
-        }
-
         // Biome noise — zachte grote vlekken
         const biome1 = smoothNoise(cell.gx, cell.gy);
         const biome2 = smoothNoise(cell.gx * 1.7 + 200, cell.gy * 1.7 + 200);
@@ -674,8 +648,50 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
-      // ---- Central cobblestone plaza under the windmill (7×7 symmetric) ----
-      const PLAZA_RADIUS = 3; // produces 7×7 tiles centered on CITY_CENTER
+      // ---- Water-edge foam on water cells bordering grass ----
+      {
+        const isGrass = (rx: number, ry: number) =>
+          (elevation[ry]?.[rx] ?? 0) === 3;
+        const isW = (rx: number, ry: number) => {
+          const v = elevation[ry]?.[rx] ?? 0;
+          return v === 0 || v === 1;
+        };
+        for (let ry = 0; ry < MAP_ROWS; ry++) {
+          for (let rx = 0; rx < MAP_COLS; rx++) {
+            if (!isW(rx, ry)) continue;
+            const gN = isGrass(rx, ry - 1);
+            const gS = isGrass(rx, ry + 1);
+            const gW = isGrass(rx - 1, ry);
+            const gE = isGrass(rx + 1, ry);
+            let tex: Texture | null = null;
+            if (gN && gW) tex = terrain.waterEdge.NW[0];
+            else if (gN && gE) tex = terrain.waterEdge.NE[0];
+            else if (gS && gW) tex = terrain.waterEdge.SW[0];
+            else if (gS && gE) tex = terrain.waterEdge.SE[0];
+            else if (gN) tex = terrain.waterEdge.N[0];
+            else if (gS) tex = terrain.waterEdge.S[0];
+            else if (gW) tex = terrain.waterEdge.W[0];
+            else if (gE) tex = terrain.waterEdge.E[0];
+            else {
+              // Diagonal-only: inner corner (land juts into water at corner)
+              if (isGrass(rx - 1, ry - 1)) tex = terrain.coastInner[0];
+              else if (isGrass(rx + 1, ry - 1)) tex = terrain.coastInner[1];
+              else if (isGrass(rx - 1, ry + 1)) tex = terrain.coastInner[2];
+              else if (isGrass(rx + 1, ry + 1)) tex = terrain.coastInner[3];
+            }
+            if (!tex) continue;
+            const gx = worldGx(rx), gy = worldGy(ry);
+            const sprite = new Sprite(tex);
+            sprite.anchor.set(0, 0);
+            sprite.position.set(gx * TILE_W, gy * TILE_H);
+            sprite.width = TILE_W; sprite.height = TILE_H;
+            tileLayer.addChild(sprite);
+          }
+        }
+      }
+
+      // ---- Central cobblestone plaza under the windmill (9×9 symmetric) ----
+      const PLAZA_RADIUS = 4;
       if (terrain.stonePath.length > 0) {
         const baseTile = terrain.stonePath[0];
         for (let dy = -PLAZA_RADIUS; dy <= PLAZA_RADIUS; dy++) {
@@ -1192,20 +1208,28 @@ export default function CityCanvas({
         } catch { return null; }
       })();
       if (gateTex) {
-        // Sheet is a horizontal strip; use first frame (closed gate)
         const frameH = gateTex.frame.height;
         const frameCount = Math.max(1, Math.floor(gateTex.frame.width / frameH));
         const frameW = Math.floor(gateTex.frame.width / frameCount);
-        const gate = new Sprite(new Texture({
-          source: gateTex.source,
-          frame: new Rectangle(0, 0, frameW, frameH),
-        }));
+        const frames: Texture[] = [];
+        for (let i = 0; i < frameCount; i++) {
+          const t = new Texture({
+            source: gateTex.source,
+            frame: new Rectangle(i * frameW, 0, frameW, frameH),
+          });
+          if (t.source) t.source.scaleMode = 'nearest';
+          frames.push(t);
+        }
+        const gate = new AnimatedSprite(frames);
         gate.anchor.set(0.5, 1.0);
         const gsx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
-        const gsy = (CITY_CENTER.gy + 4) * TILE_H + TILE_H / 2;
+        const gsy = (CITY_CENTER.gy + 5) * TILE_H + TILE_H / 2;
         gate.position.set(gsx, gsy);
-        const gateScale = (2 * TILE_W) / frameW;
+        const gateScale = (3 * TILE_W) / frameW;
         gate.scale.set(gateScale);
+        gate.animationSpeed = 0.08;
+        gate.loop = true;
+        gate.play();
         gate.zIndex = gsy;
         buildingLayer.addChild(gate);
       }
