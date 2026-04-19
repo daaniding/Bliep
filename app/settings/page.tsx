@@ -10,6 +10,7 @@ import { useUser, apiLogout, apiUpdateDisplayName } from '@/lib/useUser';
 import { useRouter } from 'next/navigation';
 import { useXp } from '@/lib/useXp';
 import { isSfxEnabled, setSfxEnabled, sfxTap } from '@/lib/sound';
+import StoneArchNav from '../components/StoneArchNav';
 
 interface Settings {
   name: string;
@@ -136,8 +137,8 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="game-shell">
-      <main className="relative z-10 px-4 pt-12 pb-24 max-w-[520px] mx-auto">
+    <div className="game-shell" style={{ paddingBottom: 'calc(130px + env(safe-area-inset-bottom, 0px))' }}>
+      <main className="relative z-10 px-4 pt-12 max-w-[520px] mx-auto">
         {/* Header */}
         <motion.div
           initial={{ y: -12, opacity: 0 }}
@@ -364,6 +365,7 @@ export default function SettingsPage() {
 
         </div>
       </main>
+      <StoneArchNav />
     </div>
   );
 }

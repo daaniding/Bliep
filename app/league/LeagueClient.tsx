@@ -12,6 +12,7 @@ import {
 } from '@/lib/league';
 import { useTrophies } from '@/lib/useTrophies';
 import { useUser } from '@/lib/useUser';
+import StoneArchNav from '../components/StoneArchNav';
 
 type View = 'menu' | 'create' | 'join' | 'view';
 
@@ -171,7 +172,7 @@ export default function LeagueClient() {
   const myRank = sortedMembers.findIndex(m => m.clientId === clientId);
 
   return (
-    <div className="game-shell pb-16">
+    <div className="game-shell" style={{ paddingBottom: 'calc(130px + env(safe-area-inset-bottom, 0px))' }}>
       <main className="relative z-10 pt-12 max-w-[520px] mx-auto px-4">
         {/* Header */}
         <motion.div
@@ -619,6 +620,7 @@ export default function LeagueClient() {
           <p className="game-body-italic text-center mt-8" style={{ fontSize: 13 }}>League laden…</p>
         )}
       </main>
+      <StoneArchNav />
     </div>
   );
 }
