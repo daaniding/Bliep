@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Lilita_One, Manrope } from "next/font/google";
+import { Lilita_One, Manrope, Cinzel, Philosopher } from "next/font/google";
 import "./globals.css";
 
 // Display: Lilita One — chunky round cartoon display font used by many
@@ -16,6 +16,19 @@ const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
+});
+
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800", "900"],
+});
+
+const philosopher = Philosopher({
+  variable: "--font-philosopher",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -43,7 +56,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl" className={`${lilita.variable} ${manrope.variable}`}>
+    <html lang="nl" className={`${lilita.variable} ${manrope.variable} ${cinzel.variable} ${philosopher.variable}`}>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
