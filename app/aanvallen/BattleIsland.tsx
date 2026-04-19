@@ -352,6 +352,7 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       // ---- Sprite pools ----
       const enemySpriteMap = new Map<number, AnimatedSprite>();
       const enemyArrowMap = new Map<number, Graphics>();
+      const enemyEdgeArrowMap = new Map<number, Graphics>();
       const defenderSpriteMap = new Map<number, AnimatedSprite>();
       const archerSpriteMap = new Map<number, AnimatedSprite>();
       const arrowSpriteMap = new Map<number, Sprite>();
@@ -461,6 +462,45 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
               const pulse = 1.4 + Math.sin(Date.now() / 200) * 0.25;
               arrow.scale.set(pulse);
             }
+            // Screen-edge indicator if enemy is off-screen
+            const screen = world.toGlobal({ x: enemy.x, y: enemy.y });
+            const onScreen = screen.x > 30 && screen.x < W - 30 && screen.y > 70 && screen.y < H - 30;
+            let edge = enemyEdgeArrowMap.get(enemy.id);
+            if (!onScreen) {
+              if (!edge) {
+                edge = new Graphics();
+                edge.poly([-18, 0, 18, 0, 0, 22]).fill({ color: 0xff2828 }).stroke({ color: 0xfff8d0, width: 3 });
+                uiLayer.addChild(edge);
+                enemyEdgeArrowMap.set(enemy.id, edge);
+              }
+              // Clamp to edge, pointing toward enemy from screen center
+              const cx = W / 2, cy = H / 2;
+              const dx = screen.x - cx;
+              const dy = screen.y - cy;
+              const angle = Math.atan2(dy, dx);
+              const pad = 40;
+              const maxX = W / 2 - pad;
+              const maxY = H / 2 - pad;
+              const tx = Math.cos(angle);
+              const ty = Math.sin(angle);
+              const scaleX = tx !== 0 ? maxX / Math.abs(tx) : Infinity;
+              const scaleY = ty !== 0 ? maxY / Math.abs(ty) : Infinity;
+              const s = Math.min(scaleX, scaleY);
+              edge.x = cx + tx * s;
+              edge.y = cy + ty * s;
+              edge.rotation = angle - Math.PI / 2;
+              edge.scale.set(1 + Math.sin(Date.now() / 220) * 0.12);
+            } else if (edge) {
+              uiLayer.removeChild(edge);
+              edge.destroy();
+              enemyEdgeArrowMap.delete(enemy.id);
+            }
+          }
+        }
+        // Clean up edge arrows for removed enemies
+        for (const [id, g] of enemyEdgeArrowMap) {
+          if (!battle.enemies.find(e => e.id === id && e.state !== 'dead')) {
+            uiLayer.removeChild(g); g.destroy(); enemyEdgeArrowMap.delete(id);
           }
         }
 

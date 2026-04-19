@@ -207,12 +207,12 @@ export function createBattle(
     }
   }
 
-  // Waves — scaled by difficulty
+  // Waves — each wave bigger than the last. Difficulty scales totals.
   const dm = DIFFICULTY_MULT[difficulty];
-  const total = Math.round((camp.spriteCount + 3) * dm.enemyCount);
-  const w1 = Math.max(2, Math.ceil(total * 0.3));
-  const w2 = Math.max(2, Math.ceil(total * 0.45));
-  const w3 = Math.max(1, total - w1 - w2);
+  const total = Math.round((camp.spriteCount + 7) * dm.enemyCount);
+  const w1 = Math.max(3, Math.ceil(total * 0.22));
+  const w2 = Math.max(4, Math.ceil(total * 0.33));
+  const w3 = Math.max(5, total - w1 - w2);
 
   return {
     phase: 'countdown', elapsed: 0, won: null,
