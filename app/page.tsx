@@ -15,6 +15,13 @@ import InboxModal from './components/modals/InboxModal';
 import ChestOpenModal from './components/modals/ChestOpenModal';
 import LeagueModal from './components/modals/LeagueModal';
 import PassModal from './components/modals/PassModal';
+import ChestActionModal from './components/modals/ChestActionModal';
+import {
+  loadInventory, tickInventory, consumeChest,
+  type ChestSlot as ChestSlotType, type ChestKind, type ChestInventory,
+  KIND_ROW, formatRemaining, remainingMs,
+  CHESTS_CHANGED, MAX_SLOTS,
+} from '@/lib/chests';
 import { vibrate } from '@/lib/juice';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
@@ -70,7 +77,10 @@ export default function Home() {
   const [streakDays, setStreakDays] = useState(0);
   const [buildings, setBuildings] = useState(0);
   const [modal, setModal] = useState<'profile' | 'streak' | 'settings' | 'inbox' | 'pass' | 'league' | null>(null);
-  const [chestModal, setChestModal] = useState<'wood' | 'silver' | 'gold' | null>(null);
+  const [chestInv, setChestInv] = useState<ChestInventory>(() => ({ slots: [] }));
+  const [actionSlot, setActionSlot] = useState<ChestSlotType | null>(null);
+  const [openingSlot, setOpeningSlot] = useState<ChestSlotType | null>(null);
+  const [, setNowTick] = useState(0); // drives re-renders for ticking timers
 
   const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
   const showPickerModal = !chosenTask && !pick.completed;
@@ -82,6 +92,22 @@ export default function Home() {
     setStreakLongest(s.longest || 0);
     setStreakDays((s.history || []).length);
     try { setBuildings(loadCity().buildings.length); } catch { /* ignore */ }
+
+    // Load chest inventory + tick unlock timers
+    setChestInv(tickInventory(loadInventory()));
+    const onChestChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as ChestInventory | undefined;
+      if (detail) setChestInv(detail);
+    };
+    window.addEventListener(CHESTS_CHANGED, onChestChange as EventListener);
+    const id = window.setInterval(() => {
+      setChestInv((prev) => tickInventory(prev));
+      setNowTick((n) => n + 1);
+    }, 1000);
+    return () => {
+      window.removeEventListener(CHESTS_CHANGED, onChestChange as EventListener);
+      window.clearInterval(id);
+    };
   }, []);
 
   const completeStreak = useCallback(() => {
@@ -396,10 +422,26 @@ export default function Home() {
               <span className="bh-chests-subtitle">4 / 4 slots</span>
             </div>
             <div className="bh-chests">
-              <ChestSlot tier="wood"   status="ready" onClick={() => { vibrate(12); setChestModal('wood');   }} />
-              <ChestSlot tier="silver" status="2:14:38" count={2} onClick={() => { vibrate(12); setChestModal('silver'); }} />
-              <ChestSlot tier="gold"   status="8:00:00" onClick={() => { vibrate(12); setChestModal('gold');   }} />
-              <ChestSlot tier="empty"  status="LEEG" />
+              {Array.from({ length: MAX_SLOTS }).map((_, i) => {
+                const slot = chestInv.slots[i];
+                if (!slot) {
+                  return <ChestSlot key={`empty-${i}`} slot={null} onClick={undefined} />;
+                }
+                return (
+                  <ChestSlot
+                    key={slot.id}
+                    slot={slot}
+                    onClick={() => {
+                      vibrate(12);
+                      if (slot.state === 'ready') {
+                        setOpeningSlot(slot);
+                      } else {
+                        setActionSlot(slot);
+                      }
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -457,10 +499,26 @@ export default function Home() {
       <InboxModal open={modal === 'inbox'} onClose={() => setModal(null)} />
       <PassModal open={modal === 'pass'} onClose={() => setModal(null)} trophies={trophies} />
       <LeagueModal open={modal === 'league'} onClose={() => setModal(null)} trophies={trophies} />
+      <ChestActionModal
+        open={actionSlot !== null}
+        slot={actionSlot}
+        onClose={() => setActionSlot(null)}
+        onReady={() => {
+          const slot = actionSlot;
+          setActionSlot(null);
+          if (slot) setOpeningSlot(slot);
+        }}
+      />
       <ChestOpenModal
-        open={chestModal !== null}
-        onClose={() => setChestModal(null)}
-        kind={chestModal ?? 'wood'}
+        open={openingSlot !== null}
+        kind={(openingSlot?.kind ?? 'wood') as ChestKind}
+        onClose={() => {
+          // Remove the consumed chest from inventory when closing the open modal
+          if (openingSlot) {
+            setChestInv(consumeChest(loadInventory(), openingSlot.id));
+          }
+          setOpeningSlot(null);
+        }}
       />
 
       {/* Timer modal */}
@@ -984,28 +1042,24 @@ export default function Home() {
 }
 
 /* ======================== ChestSlot ======================== */
-// 240×256 sheet, 5 cols × 8 rows, each cell 48×32. Pick row per tier.
-const CHEST_ROW: Record<'wood' | 'silver' | 'gold' | 'empty', number> = {
-  wood:   0, // brown
-  silver: 6, // blue/silver
-  gold:   4, // red/gold royal
-  empty:  0, // rendered grayed out below
-};
 
-function ChestSlot({
-  tier, status, count, onClick,
-}: {
-  tier: 'wood' | 'silver' | 'gold' | 'empty';
-  status: string;
-  count?: number;
-  onClick?: () => void;
-}) {
-  const isReady = status.toUpperCase() === 'OPEN';
-  const isEmpty = tier === 'empty';
-  const cls = `bh-chest-slot ${isEmpty ? 'bh-chest-empty' : 'bh-chest-active'}`;
-  const statusCls = `bh-chest-status ${isReady ? 'bh-chest-ready' : (!isEmpty && status.includes(':')) ? 'bh-chest-timer' : ''}`;
+function ChestSlot({ slot, onClick }: { slot: ChestSlotType | null; onClick?: () => void }) {
   const scale = 1.7;
-  const row = CHEST_ROW[tier];
+  const isEmpty = !slot;
+  const state = slot?.state ?? 'empty';
+  const isReady = state === 'ready';
+  const isUnlocking = state === 'unlocking';
+  const isWaiting = state === 'waiting';
+  const row = slot ? KIND_ROW[slot.kind] : 0;
+
+  // tick every second for timer text
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!isUnlocking) return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [isUnlocking]);
+
   // Ready chest gently hints at opening: alternate frame 0 / 1
   const [readyFrame, setReadyFrame] = useState(0);
   useEffect(() => {
@@ -1016,6 +1070,18 @@ function ChestSlot({
     return () => window.clearInterval(id);
   }, [isReady]);
   const frame = isReady ? readyFrame : 0;
+
+  const statusText = isEmpty
+    ? 'LEEG'
+    : isReady
+      ? 'OPEN'
+      : isUnlocking && slot
+        ? formatRemaining(remainingMs(slot))
+        : 'TIK';
+
+  const cls = `bh-chest-slot ${isEmpty ? 'bh-chest-empty' : 'bh-chest-active'}`;
+  const statusCls = `bh-chest-status ${isReady ? 'bh-chest-ready' : isUnlocking ? 'bh-chest-timer' : ''}`;
+
   return (
     <motion.button
       whileTap={onClick ? { scale: 0.94 } : undefined}
@@ -1024,15 +1090,15 @@ function ChestSlot({
       className={cls}
       onClick={onClick}
       disabled={!onClick}
-      aria-label={isEmpty ? 'Leeg slot' : `${tier} kist — ${status}`}
+      aria-label={isEmpty ? 'Leeg slot' : `${slot?.kind} kist — ${statusText}`}
     >
       <motion.div
         className="bh-chest-icon"
-        animate={isReady ? { y: [0, -4, 0], rotate: [0, -3, 3, -2, 2, 0] } : { y: [0, -2, 0] }}
+        animate={isReady ? { y: [0, -4, 0], rotate: [0, -3, 3, -2, 2, 0] } : isWaiting ? { y: [0, -2, 0], scale: [1, 1.03, 1] } : { y: [0, -2, 0] }}
         transition={isReady
           ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
           : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ filter: isEmpty ? 'grayscale(1) brightness(0.5) opacity(0.45)' : undefined }}
+        style={{ filter: isEmpty ? 'grayscale(1) brightness(0.5) opacity(0.45)' : isUnlocking ? 'brightness(0.7) saturate(0.85)' : undefined }}
       >
         <div
           style={{
@@ -1047,8 +1113,7 @@ function ChestSlot({
           }}
         />
       </motion.div>
-      <span className={statusCls}>{status}</span>
-      {count !== undefined && <span className="bh-chest-count">{count}</span>}
+      <span className={statusCls}>{statusText}</span>
     </motion.button>
   );
 }

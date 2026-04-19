@@ -9,7 +9,7 @@ import { loadCity, saveCity, addSpeedTokens } from '@/lib/cityStore';
 import { addResources, RESOURCE_META, type ResourceKey } from '@/lib/resources';
 import { sfxClaim, sfxTap } from '@/lib/sound';
 
-type ChestKind = 'wood' | 'silver' | 'gold';
+import type { ChestKind } from '@/lib/chests';
 
 interface Props {
   open: boolean;
@@ -62,21 +62,19 @@ function rollRewards(kind: ChestKind): Reward[] {
     if (chance(0.025)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(2, 4), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
     if (chance(0.015)) out.push(resReward('gems', rand(2, 5)));
     if (chance(0.005)) out.push(resReward('banners', 1));
-  } else if (kind === 'silver') {
-    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(140, 290), color: '#F5C842', rarity: 'common', apply: 'coins' });
-    if (chance(0.65)) out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: rand(1, 2), color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
-    if (chance(0.55)) out.push(resReward('iron', rand(1, 3)));
-    if (chance(0.35)) out.push(resReward('scrolls', 1));
-    if (chance(0.25)) out.push(resReward('shards', rand(2, 4)));
-    if (chance(0.22)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(3, 6), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
-    if (chance(0.18)) out.push(resReward('magicDust', rand(1, 2)));
-    if (chance(0.12)) out.push(resReward('keys', 1));
-    // epic/legendary surprises
-    if (chance(0.06)) out.push(resReward('potions', 1));
-    if (chance(0.04)) out.push(resReward('gems', rand(2, 5)));
-    if (chance(0.01)) out.push(resReward('banners', 1));
-  } else {
-    // Gold — good stuff common, legendary still special
+  } else if (kind === 'bronze') {
+    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(110, 220), color: '#F5C842', rarity: 'common', apply: 'coins' });
+    if (chance(0.70)) out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: rand(1, 2), color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
+    if (chance(0.55)) out.push(resReward('iron', rand(1, 2)));
+    if (chance(0.40)) out.push(resReward('stone', rand(2, 4)));
+    if (chance(0.30)) out.push(resReward('scrolls', 1));
+    if (chance(0.22)) out.push(resReward('shards', rand(1, 3)));
+    if (chance(0.15)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(2, 5), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
+    if (chance(0.10)) out.push(resReward('keys', 1));
+    if (chance(0.06)) out.push(resReward('magicDust', 1));
+    if (chance(0.03)) out.push(resReward('gems', rand(2, 4)));
+    if (chance(0.008)) out.push(resReward('banners', 1));
+  } else if (kind === 'gold') {
     out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(380, 720), color: '#F5C842', rarity: 'common', apply: 'coins' });
     if (chance(0.80)) out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: rand(2, 4), color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
     if (chance(0.70)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(6, 12), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
@@ -86,6 +84,16 @@ function rollRewards(kind: ChestKind): Reward[] {
     if (chance(0.18)) out.push(resReward('magicDust', rand(1, 3)));
     if (chance(0.15)) out.push(resReward('scrolls', rand(1, 2)));
     if (chance(0.07)) out.push(resReward('banners', 1));
+  } else {
+    // magic — rarest tier, always stacks epic + legendary chances
+    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(700, 1400), color: '#F5C842', rarity: 'common', apply: 'coins' });
+    if (chance(0.85)) out.push(resReward('gems', rand(8, 22)));
+    if (chance(0.80)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(12, 24), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
+    if (chance(0.70)) out.push(resReward('potions', rand(1, 2)));
+    if (chance(0.55)) out.push(resReward('keys', rand(2, 4)));
+    if (chance(0.45)) out.push(resReward('magicDust', rand(2, 5)));
+    if (chance(0.35)) out.push(resReward('scrolls', rand(2, 3)));
+    if (chance(0.22)) out.push(resReward('banners', 1));
   }
   return out;
 }
@@ -114,9 +122,10 @@ const COLS = 5;
 const FRAME_COUNT = 10; // 2 rows × 5 cols per tier
 
 const CHEST_SKIN: Record<ChestKind, { label: string; glow: string; accent: string; taps: number; baseRow: number }> = {
-  wood:   { label: 'HOUTEN KIST',   glow: '#c98c1a', accent: '#7a4320', taps: 2, baseRow: 0 }, // rows 0-1 brown
-  silver: { label: 'ZILVEREN KIST', glow: '#d0dae4', accent: '#9aaab8', taps: 3, baseRow: 6 }, // rows 6-7 blue/silver
-  gold:   { label: 'GOUDEN KIST',   glow: '#ffe07a', accent: '#F5C842', taps: 4, baseRow: 4 }, // rows 4-5 red/gold
+  wood:   { label: 'HOUTEN KIST',    glow: '#c98c1a', accent: '#7a4320', taps: 2, baseRow: 0 }, // rows 0-1 brown
+  bronze: { label: 'BRONZEN KIST',   glow: '#a86a10', accent: '#5a3a1a', taps: 3, baseRow: 2 }, // rows 2-3 dark brown
+  gold:   { label: 'GOUDEN KIST',    glow: '#ffe07a', accent: '#F5C842', taps: 4, baseRow: 4 }, // rows 4-5 red/gold
+  magic:  { label: 'MAGISCHE KIST',  glow: '#6fd4f0', accent: '#3a8fd4', taps: 5, baseRow: 6 }, // rows 6-7 blue/silver
 };
 
 // The chest art inside each 48-wide cell sits a few pixels left of cell
