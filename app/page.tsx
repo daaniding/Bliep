@@ -388,27 +388,29 @@ export default function Home() {
           background: #0a1018;
         }
 
-        /* STAGE — live city fills viewport; Pixi renders its own sky & clouds */
+        /* STAGE — bounded between topbar and base panel so the whole
+           island fits; Pixi auto-zooms its canvas to fill the box */
         .bh-stage {
           position: absolute;
-          inset: 0;
+          top: 66px;    /* below floating topbar */
+          bottom: 260px;/* above base panel */
+          left: 0; right: 0;
           z-index: 1;
           display: block;
           overflow: hidden;
         }
         .bh-stage > div:first-child { width: 100%; height: 100%; }
-        /* color-blend fades: top → dark under topbar, bottom → dark into base */
+        /* gentle edge fades so the island doesn't hard-cut into the
+           topbar blur / base panel */
         .bh-stage-top-fade {
-          position: absolute; left: 0; right: 0; top: 0; height: 140px;
-          background: linear-gradient(180deg, rgba(10,16,24,.75) 0%, rgba(10,16,24,.25) 55%, transparent 100%);
-          pointer-events: none;
-          z-index: 2;
+          position: absolute; left: 0; right: 0; top: 0; height: 40px;
+          background: linear-gradient(180deg, rgba(10,16,24,.55) 0%, transparent 100%);
+          pointer-events: none; z-index: 2;
         }
         .bh-stage-bot-fade {
-          position: absolute; left: 0; right: 0; bottom: 0; height: 160px;
-          background: linear-gradient(180deg, transparent 0%, rgba(10,18,28,.75) 60%, rgba(10,18,28,.95) 100%);
-          pointer-events: none;
-          z-index: 2;
+          position: absolute; left: 0; right: 0; bottom: 0; height: 60px;
+          background: linear-gradient(180deg, transparent 0%, rgba(10,18,28,.85) 100%);
+          pointer-events: none; z-index: 2;
         }
 
         /* TOPBAR */
