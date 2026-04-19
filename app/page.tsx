@@ -283,8 +283,8 @@ export default function Home() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 280, damping: 28, delay: 0.15 }}
         >
-          <span className="bh-rivet" style={{ top: 8, left: 10 }} />
-          <span className="bh-rivet" style={{ top: 8, right: 10 }} />
+          <span className="bh-rivet" style={{ top: 46, left: 10 }} />
+          <span className="bh-rivet" style={{ top: 46, right: 10 }} />
 
           {/* Opdracht hero */}
           <div className="bh-opdracht-wrap">
@@ -487,13 +487,15 @@ export default function Home() {
           pointer-events: none; z-index: 2;
         }
         .bh-stage-bot-fade {
-          position: absolute; left: 0; right: 0; bottom: -20px; height: 110px;
-          /* ends in the exact base-panel top color so water flows into nav */
+          position: absolute; left: 0; right: 0; bottom: 0; height: 160px;
+          /* smooth multi-stop fade ending in the exact base-panel top color
+             so the sea melts into the panel without a visible seam */
           background: linear-gradient(180deg,
             transparent 0%,
-            rgba(42,58,80,.35) 40%,
-            rgba(42,58,80,.75) 70%,
-            rgba(42,58,80,.95) 100%);
+            rgba(42,58,80,.15) 30%,
+            rgba(42,58,80,.45) 55%,
+            rgba(42,58,80,.78) 80%,
+            rgba(42,58,80,1) 100%);
           pointer-events: none; z-index: 2;
         }
 
@@ -661,12 +663,17 @@ export default function Home() {
         /* BASE panel */
         .bh-base {
           position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
-          padding: 14px 12px max(22px, env(safe-area-inset-bottom, 22px));
+          padding: 20px 12px max(22px, env(safe-area-inset-bottom, 22px));
           background:
             url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2' seed='2'/><feColorMatrix values='0 0 0 0 .1  0 0 0 0 .14  0 0 0 0 .2  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-            /* water-teal wash at the very top so the sea color bleeds into the nav */
-            linear-gradient(180deg, rgba(90,150,190,.45) 0%, rgba(90,150,190,0) 16%, transparent 100%),
-            radial-gradient(120% 80% at 50% 0%, rgba(90,120,160,.28) 0%, transparent 60%),
+            /* water-teal wash bleeds sea color into the panel top ~30% */
+            linear-gradient(180deg,
+              rgba(110,170,205,.55) 0%,
+              rgba(90,150,190,.35) 10%,
+              rgba(70,120,160,.18) 20%,
+              rgba(70,120,160,0) 32%,
+              transparent 100%),
+            radial-gradient(140% 60% at 50% 0%, rgba(90,120,160,.35) 0%, transparent 70%),
             linear-gradient(180deg, #2a3a50 0%, #1a2838 45%, #0e1824 100%);
           box-shadow:
             inset 0 0 0 1.5px #050a12,
@@ -677,16 +684,16 @@ export default function Home() {
           border-top-right-radius: 22px;
         }
         .bh-base > * { position: relative; z-index: 2; }
-        /* gold seam moved down so it doesn't interrupt the water→panel flow */
+        /* gold seams pushed below the water-wash so they sit on solid
+           dark panel and don't break the water→panel transition */
         .bh-base::before {
-          content: ""; position: absolute; top: 14px; left: 0; right: 0; height: 1.5px;
-          background: linear-gradient(90deg, transparent 0%, rgba(142,90,24,.6) 8%, rgba(245,200,66,.75) 50%, rgba(142,90,24,.6) 92%, transparent 100%);
-          box-shadow: 0 1px 0 rgba(0,0,0,.55);
+          content: ""; position: absolute; top: 38px; left: 8px; right: 8px; height: 1px;
+          background: linear-gradient(90deg, transparent 0%, rgba(142,90,24,.45) 12%, rgba(245,200,66,.55) 50%, rgba(142,90,24,.45) 88%, transparent 100%);
           z-index: 1;
         }
         .bh-base::after {
-          content: ""; position: absolute; top: 18px; left: 0; right: 0; height: 1px;
-          background: linear-gradient(90deg, transparent 0%, rgba(142,90,24,.35) 20%, rgba(245,200,66,.55) 50%, rgba(142,90,24,.35) 80%, transparent 100%);
+          content: ""; position: absolute; top: 41px; left: 8px; right: 8px; height: 1px;
+          background: linear-gradient(90deg, transparent 0%, rgba(142,90,24,.25) 20%, rgba(245,200,66,.35) 50%, rgba(142,90,24,.25) 80%, transparent 100%);
           z-index: 1;
         }
         .bh-rivet {
@@ -700,13 +707,10 @@ export default function Home() {
           z-index: 1;
         }
 
-        /* OPDRACHT hero — lifted above base panel top so it overlaps
-           into the water fade for a smooth layered transition */
+        /* OPDRACHT hero — sits inside the base panel top padding */
         .bh-opdracht-wrap {
           position: relative;
           padding: 0 4px 8px;
-          margin-top: -28px;
-          z-index: 3;
         }
         .bh-opdracht {
           position: relative; display: block; width: 100%;
