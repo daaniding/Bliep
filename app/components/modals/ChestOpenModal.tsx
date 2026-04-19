@@ -184,12 +184,34 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
 
   // Tap progress 0..1 (how close the lid is to breaking)
   const tapProgress = Math.min(taps / tapsNeeded, 1);
-  // Frame index (0..4) based on phase + taps
-  const currentFrame = phase === 'burst' || phase === 'reveal' || phase === 'done'
-    ? FRAME_COUNT - 1
-    : phase === 'charging'
-      ? Math.min(FRAME_COUNT - 1, Math.round(tapProgress * (FRAME_COUNT - 1)))
-      : 0;
+
+  // During burst, play the sprite sheet animation frame-by-frame instead
+  // of snapping to the last frame.
+  const [burstFrame, setBurstFrame] = useState(0);
+  useEffect(() => {
+    if (phase !== 'burst') { setBurstFrame(0); return; }
+    let idx = 0;
+    setBurstFrame(0);
+    const id = window.setInterval(() => {
+      idx += 1;
+      if (idx >= FRAME_COUNT) {
+        setBurstFrame(FRAME_COUNT - 1);
+        window.clearInterval(id);
+      } else {
+        setBurstFrame(idx);
+      }
+    }, 70);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
+  const currentFrame =
+    phase === 'burst'
+      ? burstFrame
+      : phase === 'reveal' || phase === 'done'
+        ? FRAME_COUNT - 1
+        : phase === 'charging'
+          ? Math.min(FRAME_COUNT - 1, Math.round(tapProgress * (FRAME_COUNT - 1)))
+          : 0;
   const spriteScale = 4;
 
   // Modal body shake variants

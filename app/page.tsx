@@ -1004,8 +1004,18 @@ function ChestSlot({
   const isEmpty = tier === 'empty';
   const cls = `bh-chest-slot ${isEmpty ? 'bh-chest-empty' : 'bh-chest-active'}`;
   const statusCls = `bh-chest-status ${isReady ? 'bh-chest-ready' : (!isEmpty && status.includes(':')) ? 'bh-chest-timer' : ''}`;
-  const scale = 1.2; // 48*1.2 = ~58px wide frame
+  const scale = 1.2;
   const row = CHEST_ROW[tier];
+  // Ready chest gently hints at opening: alternate frame 0 / 1
+  const [readyFrame, setReadyFrame] = useState(0);
+  useEffect(() => {
+    if (!isReady) { setReadyFrame(0); return; }
+    const id = window.setInterval(() => {
+      setReadyFrame((f) => (f === 0 ? 1 : 0));
+    }, 620);
+    return () => window.clearInterval(id);
+  }, [isReady]);
+  const frame = isReady ? readyFrame : 0;
   return (
     <motion.button
       whileTap={onClick ? { scale: 0.94 } : undefined}
@@ -1030,7 +1040,7 @@ function ChestSlot({
             height: 32 * scale,
             backgroundImage: 'url(/assets/chests/chests.png)',
             backgroundSize: `${240 * scale}px ${256 * scale}px`,
-            backgroundPosition: `0px -${row * 32 * scale}px`,
+            backgroundPosition: `-${frame * 48 * scale}px -${row * 32 * scale}px`,
             backgroundRepeat: 'no-repeat',
             imageRendering: 'pixelated',
           }}
