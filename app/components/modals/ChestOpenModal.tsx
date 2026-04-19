@@ -196,7 +196,7 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
   // Tap progress 0..1
   const tapProgress = Math.min(taps / tapsNeeded, 1);
 
-  // During burst, PLAY all 10 sprite frames (chest opens + lid falls off)
+  // During burst, play all 10 sprite frames via setInterval.
   const [burstFrame, setBurstFrame] = useState(0);
   useEffect(() => {
     if (phase !== 'burst') { setBurstFrame(0); return; }
@@ -210,12 +210,10 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
       } else {
         setBurstFrame(idx);
       }
-    }, 65);
+    }, 70);
     return () => window.clearInterval(id);
   }, [phase]);
 
-  // Charging uses only the first half (frames 0..4) — chest opens gradually.
-  // After burst the lid is gone (frame 9).
   const currentFrame =
     phase === 'burst'
       ? burstFrame
@@ -255,61 +253,63 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
             overflow: 'visible',
           }}
         >
-          {/* continuous gold particle rain (post-burst) */}
-          {(phase === 'burst' || phase === 'reveal' || phase === 'done') && (
+          {/* continuous gold particle rain (post-burst, limited count) */}
+          {(phase === 'reveal' || phase === 'done') && (
             <>
-              {Array.from({ length: 10 }).map((_, i) => (
+              {Array.from({ length: 5 }).map((_, i) => (
                 <motion.span
                   key={`rain-${i}`}
-                  initial={{ y: -40, x: (i - 5) * 26 + (Math.random() * 8 - 4), opacity: 0, rotate: 0 }}
-                  animate={{ y: [-40, 220], opacity: [0, 1, 0], rotate: 360 }}
+                  initial={{ y: -40, x: (i - 2) * 40, opacity: 0 }}
+                  animate={{ y: 220, opacity: [0, 1, 0] }}
                   transition={{
-                    duration: 2.4 + Math.random() * 1.2,
-                    delay: Math.random() * 2,
+                    duration: 3,
+                    delay: i * 0.4,
                     repeat: Infinity,
                     ease: 'easeIn',
                   }}
                   style={{
                     position: 'absolute', left: '50%', top: 0,
-                    fontSize: 10 + Math.random() * 6,
+                    fontSize: 12,
                     pointerEvents: 'none',
                     color: glow,
-                    textShadow: `0 0 6px ${glow}`,
                     zIndex: 1,
+                    willChange: 'transform, opacity',
                   }}
                 >
-                  {['✦', '✧', '•'][i % 3]}
+                  ✦
                 </motion.span>
               ))}
             </>
           )}
 
-          {/* god-rays */}
+          {/* god-rays — 8 SVG triangles rotating, much cheaper than
+             a conic-gradient + radial mask + screen blend */}
           <AnimatePresence>
             {(phase === 'burst' || phase === 'reveal' || phase === 'done') && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.3, rotate: 0 }}
-                animate={{ opacity: [0.95, 0.5, 0.3], scale: 2.4, rotate: 120 }}
+              <motion.svg
+                initial={{ opacity: 0, scale: 0.5, rotate: 0 }}
+                animate={{ opacity: [0.75, 0.35, 0.2], scale: 1.8, rotate: 90 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 1.8, ease: 'easeOut' }}
+                transition={{ duration: 1.6, ease: 'easeOut' }}
+                viewBox="-100 -100 200 200"
                 style={{
                   position: 'absolute', inset: 0,
-                  backgroundImage: `conic-gradient(from 0deg at 50% 50%,
-                    ${glow}00 0deg,  ${glow}bb 10deg,  ${glow}00 22deg,
-                    ${glow}00 40deg, ${glow}99 52deg,  ${glow}00 64deg,
-                    ${glow}00 80deg, ${glow}bb 92deg,  ${glow}00 104deg,
-                    ${glow}00 120deg,${glow}99 132deg, ${glow}00 144deg,
-                    ${glow}00 160deg,${glow}bb 172deg, ${glow}00 184deg,
-                    ${glow}00 200deg,${glow}99 212deg, ${glow}00 224deg,
-                    ${glow}00 240deg,${glow}bb 252deg, ${glow}00 264deg,
-                    ${glow}00 280deg,${glow}99 292deg, ${glow}00 304deg,
-                    ${glow}00 320deg,${glow}bb 332deg, ${glow}00 344deg)`,
-                  mixBlendMode: 'screen',
+                  width: '100%', height: '100%',
                   pointerEvents: 'none',
-                  maskImage: 'radial-gradient(circle at center, black 0%, black 35%, transparent 78%)',
-                  WebkitMaskImage: 'radial-gradient(circle at center, black 0%, black 35%, transparent 78%)',
+                  willChange: 'transform, opacity',
                 }}
-              />
+                aria-hidden
+              >
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <polygon
+                    key={i}
+                    points="0,-90 7,0 -7,0"
+                    fill={glow}
+                    opacity={0.55}
+                    transform={`rotate(${(i / 8) * 360})`}
+                  />
+                ))}
+              </motion.svg>
             )}
           </AnimatePresence>
 
@@ -372,7 +372,10 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
               position: 'relative', zIndex: 3,
               background: 'transparent', border: 'none', padding: 0,
               cursor: (phase === 'idle' || phase === 'charging') ? 'pointer' : 'default',
-              filter: `drop-shadow(0 10px 16px rgba(0,0,0,0.6)) drop-shadow(0 0 22px ${glow}aa)`,
+              // Keep only a neutral dark drop-shadow at all times. The coloured
+              // tier-glow is added as a separate pulsing layer during active
+              // phases so idle doesn't have an orange halo.
+              filter: `drop-shadow(0 10px 14px rgba(0,0,0,0.55)) drop-shadow(0 2px 3px rgba(0,0,0,0.45))`,
             }}
           >
             <div style={{ position: 'relative' }}>
@@ -399,39 +402,33 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
             </div>
           </motion.button>
 
-          {/* burst sparkles */}
-          {phase === 'burst' && (
-            <>
-              {Array.from({ length: 22 }).map((_, i) => {
-                const angle = (i / 22) * Math.PI * 2 + Math.random() * 0.4;
-                const dist = 100 + Math.random() * 110;
-                const sz = 14 + Math.random() * 16;
-                return (
-                  <motion.span
-                    key={`burst-${i}`}
-                    initial={{ x: 0, y: 0, opacity: 1, scale: 0.3, rotate: 0 }}
-                    animate={{
-                      x: Math.cos(angle) * dist,
-                      y: Math.sin(angle) * dist - 18,
-                      opacity: [1, 1, 0],
-                      scale: [0.3, 1.4, 0.9],
-                      rotate: 720,
-                    }}
-                    transition={{ duration: 1.4, ease: 'easeOut', delay: Math.random() * 0.25 }}
-                    style={{
-                      position: 'absolute', left: '50%', top: '50%',
-                      fontSize: sz,
-                      pointerEvents: 'none',
-                      textShadow: `0 0 10px ${glow}`,
-                      zIndex: 4,
-                    }}
-                  >
-                    {['✨', '⭐', '💫', '✦', '✧'][i % 5]}
-                  </motion.span>
-                );
-              })}
-            </>
-          )}
+          {/* burst sparkles (lightweight) */}
+          {phase === 'burst' && Array.from({ length: 10 }).map((_, i) => {
+            const angle = (i / 10) * Math.PI * 2;
+            const dist = 120;
+            return (
+              <motion.span
+                key={`burst-${i}`}
+                initial={{ x: 0, y: 0, opacity: 1, scale: 0.4 }}
+                animate={{
+                  x: Math.cos(angle) * dist,
+                  y: Math.sin(angle) * dist - 10,
+                  opacity: [1, 1, 0],
+                  scale: [0.4, 1.3, 0.9],
+                }}
+                transition={{ duration: 1, ease: 'easeOut', delay: i * 0.02 }}
+                style={{
+                  position: 'absolute', left: '50%', top: '50%',
+                  fontSize: 22,
+                  pointerEvents: 'none',
+                  zIndex: 4,
+                  willChange: 'transform, opacity',
+                }}
+              >
+                ✨
+              </motion.span>
+            );
+          })}
 
           {/* small tap-tap sparks per tap */}
           <AnimatePresence>
@@ -572,31 +569,32 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
                 zIndex: 2147483647,
                 cursor: 'pointer',
                 background: `radial-gradient(circle at center, ${rarityColor(bigReveal.rarity)}44 0%, rgba(0,0,0,0.78) 60%)`,
-                backdropFilter: 'blur(2px)',
               }}
             >
-              {/* rotating conic rays behind reward */}
-              <motion.div
+              {/* rotating rays behind reward — SVG version, cheap */}
+              <motion.svg
                 animate={{ rotate: 360 }}
-                transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
+                transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+                viewBox="-100 -100 200 200"
                 style={{
-                  position: 'absolute', width: '120vw', height: '120vw', maxWidth: 800, maxHeight: 800,
+                  position: 'absolute', width: '120vw', height: '120vw', maxWidth: 720, maxHeight: 720,
                   left: '50%', top: '50%',
                   translate: '-50% -50%',
-                  backgroundImage: `conic-gradient(from 0deg,
-                    transparent 0deg, ${rarityColor(bigReveal.rarity)}55 12deg, transparent 24deg,
-                    transparent 60deg, ${rarityColor(bigReveal.rarity)}55 72deg, transparent 84deg,
-                    transparent 120deg, ${rarityColor(bigReveal.rarity)}55 132deg, transparent 144deg,
-                    transparent 180deg, ${rarityColor(bigReveal.rarity)}55 192deg, transparent 204deg,
-                    transparent 240deg, ${rarityColor(bigReveal.rarity)}55 252deg, transparent 264deg,
-                    transparent 300deg, ${rarityColor(bigReveal.rarity)}55 312deg, transparent 324deg)`,
-                  maskImage: 'radial-gradient(circle at center, black 10%, transparent 75%)',
-                  WebkitMaskImage: 'radial-gradient(circle at center, black 10%, transparent 75%)',
                   pointerEvents: 'none',
-                  mixBlendMode: 'screen',
-                  opacity: 0.7,
+                  opacity: 0.55,
+                  willChange: 'transform',
                 }}
-              />
+                aria-hidden
+              >
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <polygon
+                    key={i}
+                    points="0,-88 6,0 -6,0"
+                    fill={rarityColor(bigReveal.rarity)}
+                    transform={`rotate(${(i / 6) * 360})`}
+                  />
+                ))}
+              </motion.svg>
 
               {/* reward content */}
               <motion.div
@@ -679,7 +677,7 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
               </motion.div>
 
               {/* little sparkles sprinkling around the reward */}
-              {Array.from({ length: 16 }).map((_, i) => (
+              {Array.from({ length: 6 }).map((_, i) => (
                 <motion.span
                   key={`rw-spark-${revealIdx}-${i}`}
                   initial={{ opacity: 0, scale: 0.4 }}
