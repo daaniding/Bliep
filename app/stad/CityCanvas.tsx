@@ -1663,6 +1663,22 @@ export default function CityCanvas({
           );
           world.scale.set(pz);
           centerWorld();
+        } else {
+          // Interactive mode: if canvas was 0-size at init, startZoom/position
+          // were computed against a 360×360 fallback. Recompute now that we
+          // know the real viewport.
+          const fitMin = Math.max(
+            app.renderer.width / extMapW,
+            app.renderer.height / extMapH,
+          );
+          const defZ = Math.min(
+            app.renderer.width / (12 * TILE_W),
+            app.renderer.height / (12 * TILE_H),
+          );
+          const minZ = Math.max(fitMin, MIN_ZOOM_INTERACTIVE);
+          (app as Application & { __minZoom?: number }).__minZoom = minZ;
+          if (world.scale.x < minZ) world.scale.set(Math.max(defZ, minZ));
+          centerWorld();
         }
       });
       ro.observe(host);
