@@ -17,11 +17,11 @@ import {
 import { loadCombatSprites } from '@/lib/game/combatSprites';
 import { createBattle, tickBattle, isBattleDone } from '@/lib/game/battleEngine';
 import { loadTopdownAtlas, getTopdownTexture } from '@/lib/game/topdown';
-import { loadTinyswordsTerrain, TILEMAP_CELL } from '@/lib/game/tinyswordsTerrain';
+import { loadFarmTerrain } from '@/lib/game/farmTerrain';
+import { generateGroves } from '@/lib/game/treeGroves';
 import { spriteForLevel, footprintOf, BUILDINGS } from '@/lib/game/buildings';
-import { autotileGrassSlot } from '@/lib/game/autotile';
 import { TILE_W, TILE_H, CITY_CENTER } from '@/lib/game/iso';
-import { parseElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
+import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from '@/lib/game/staticMap';
 import type { PveCamp, Difficulty } from '@/lib/pveCamps';
 import type { CityState } from '@/lib/cityStore';
 
@@ -61,7 +61,7 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       host.appendChild(app.canvas);
 
       const [atlas, terrain, combat] = await Promise.all([
-        loadTopdownAtlas(), loadTinyswordsTerrain(), loadCombatSprites(),
+        loadTopdownAtlas(), loadFarmTerrain(), loadCombatSprites(),
       ]);
       if (cancelled) { app.destroy(true, { children: true, texture: false }); return; }
 
@@ -92,39 +92,27 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       const uiLayer = new Container();
       app.stage.addChild(uiLayer);
 
-      // ---- Terrain ----
-      const elevation = parseElevation();
+      // ---- Terrain (matches /stad: farm tileset + random forest) ----
+      const elevation = processElevation(parseElevation());
       const mapOffsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
       const mapOffsetGy = CITY_CENTER.gy - Math.floor(MAP_ROWS / 2);
 
-      const bakedTiles = new Map<string, Texture>();
-      const bakeCell = (col: number, row: number): Texture => {
-        const key = `${col},${row}`;
-        let t = bakedTiles.get(key);
-        if (!t) {
-          const framed = new Texture({ source: terrain.tilemap.source, frame: new Rectangle(col * TILEMAP_CELL, row * TILEMAP_CELL, TILEMAP_CELL, TILEMAP_CELL) });
-          const s = new Sprite(framed);
-          t = app.renderer.generateTexture({ target: s, resolution: 1 });
-          if (t.source) t.source.scaleMode = 'nearest';
-          s.destroy();
-          bakedTiles.set(key, t);
-        }
-        return t;
-      };
+      // Water background (simple tile sprite, tinted deep blue)
+      const waterBg = new Graphics();
+      waterBg.rect(
+        (mapOffsetGx - 10) * TILE_W,
+        (mapOffsetGy - 10) * TILE_H,
+        (MAP_COLS + 20) * TILE_W,
+        (MAP_ROWS + 20) * TILE_H,
+      );
+      waterBg.fill({ color: 0x2a7ca0 });
+      tileLayer.addChild(waterBg);
 
-      // Water
-      const ww = (MAP_COLS + 20) * TILE_W;
-      const wh = (MAP_ROWS + 20) * TILE_H;
-      const water = new TilingSprite({ texture: terrain.water, width: ww, height: wh });
-      water.position.set((mapOffsetGx - 10) * TILE_W, (mapOffsetGy - 10) * TILE_H);
-      tileLayer.addChild(water);
-
-      // Grass
-      const GRASS_TINTS = [0x7ca054, 0x6e9048, 0x5e8040, 0x78985a, 0x688848, 0x5a7a3e];
-      const hashTint = (gx: number, gy: number) => {
-        let h = (gx * 374761393 + gy * 668265263) | 0;
+      // Grass — random farm tiles
+      const hashNum = (x: number, y: number, salt: number): number => {
+        let h = (x * 374761393 + y * 668265263 + salt * 2147483647) | 0;
         h = (h ^ (h >>> 13)) * 1274126177;
-        return GRASS_TINTS[((h ^ (h >>> 16)) >>> 0) % GRASS_TINTS.length];
+        return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
       };
       const landCells: Array<{ gx: number; gy: number }> = [];
       const landEdgeCells: Array<{ gx: number; gy: number }> = [];
@@ -132,48 +120,67 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
 
       for (let ry = 0; ry < MAP_ROWS; ry++) {
         for (let rx = 0; rx < MAP_COLS; rx++) {
-          if (elevation[ry][rx] <= 0) continue;
+          if (elevation[ry][rx] !== 3) continue;
           const gx = mapOffsetGx + rx;
           const gy = mapOffsetGy + ry;
           landCells.push({ gx, gy });
           landSet.add(`${gx},${gy}`);
           const hasWater =
-            (elevation[ry - 1]?.[rx] ?? 0) === 0 ||
-            (elevation[ry + 1]?.[rx] ?? 0) === 0 ||
-            (elevation[ry]?.[rx - 1] ?? 0) === 0 ||
-            (elevation[ry]?.[rx + 1] ?? 0) === 0;
+            (elevation[ry - 1]?.[rx] ?? 0) !== 3 ||
+            (elevation[ry + 1]?.[rx] ?? 0) !== 3 ||
+            (elevation[ry]?.[rx - 1] ?? 0) !== 3 ||
+            (elevation[ry]?.[rx + 1] ?? 0) !== 3;
           if (hasWater) landEdgeCells.push({ gx, gy });
-          const slot = autotileGrassSlot(elevation, rx, ry);
-          if (!slot) continue;
-          const tex = bakeCell(slot.col, slot.row);
+          const tex = terrain.grass[Math.floor(hashNum(gx, gy, 50) * terrain.grass.length)];
           const sprite = new Sprite(tex);
           sprite.anchor.set(0, 0);
           sprite.position.set(gx * TILE_W, gy * TILE_H);
-          sprite.tint = hashTint(rx, ry);
+          sprite.width = TILE_W; sprite.height = TILE_H;
           tileLayer.addChild(sprite);
         }
       }
 
-      // Foam
-      const foamSheet = terrain.waterFoam;
-      let foamCount = 0;
-      for (let ry = 0; ry < MAP_ROWS && foamCount < 80; ry++) {
-        for (let rx = 0; rx < MAP_COLS && foamCount < 80; rx++) {
-          if (elevation[ry][rx] !== 0) continue;
-          const hasGrass = (elevation[ry - 1]?.[rx] ?? 0) > 0 || (elevation[ry + 1]?.[rx] ?? 0) > 0 ||
-            (elevation[ry]?.[rx - 1] ?? 0) > 0 || (elevation[ry]?.[rx + 1] ?? 0) > 0;
-          if (!hasGrass) continue;
-          const foam = new AnimatedSprite(foamSheet.frames);
-          foam.animationSpeed = 0.10 + Math.random() * 0.04;
-          foam.loop = true;
-          foam.gotoAndPlay(Math.floor(Math.random() * foamSheet.frames.length));
-          foam.anchor.set(0.5, 0.5);
-          foam.position.set((mapOffsetGx + rx) * TILE_W + TILE_W * 0.5, (mapOffsetGy + ry) * TILE_H + TILE_H * 0.5);
-          foam.scale.set((TILE_W * 3.2) / foamSheet.frameW);
-          foam.alpha = 0.22;
-          tileLayer.addChild(foam);
-          foamCount++;
-        }
+      // Random forest via generateGroves (matches /stad)
+      const groves = generateGroves(
+        elevation, MAP_COLS, MAP_ROWS,
+        CITY_CENTER.gx, CITY_CENTER.gy,
+        mapOffsetGx, mapOffsetGy,
+        cityState.npcSeed || 1,
+      );
+      const choppedSet = new Set(cityState.choppedTrees || []);
+      for (const tp of groves) {
+        if (tp.type === 'bush') continue;
+        if (choppedSet.has(`${tp.gx},${tp.gy}`)) continue;
+        const basicCount = Math.min(4, terrain.trees.length);
+        if (basicCount === 0) continue;
+        const sheet = terrain.trees[tp.sheetIndex % basicCount];
+        const tex = sheet.frames[0];
+        if (!tex) continue;
+        const ts = new Sprite(tex);
+        ts.anchor.set(0.5, 0.9);
+        const longSide = Math.max(sheet.frameW, sheet.frameH);
+        const scale = (TILE_W * tp.scale * 1.0) / longSide;
+        ts.scale.set(scale);
+        const sx = tp.gx * TILE_W + TILE_W / 2;
+        const sy = tp.gy * TILE_H + TILE_H / 2;
+        ts.x = sx + tp.offsetX * TILE_W;
+        ts.y = sy + tp.offsetY * TILE_H;
+        ts.zIndex = Math.floor(ts.y);
+        treeLayer.addChild(ts);
+      }
+
+      // Central castle (same as /stad focal point)
+      const castleTex = getTopdownTexture(atlas, 'ts:yellow:castle');
+      if (castleTex && castleTex !== Texture.EMPTY) {
+        const castle = new Sprite(castleTex);
+        castle.anchor.set(0.5, 1.0);
+        const cx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
+        const cy = CITY_CENTER.gy * TILE_H + TILE_H;
+        castle.position.set(cx, cy);
+        const castleScale = (7 * TILE_W) / Math.max(castleTex.width, castleTex.height);
+        castle.scale.set(castleScale);
+        castle.zIndex = Math.floor(cy);
+        buildingLayer.addChild(castle);
       }
 
       // ---- Buildings + Trees ----
