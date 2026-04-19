@@ -83,6 +83,10 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       const battleLayer = new Container();
       battleLayer.sortableChildren = true;
       world.addChild(battleLayer);
+      // Trees render AFTER enemies so foliage hides units walking through bos
+      const treeLayer = new Container();
+      treeLayer.sortableChildren = true;
+      world.addChild(treeLayer);
       const fxLayer = new Container();
       world.addChild(fxLayer);
       const uiLayer = new Container();
@@ -179,17 +183,17 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       for (const b of buildings) {
         const fp = footprintOf(b.type);
 
-        // Trees — BIG, visible
+        // Trees — rendered in treeLayer so they overlap enemies walking through
         if (b.type === 'tree' && terrain.trees.length > 0) {
           const sheet = terrain.trees[(b.gx + b.gy) % terrain.trees.length];
           const ts = new Sprite(sheet.frames[0]);
           ts.anchor.set(0.5, 0.9);
           const longSide = Math.max(sheet.frameW, sheet.frameH);
-          ts.scale.set((TILE_W * 2.2) / longSide); // bigger trees
+          ts.scale.set((TILE_W * 2.2) / longSide);
           ts.x = (b.gx + 0.5) * TILE_W;
           ts.y = (b.gy + 0.5) * TILE_H;
           ts.zIndex = Math.floor(ts.y + TILE_H);
-          buildingLayer.addChild(ts);
+          treeLayer.addChild(ts);
           continue;
         }
 
