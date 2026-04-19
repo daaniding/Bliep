@@ -5,6 +5,23 @@
 // If the browser has no audio context or the user hasn't interacted
 // yet, calls are silently ignored.
 
+const SFX_KEY = 'bliep:sfx';
+
+export function isSfxEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return localStorage.getItem(SFX_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function setSfxEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(SFX_KEY, enabled ? '1' : '0');
+  } catch { /* ignore */ }
+}
+
 let ctx: AudioContext | null = null;
 
 function getCtx(): AudioContext | null {
@@ -29,6 +46,7 @@ function playTone(
   durationMs: number,
   opts: { type?: OscillatorType; startGain?: number; endGain?: number; detune?: number } = {},
 ) {
+  if (!isSfxEnabled()) return;
   const c = getCtx();
   if (!c) return;
   const now = c.currentTime;

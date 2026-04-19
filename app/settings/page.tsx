@@ -7,6 +7,8 @@ import { useTrophies } from '@/lib/useTrophies';
 import { useCoins } from '@/lib/useCoins';
 import { useUser, apiLogout, apiUpdateDisplayName } from '@/lib/useUser';
 import { useRouter } from 'next/navigation';
+import { useXp } from '@/lib/useXp';
+import { isSfxEnabled, setSfxEnabled, sfxTap } from '@/lib/sound';
 
 interface Settings {
   name: string;
@@ -33,6 +35,8 @@ export default function SettingsPage() {
   const { user, refresh } = useUser();
   const { trophies } = useTrophies();
   const { coins } = useCoins();
+  const { xp, info: levelInfo } = useXp();
+  const [sfxOn, setSfxOn] = useState(true);
   const [settings, setSettings] = useState<Settings>({ name: '', notifications: true });
   const [displayName, setDisplayNameState] = useState('');
   const [loading, setLoading] = useState(true);
@@ -47,6 +51,7 @@ export default function SettingsPage() {
     setStreak(loadStreak());
     setDisplayNameState(getDisplayName());
     setLeagues(getMyLeagues());
+    setSfxOn(isSfxEnabled());
     async function loadSettings() {
       if (!('serviceWorker' in navigator)) { setLoading(false); return; }
       try {
@@ -73,7 +78,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint, settings: { ...settings, city: 'Breukelen', lat: 52.1715, lon: 4.9927, morningTime: '07:00', eveningTime: '19:00' } }),
+        body: JSON.stringify({ endpoint, settings: { ...settings, morningTime: '07:00', eveningTime: '19:00' } }),
       });
       if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
     } catch (e) { console.error('Save failed:', e); }
@@ -96,13 +101,25 @@ export default function SettingsPage() {
   }
 
   function handleResetAll() {
-    const keys = [
-      'bliep:city:v1', 'bliep:trophies:v1', 'bliep:dailypick:v1',
+    const prefixes = [
+      'bliep:quest:claimed:', 'bliep:quest:proof:',
+      'bliep:pass:claimed:', 'bliep:pass:premium:',
+    ];
+    const exactKeys = [
+      'bliep:city:v1', 'bliep:city:v2', 'bliep:trophies:v1', 'bliep:dailypick:v1',
       'bliep:timer:v1', 'bliep:streak', 'bliep:my-leagues',
       'bliep:displayName', 'bliep:taskdone', 'bliep:woordje',
       'bliep:onboarded', 'bliep:pve:v1', 'bliep:clientId',
+      'bliep:sfx',
     ];
-    keys.forEach(k => localStorage.removeItem(k));
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (prefixes.some(p => k.startsWith(p))) localStorage.removeItem(k);
+      }
+    } catch { /* ignore */ }
+    exactKeys.forEach(k => localStorage.removeItem(k));
     location.href = '/';
   }
 
@@ -167,23 +184,55 @@ export default function SettingsPage() {
           {/* Stats */}
           <section className="animate-fade-up card p-5">
             <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-4">Jouw stats</p>
-            <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="grid grid-cols-3 gap-2 text-center mb-3">
               <div>
-                <p className="text-2xl font-serif text-ink">{coins}</p>
-                <p className="text-[10px] text-faint mt-0.5">🪙 Coins</p>
+                <p className="text-2xl font-serif text-ink">{levelInfo.level}</p>
+                <p className="text-[10px] text-faint mt-0.5">🛡 Level</p>
+              </div>
+              <div>
+                <p className="text-2xl font-serif text-ink">{xp}</p>
+                <p className="text-[10px] text-faint mt-0.5">⚡ XP</p>
               </div>
               <div>
                 <p className="text-2xl font-serif text-ink">{trophies}</p>
                 <p className="text-[10px] text-faint mt-0.5">🏆 Trofeeën</p>
               </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-2xl font-serif text-ink">{streak.current}</p>
+                <p className="text-xl font-serif text-ink">{coins}</p>
+                <p className="text-[10px] text-faint mt-0.5">🪙 Coins</p>
+              </div>
+              <div>
+                <p className="text-xl font-serif text-ink">{streak.current}</p>
                 <p className="text-[10px] text-faint mt-0.5">🔥 Streak</p>
               </div>
               <div>
-                <p className="text-2xl font-serif text-ink">{streak.history.length}</p>
+                <p className="text-xl font-serif text-ink">{streak.history.length}</p>
                 <p className="text-[10px] text-faint mt-0.5">Totaal</p>
               </div>
+            </div>
+          </section>
+
+          {/* Sound */}
+          <section className="animate-fade-up card p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-ink text-sm font-medium">Geluidseffecten</p>
+                <p className="text-[11px] text-faint mt-0.5">Tap, claim, win chimes</p>
+              </div>
+              <button
+                onClick={() => {
+                  const next = !sfxOn;
+                  setSfxEnabled(next);
+                  setSfxOn(next);
+                  if (next) sfxTap();
+                }}
+                className={`relative w-12 h-7 rounded-full transition-all duration-300 ${sfxOn ? 'bg-accent' : 'bg-text-tertiary/20'}`}
+                aria-label="Geluid toggle"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${sfxOn ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
           </section>
 
