@@ -219,15 +219,15 @@ function MissionCard({
       style={{
         position: 'relative',
         border: 'none',
-        padding: '14px 12px 14px 14px',
+        padding: '12px 10px 12px 12px',
         borderRadius: 10,
         cursor: 'pointer',
         textAlign: 'left',
         color: '#3a2312',
         display: 'grid',
-        gridTemplateColumns: '56px 1fr auto',
+        gridTemplateColumns: '44px 1fr auto',
         alignItems: 'center',
-        gap: 14,
+        gap: 10,
         background:
           "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence baseFrequency='1.1' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .18  0 0 0 0 .08  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\"), " +
           'linear-gradient(180deg, #fbecc4 0%, #eed49b 55%, #dfbf80 100%)',
@@ -276,40 +276,45 @@ function MissionCard({
       </div>
 
       <div style={{ minWidth: 0 }}>
-        <h3
+        <p
           style={{
-            fontFamily: cinzel,
-            fontWeight: 800,
-            fontSize: 15,
+            fontFamily: philosopher,
+            fontWeight: 700,
+            fontSize: 13.5,
             color: '#2a1608',
-            lineHeight: 1.15,
-            margin: '0 0 3px',
+            lineHeight: 1.3,
+            margin: 0,
             textShadow: '0 1px 0 rgba(255,240,200,.5)',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            wordBreak: 'break-word',
           }}
         >
           {task.text}
-        </h3>
+        </p>
         <div
           style={{
-            fontFamily: philosopher,
-            fontStyle: 'italic',
-            fontSize: 12,
-            color: '#5a3a22',
-            lineHeight: 1.25,
-            opacity: 0.9,
+            marginTop: 6,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 8px',
+            borderRadius: 999,
+            background: 'rgba(58,35,18,.1)',
+            boxShadow: 'inset 0 0 0 1px rgba(58,35,18,.3)',
+            fontFamily: cinzel,
+            fontWeight: 700,
+            fontSize: 11,
+            color: '#3a2312',
+            letterSpacing: '0.02em',
           }}
         >
-          {tagline(task.tier)} · {task.coins} 🪙
+          <span style={{ ...coinDot, width: 10, height: 10 }} />
+          {task.coins}
         </div>
       </div>
 
       <div style={goldBadge} aria-label={`${task.durationMin} minuten`}>
         <ClockIcon />
-        <span style={{ fontWeight: 900, fontSize: 15 }}>
+        <span style={{ fontWeight: 900, fontSize: 14 }}>
           {task.durationMin} min
         </span>
       </div>
@@ -558,14 +563,6 @@ function FleurDivider() {
   );
 }
 
-/* ---------- copy ---------- */
-
-function tagline(tier: TaskTier): string {
-  if (tier === 'easy') return 'Een snelle klus';
-  if (tier === 'medium') return 'Stevige focus';
-  return 'Voor de dappere';
-}
-
 /* ---------- reusable style tokens ---------- */
 
 const sep: React.CSSProperties = {
@@ -589,8 +586,8 @@ const dividerLine: React.CSSProperties = {
   boxShadow: '0 1px 0 rgba(255,240,200,.4)',
 };
 const iconTile: React.CSSProperties = {
-  width: 52,
-  height: 52,
+  width: 44,
+  height: 44,
   borderRadius: 8,
   display: 'grid',
   placeItems: 'center',
@@ -603,8 +600,8 @@ const iconTile: React.CSSProperties = {
 };
 const goldBadge: React.CSSProperties = {
   position: 'relative',
-  minWidth: 72,
-  padding: '10px 14px 11px',
+  minWidth: 60,
+  padding: '8px 10px 9px',
   borderRadius: 999,
   fontFamily: cinzel,
   fontWeight: 800,
