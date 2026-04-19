@@ -149,8 +149,16 @@ function defaultCity(): CityState {
   const buildings: PlacedBuilding[] = towers.map(t => ({
     id: t.id, type: 'tower', gx: t.gx, gy: t.gy, level: 1,
   }));
+  // Central castle — attack target for battles. Uses 'house' type so
+  // battleEngine recognizes it; /stad renders the visual castle separately
+  // and skips this id.
+  buildings.push({ id: 'castle-main', type: 'house', gx: CITY_CENTER.gx - 1, gy: CITY_CENTER.gy - 1, level: 3 });
   const choppedTrees: string[] = [];
   for (const t of towers) choppedTrees.push(...towerClearCells(t.gx, t.gy));
+  // Clear cells under castle footprint so no tree on top
+  for (let dy = -1; dy < 2; dy++) for (let dx = -1; dx < 2; dx++) {
+    choppedTrees.push(`${CITY_CENTER.gx + dx},${CITY_CENTER.gy + dy}`);
+  }
   return {
     version: 2,
     coins: 0,
@@ -181,6 +189,10 @@ function normalize(parsed: Partial<CityState>): CityState {
       if (existingIds.has(t.id)) continue;
       buildings = [...buildings, { id: t.id, type: 'tower', gx: t.gx, gy: t.gy, level: 1 }];
     }
+  }
+  // Inject castle-main if missing
+  if (!existingIds.has('castle-main')) {
+    buildings = [...buildings, { id: 'castle-main', type: 'house', gx: CITY_CENTER.gx - 1, gy: CITY_CENTER.gy - 1, level: 3 }];
   }
   // Always clear a 4×4 area around every defense tower (also for old saves)
   const seen = new Set(choppedTrees);

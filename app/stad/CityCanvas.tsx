@@ -1868,6 +1868,8 @@ export default function CityCanvas({
     const current = stateRef.current;
     const terrainRef = terrainCacheRef.current;
     for (const b of current.buildings) {
+      // Skip virtual castle-main: the visual castle is drawn as decoration
+      if (b.id === 'castle-main') continue;
       const def = BUILDINGS[b.type];
       const fp = footprintOf(b.type);
       const centerGx = b.gx + (fp.w - 1) / 2;

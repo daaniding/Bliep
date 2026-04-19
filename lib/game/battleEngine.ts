@@ -139,7 +139,9 @@ export function createBattle(
   landSet: Set<string>,
   difficulty: Difficulty = 'easy',
 ): BattleState {
-  const castle = buildings.find(b => b.id === 'start-house') ?? buildings.find(b => b.type === 'house');
+  const castle = buildings.find(b => b.id === 'castle-main')
+               ?? buildings.find(b => b.id === 'start-house')
+               ?? buildings.find(b => b.type === 'house');
   const castleId = castle?.id ?? null;
   const wallBonus = buildings.filter(b => b.type === 'wall').reduce((s, w) => s + w.level, 0) * WALL_HP_BONUS;
 
@@ -438,18 +440,27 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
 
   let targetB: PlacedBuilding | undefined;
 
+  // Smart AI: castle is the primary goal. Scouts break defenses first,
+  // soldiers mix, elites tunnel straight to the castle.
+  const castle = alive.find(b => b.id === state.castleId);
   if (tier === 'scout') {
-    // Scouts target towers first, then barracks, then random
+    // Scouts go for towers/barracks first (clear defense), then castle
     const towers = alive.filter(b => b.type === 'tower');
     const barracks = alive.filter(b => b.type === 'barracks');
     if (towers.length > 0) targetB = towers[Math.floor(Math.random() * towers.length)];
     else if (barracks.length > 0) targetB = barracks[Math.floor(Math.random() * barracks.length)];
+    else if (castle) targetB = castle;
   } else if (tier === 'soldier') {
-    // Soldiers target random buildings (spread damage)
-    targetB = alive[Math.floor(Math.random() * alive.length)];
+    // Soldiers: 60% castle, 30% towers, 10% other — castle bias
+    const r = Math.random();
+    if (r < 0.6 && castle) targetB = castle;
+    else if (r < 0.9) {
+      const towers = alive.filter(b => b.type === 'tower');
+      if (towers.length > 0) targetB = towers[Math.floor(Math.random() * towers.length)];
+    }
+    if (!targetB) targetB = alive[Math.floor(Math.random() * alive.length)];
   } else {
-    // Elites go for the castle
-    const castle = alive.find(b => b.id === state.castleId);
+    // Elites: always the castle
     if (castle) targetB = castle;
   }
 

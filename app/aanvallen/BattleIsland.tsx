@@ -193,7 +193,9 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
         treeLayer.addChild(ts);
       }
 
-      // Central castle (same as /stad focal point)
+      // Central castle (target for enemy attacks — registered as 'castle-main')
+      const buildings = cityState.buildings;
+      const buildingSpriteMap = new Map<string, Sprite>();
       const castleTex = getTopdownTexture(atlas, 'ts:yellow:castle');
       if (castleTex && castleTex !== Texture.EMPTY) {
         const castle = new Sprite(castleTex);
@@ -205,13 +207,14 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
         castle.scale.set(castleScale);
         castle.zIndex = Math.floor(cy);
         buildingLayer.addChild(castle);
+        // Register so battle HP bar + damage flash show on visual castle
+        buildingSpriteMap.set('castle-main', castle);
       }
 
       // ---- Buildings + Trees ----
-      const buildings = cityState.buildings;
-      const buildingSpriteMap = new Map<string, Sprite>();
-
       for (const b of buildings) {
+        // Castle-main is rendered separately as decoration centerpiece
+        if (b.id === 'castle-main') continue;
         const fp = footprintOf(b.type);
 
         // Trees — rendered in treeLayer so they overlap enemies walking through
@@ -425,11 +428,14 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
             battleLayer.addChild(sprite);
             enemySpriteMap.set(enemy.id, sprite);
           }
-          // Tracker arrow above head (always visible, bobs + pulses red)
+          // Big red arrow above head (always visible, bobs + pulses)
           let arrow = enemyArrowMap.get(enemy.id);
           if (!arrow && enemy.state !== 'dead') {
             arrow = new Graphics();
-            arrow.poly([-9, 0, 9, 0, 0, 13]).fill({ color: 0xff3838 }).stroke({ color: 0x0d0a06, width: 2 });
+            arrow
+              .poly([-22, -6, 22, -6, 0, 22])
+              .fill({ color: 0xff2828 })
+              .stroke({ color: 0x0d0a06, width: 3 });
             arrow.zIndex = 99999998;
             fxLayer.addChild(arrow);
             enemyArrowMap.set(enemy.id, arrow);
@@ -447,10 +453,10 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
             const want = enemy.state === 'walk' ? enemyUnit.run : enemy.state === 'attack' ? enemyUnit.attack : enemyUnit.idle;
             if (sprite.textures !== want) { sprite.textures = want; sprite.play(); }
             if (arrow) {
-              const bob = Math.sin(Date.now() / 180) * 4;
+              const bob = Math.sin(Date.now() / 180) * 6;
               arrow.x = enemy.x;
-              arrow.y = enemy.y - TILE_W * 1.8 + bob;
-              const pulse = 1 + Math.sin(Date.now() / 200) * 0.18;
+              arrow.y = enemy.y - TILE_W * 2.4 + bob;
+              const pulse = 1.4 + Math.sin(Date.now() / 200) * 0.25;
               arrow.scale.set(pulse);
             }
           }
@@ -580,14 +586,14 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
           }
         }
 
-        // ---- Unit HP bars ----
+        // ---- Unit HP bars (always visible while alive) ----
         const unitHpBars = (app as any)._uhp ??= new Map<number, Graphics>();
         const allUnits = [
           ...battle.enemies.map(e => ({ id: e.id, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHp, dead: e.state === 'dead', color: 0xc75b3d })),
           ...battle.defenders.map(d => ({ id: d.id + 90000, x: d.x, y: d.y, hp: d.hp, maxHp: d.maxHp, dead: d.state === 'dead', color: 0x4a9bb8 })),
         ];
         for (const u of allUnits) {
-          if (u.dead || u.hp >= u.maxHp) {
+          if (u.dead) {
             const bar = unitHpBars.get(u.id);
             if (bar) { battleLayer.removeChild(bar); unitHpBars.delete(u.id); }
             continue;
@@ -595,9 +601,10 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
           let bar = unitHpBars.get(u.id);
           if (!bar) { bar = new Graphics(); battleLayer.addChild(bar); unitHpBars.set(u.id, bar); }
           bar.clear();
-          const bw = 30, bh = 4, r = u.hp / u.maxHp;
-          bar.rect(u.x - bw / 2, u.y - TILE_W * 1.5, bw, bh).fill({ color: 0x000000, alpha: 0.5 });
-          bar.rect(u.x - bw / 2 + 1, u.y - TILE_W * 1.5 + 1, (bw - 2) * r, bh - 2).fill({ color: u.color });
+          const bw = 50, bh = 7, r = Math.max(0, u.hp / u.maxHp);
+          const by = u.y - TILE_W * 1.9;
+          bar.rect(u.x - bw / 2, by, bw, bh).fill({ color: 0x000000, alpha: 0.7 }).stroke({ color: 0x0d0a06, width: 1 });
+          bar.rect(u.x - bw / 2 + 1, by + 1, (bw - 2) * r, bh - 2).fill({ color: u.color });
           bar.zIndex = 999998;
         }
 
