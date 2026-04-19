@@ -17,6 +17,8 @@ import LeagueModal from './components/modals/LeagueModal';
 import PassModal from './components/modals/PassModal';
 import ChestActionModal from './components/modals/ChestActionModal';
 import LevelUpModal from './components/modals/LevelUpModal';
+import QuestsModal from './components/modals/QuestsModal';
+import { hasClaimableQuests, QUESTS_CHANGED_EVENT } from '@/lib/dailyQuests';
 import {
   loadInventory, tickInventory, consumeChest, grantChest,
   type ChestSlot as ChestSlotType, type ChestKind, type ChestInventory,
@@ -79,7 +81,8 @@ export default function Home() {
   const [streakLongest, setStreakLongest] = useState(0);
   const [streakDays, setStreakDays] = useState(0);
   const [buildings, setBuildings] = useState(0);
-  const [modal, setModal] = useState<'profile' | 'streak' | 'settings' | 'inbox' | 'pass' | 'league' | null>(null);
+  const [modal, setModal] = useState<'profile' | 'streak' | 'settings' | 'inbox' | 'pass' | 'league' | 'quests' | null>(null);
+  const [questsClaimable, setQuestsClaimable] = useState(false);
   const [chestInv, setChestInv] = useState<ChestInventory>(() => ({ slots: [] }));
   const [actionSlot, setActionSlot] = useState<ChestSlotType | null>(null);
   const [openingSlot, setOpeningSlot] = useState<ChestSlotType | null>(null);
@@ -96,6 +99,12 @@ export default function Home() {
     setStreakLongest(s.longest || 0);
     setStreakDays((s.history || []).length);
     try { setBuildings(loadCity().buildings.length); } catch { /* ignore */ }
+    try { setQuestsClaimable(hasClaimableQuests()); } catch { /* ignore */ }
+    const onQuestChange = () => {
+      try { setQuestsClaimable(hasClaimableQuests()); } catch { /* ignore */ }
+    };
+    window.addEventListener(QUESTS_CHANGED_EVENT, onQuestChange);
+    window.addEventListener('bliep:city-changed', onQuestChange);
 
     // Load chest inventory + tick unlock timers
     setChestInv(tickInventory(loadInventory()));
@@ -110,6 +119,8 @@ export default function Home() {
     }, 1000);
     return () => {
       window.removeEventListener(CHESTS_CHANGED, onChestChange as EventListener);
+      window.removeEventListener(QUESTS_CHANGED_EVENT, onQuestChange);
+      window.removeEventListener('bliep:city-changed', onQuestChange);
       window.clearInterval(id);
     };
   }, []);
@@ -357,6 +368,22 @@ export default function Home() {
           </motion.button>
           <motion.button
             className="bh-rail-btn"
+            aria-label="Sidequests"
+            onClick={() => { vibrate(10); setModal('quests'); }}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          >
+            {/* Scroll + feather quest icon */}
+            <svg width="24" height="26" viewBox="0 0 24 26" fill="none" aria-hidden>
+              <path d="M5 3 L18 3 Q21 3 21 6 L21 22 Q21 24 18 24 L5 24 Q3 24 3 22 L3 5 Q3 3 5 3 Z" fill="#E8D5A3" stroke="#1A0A02" strokeWidth="1.4" />
+              <path d="M7 9 L17 9 M7 13 L17 13 M7 17 L14 17" stroke="#1A0A02" strokeWidth="1.2" strokeLinecap="round" />
+              <path d="M17 2 L22 7 L19 8 L17 2 Z" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.2" strokeLinejoin="round" />
+            </svg>
+            {questsClaimable && <span className="bh-notif">!</span>}
+          </motion.button>
+          <motion.button
+            className="bh-rail-btn"
             aria-label="Battle Pass"
             onClick={() => { vibrate(10); setModal('pass'); }}
             whileTap={{ scale: 0.92 }}
@@ -536,6 +563,22 @@ export default function Home() {
       <InboxModal open={modal === 'inbox'} onClose={() => setModal(null)} />
       <PassModal open={modal === 'pass'} onClose={() => setModal(null)} trophies={trophies} />
       <LeagueModal open={modal === 'league'} onClose={() => setModal(null)} trophies={trophies} />
+      <QuestsModal
+        open={modal === 'quests'}
+        onClose={() => setModal(null)}
+        onAfterClaim={info => {
+          if (info.leveledUp) {
+            const chestKind = info.newLevel >= 10 ? 'magic' as const
+              : info.newLevel >= 5 ? 'gold' as const
+              : info.newLevel >= 2 ? 'bronze' as const
+              : 'wood' as const;
+            window.setTimeout(() => {
+              setModal(null);
+              setLevelUp({ level: info.newLevel, chestKind });
+            }, 400);
+          }
+        }}
+      />
       <ChestActionModal
         open={actionSlot !== null}
         slot={actionSlot}
