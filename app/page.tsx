@@ -487,15 +487,15 @@ export default function Home() {
           pointer-events: none; z-index: 2;
         }
         .bh-stage-bot-fade {
-          position: absolute; left: 0; right: 0; bottom: 0; height: 160px;
-          /* smooth multi-stop fade ending in the exact base-panel top color
-             so the sea melts into the panel without a visible seam */
+          position: absolute; left: 0; right: 0; bottom: 0; height: 170px;
+          /* Water (#2f6e8c teal) → deep dusk water → panel-top color
+             (#0d1a2a). Same hue family the whole way, just darker. */
           background: linear-gradient(180deg,
             transparent 0%,
-            rgba(42,58,80,.15) 30%,
-            rgba(42,58,80,.45) 55%,
-            rgba(42,58,80,.78) 80%,
-            rgba(42,58,80,1) 100%);
+            rgba(20,55,80,.35) 28%,
+            rgba(14,38,58,.65) 55%,
+            rgba(10,24,40,.88) 80%,
+            rgba(13,26,42,1) 100%);
           pointer-events: none; z-index: 2;
         }
 
@@ -666,15 +666,16 @@ export default function Home() {
           padding: 20px 12px max(22px, env(safe-area-inset-bottom, 22px));
           background:
             url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2' seed='2'/><feColorMatrix values='0 0 0 0 .1  0 0 0 0 .14  0 0 0 0 .2  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-            /* water-teal wash bleeds sea color into the panel top ~30% */
+            /* subtle teal hint in the top edge so the dusk-water
+               tone continues a tiny bit into the panel */
             linear-gradient(180deg,
-              rgba(110,170,205,.55) 0%,
-              rgba(90,150,190,.35) 10%,
-              rgba(70,120,160,.18) 20%,
-              rgba(70,120,160,0) 32%,
+              rgba(30,70,100,.35) 0%,
+              rgba(30,70,100,.12) 10%,
+              rgba(30,70,100,0) 20%,
               transparent 100%),
-            radial-gradient(140% 60% at 50% 0%, rgba(90,120,160,.35) 0%, transparent 70%),
-            linear-gradient(180deg, #2a3a50 0%, #1a2838 45%, #0e1824 100%);
+            /* panel top color MATCHES the fade endpoint (#0d1a2a),
+               then darkens down — no hue jump, just deeper */
+            linear-gradient(180deg, #0d1a2a 0%, #0b1826 30%, #09141f 70%, #060e18 100%);
           box-shadow:
             inset 0 0 0 1.5px #050a12,
             inset 0 2px 0 rgba(140,170,210,.22),
