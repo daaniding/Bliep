@@ -490,7 +490,7 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
 
   const c = buildingCenter(targetB, ox, oy);
   const diffMult = DIFFICULTY_MULT[state.difficulty];
-  const baseHp = (30 + camp.defense * 3) * diffMult.enemyHp;
+  const baseHp = (45 + camp.defense * 5) * diffMult.enemyHp;
   // Tier scaling: scouts = glass cannons (fast+fragile), elites = tanks
   const hpMult = tier === 'scout' ? 0.35 : tier === 'soldier' ? 1.0 : 3.5;
   const spdMult = tier === 'scout' ? 1.6 : tier === 'soldier' ? 1.0 : 0.6;

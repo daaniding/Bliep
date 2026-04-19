@@ -48,8 +48,12 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
     const app = new Application();
 
     (async () => {
-      const W = host.clientWidth || 400;
-      const H = host.clientHeight || 600;
+      // Wait a frame for layout so clientWidth/Height are non-zero on mobile
+      if ((host.clientWidth || 0) < 50 || (host.clientHeight || 0) < 50) {
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      }
+      const W = host.clientWidth || window.innerWidth || 400;
+      const H = host.clientHeight || window.innerHeight || 600;
 
       await app.init({
         width: W, height: H,
@@ -60,6 +64,18 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       });
       if (cancelled) { app.destroy(true, { children: true, texture: false }); return; }
       host.appendChild(app.canvas);
+
+      // Resize canvas on window/orientation change (iOS rotate fix)
+      const onResize = () => {
+        if (!host) return;
+        const nw = host.clientWidth || window.innerWidth || 400;
+        const nh = host.clientHeight || window.innerHeight || 600;
+        if (nw > 0 && nh > 0) app.renderer.resize(nw, nh);
+      };
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(onResize) : null;
+      if (ro) ro.observe(host);
 
       let atlas: Awaited<ReturnType<typeof loadTopdownAtlas>>;
       let terrain: Awaited<ReturnType<typeof loadFarmTerrain>>;
