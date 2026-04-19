@@ -133,20 +133,24 @@ function computeDefenseTowerPositions(): Array<{ id: string; gx: number; gy: num
   return out;
 }
 
+/** Clear a 4×4 area around each tower (2×2 footprint + 1 tile margin). */
+function towerClearCells(gx: number, gy: number): string[] {
+  const cells: string[] = [];
+  for (let dy = -1; dy < 3; dy++) {
+    for (let dx = -1; dx < 3; dx++) {
+      cells.push(`${gx + dx},${gy + dy}`);
+    }
+  }
+  return cells;
+}
+
 function defaultCity(): CityState {
   const towers = computeDefenseTowerPositions();
   const buildings: PlacedBuilding[] = towers.map(t => ({
     id: t.id, type: 'tower', gx: t.gx, gy: t.gy, level: 1,
   }));
-  // Clear trees under each tower footprint
   const choppedTrees: string[] = [];
-  for (const t of towers) {
-    for (let dy = 0; dy < 2; dy++) {
-      for (let dx = 0; dx < 2; dx++) {
-        choppedTrees.push(`${t.gx + dx},${t.gy + dy}`);
-      }
-    }
-  }
+  for (const t of towers) choppedTrees.push(...towerClearCells(t.gx, t.gy));
   return {
     version: 2,
     coins: 0,
@@ -173,17 +177,18 @@ function normalize(parsed: Partial<CityState>): CityState {
   const defenseIds = ['defense-tower-N', 'defense-tower-S', 'defense-tower-W', 'defense-tower-E'];
   if (!defenseIds.every(id => existingIds.has(id))) {
     const towers = computeDefenseTowerPositions();
-    const addedCells: string[] = [];
     for (const t of towers) {
       if (existingIds.has(t.id)) continue;
       buildings = [...buildings, { id: t.id, type: 'tower', gx: t.gx, gy: t.gy, level: 1 }];
-      for (let dy = 0; dy < 2; dy++) {
-        for (let dx = 0; dx < 2; dx++) {
-          addedCells.push(`${t.gx + dx},${t.gy + dy}`);
-        }
-      }
     }
-    choppedTrees = [...choppedTrees, ...addedCells];
+  }
+  // Always clear a 4×4 area around every defense tower (also for old saves)
+  const seen = new Set(choppedTrees);
+  for (const b of buildings) {
+    if (!b.id.startsWith('defense-tower-')) continue;
+    for (const k of towerClearCells(b.gx, b.gy)) {
+      if (!seen.has(k)) { choppedTrees.push(k); seen.add(k); }
+    }
   }
 
   return {
