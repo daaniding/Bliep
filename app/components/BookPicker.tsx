@@ -40,10 +40,12 @@ export default function BookPicker({ tasks, onPick }: Props) {
 
   const overlay = (
     <div
-      className="fixed inset-0 grid place-items-center p-6 overflow-y-auto"
+      className="fixed inset-0 grid place-items-center"
       onTouchMove={(e) => e.preventDefault()}
       style={{
         zIndex: 2147483647,
+        padding: 12,
+        overflow: 'hidden',
         backgroundColor: '#0a0604',
         backgroundImage:
           'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,0,0,.55) 0%, rgba(0,0,0,.88) 70%, rgba(0,0,0,.96) 100%), ' +
@@ -55,9 +57,10 @@ export default function BookPicker({ tasks, onPick }: Props) {
       <div
         className="relative"
         style={{
-          width: 'min(420px, 94vw)',
+          width: 'min(420px, 100%)',
+          maxHeight: '100%',
           filter:
-            'drop-shadow(0 30px 40px rgba(0,0,0,.55)) drop-shadow(0 8px 12px rgba(0,0,0,.5))',
+            'drop-shadow(0 20px 30px rgba(0,0,0,.55)) drop-shadow(0 6px 10px rgba(0,0,0,.5))',
           animation: 'bookPickerPop .45s cubic-bezier(.2,1.4,.3,1) both',
         }}
       >
@@ -65,8 +68,8 @@ export default function BookPicker({ tasks, onPick }: Props) {
         <div
           className="relative"
           style={{
-            padding: '26px 22px 22px',
-            borderRadius: 22,
+            padding: '16px 14px 14px',
+            borderRadius: 20,
             background:
               'repeating-linear-gradient(92deg, rgba(0,0,0,0) 0px, rgba(0,0,0,.08) 2px, rgba(0,0,0,0) 5px, rgba(255,220,170,.04) 7px, rgba(0,0,0,.06) 10px), ' +
               'radial-gradient(80px 20px at 15% 8%,  rgba(0,0,0,.35), rgba(0,0,0,0) 70%), ' +
@@ -87,8 +90,8 @@ export default function BookPicker({ tasks, onPick }: Props) {
           <div
             className="relative"
             style={{
-              borderRadius: 14,
-              padding: '18px 16px 20px',
+              borderRadius: 12,
+              padding: '12px 12px 14px',
               background:
                 "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence baseFrequency='.85' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .22  0 0 0 0 .1  0 0 0 .18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\"), " +
                 'radial-gradient(120% 80% at 50% 0%, #f5e4bd 0%, #e9d19c 45%, #d4b578 100%)',
@@ -97,19 +100,19 @@ export default function BookPicker({ tasks, onPick }: Props) {
             }}
           >
             {/* header */}
-            <div className="text-center" style={{ padding: '4px 6px 14px' }}>
+            <div className="text-center" style={{ padding: '0 4px 8px' }}>
               <div
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 10,
+                  gap: 8,
                   fontFamily: cinzel,
                   fontWeight: 700,
-                  fontSize: 12,
+                  fontSize: 10,
                   letterSpacing: '0.28em',
                   color: '#5a3a22',
                   textTransform: 'uppercase',
-                  marginBottom: 4,
+                  marginBottom: 2,
                 }}
               >
                 <span style={sep} />
@@ -122,9 +125,9 @@ export default function BookPicker({ tasks, onPick }: Props) {
                 style={{
                   fontFamily: cinzel,
                   fontWeight: 900,
-                  fontSize: 'clamp(28px, 7vw, 34px)',
+                  fontSize: 'clamp(22px, 6vw, 28px)',
                   lineHeight: 1.05,
-                  margin: '2px 0 6px',
+                  margin: '0 0 4px',
                   color: '#2a1608',
                   textShadow:
                     '0 1px 0 rgba(255,240,200,.45), 0 2px 0 rgba(255,240,200,.2)',
@@ -137,18 +140,17 @@ export default function BookPicker({ tasks, onPick }: Props) {
                 style={{
                   fontFamily: philosopher,
                   fontStyle: 'italic',
-                  fontSize: 13,
+                  fontSize: 12,
                   color: '#5a3a22',
                   opacity: 0.85,
                 }}
               >
                 Voltooi een opdracht om coins te verdienen
               </div>
-              <FleurDivider />
             </div>
 
             {/* cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {sorted.map((task) => (
                 <MissionCard
                   key={task.id}
@@ -157,49 +159,6 @@ export default function BookPicker({ tasks, onPick }: Props) {
                   onPick={() => onPick(task)}
                 />
               ))}
-            </div>
-
-            {/* footer */}
-            <div
-              style={{
-                marginTop: 16,
-                textAlign: 'center',
-                borderTop: '1px dashed rgba(58,35,18,.35)',
-                paddingTop: 12,
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: philosopher,
-                  fontStyle: 'italic',
-                  fontSize: 12,
-                  color: '#5a3a22',
-                  opacity: 0.8,
-                }}
-              >
-                Tik op een opdracht om te beginnen
-              </div>
-              <div
-                style={{
-                  marginTop: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                  fontFamily: cinzel,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#3a2312',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {sorted.map((t) => (
-                  <span key={`r-${t.id}`} style={rewardChip}>
-                    <span style={coinDot} /> {t.durationMin} min = {t.coins}
-                  </span>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -538,53 +497,6 @@ function Corner({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
   );
 }
 
-function FleurDivider() {
-  return (
-    <div
-      style={{
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: '10px 0 4px',
-      }}
-    >
-      <div style={dividerLine} />
-      <svg
-        width="26"
-        height="26"
-        viewBox="0 0 24 24"
-        style={{ margin: '0 10px', color: '#5a3a22' }}
-        aria-hidden
-      >
-        <path
-          d="M12 2 C11 6 8 7 8 10 C8 12 10 13 12 13 C14 13 16 12 16 10 C16 7 13 6 12 2 Z"
-          fill="currentColor"
-          opacity=".85"
-        />
-        <path
-          d="M4 11 C6 11 9 12 10 14 L8 16 C6 14 4 13 4 11 Z"
-          fill="currentColor"
-          opacity=".7"
-        />
-        <path
-          d="M20 11 C18 11 15 12 14 14 L16 16 C18 14 20 13 20 11 Z"
-          fill="currentColor"
-          opacity=".7"
-        />
-        <rect x="6" y="14" width="12" height="2" fill="currentColor" opacity=".7" />
-        <path
-          d="M12 14 L12 22 M10 20 L14 20"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-      <div style={dividerLine} />
-    </div>
-  );
-}
-
 /* ---------- reusable style tokens ---------- */
 
 const sep: React.CSSProperties = {
@@ -599,13 +511,6 @@ const diamond: React.CSSProperties = {
   background: '#8e5a18',
   transform: 'rotate(45deg)',
   boxShadow: '0 0 0 1px rgba(0,0,0,.3)',
-};
-const dividerLine: React.CSSProperties = {
-  flex: 1,
-  height: 2,
-  background:
-    'linear-gradient(90deg, transparent, rgba(58,35,18,.45) 20%, rgba(58,35,18,.45) 80%, transparent)',
-  boxShadow: '0 1px 0 rgba(255,240,200,.4)',
 };
 const iconTile: React.CSSProperties = {
   width: 44,
@@ -646,15 +551,6 @@ const goldBadge: React.CSSProperties = {
   boxShadow:
     'inset 0 0 0 1.5px #4a2a08, inset 0 0 0 2.5px rgba(255,240,150,.5), inset 0 2px 0 rgba(255,255,220,.55), inset 0 -2px 0 rgba(90,50,10,.55), 0 2px 0 rgba(0,0,0,.5), 0 4px 8px rgba(0,0,0,.35)',
   textShadow: '0 1px 0 rgba(255,240,180,.6)',
-};
-const rewardChip: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '4px 10px',
-  borderRadius: 999,
-  background: 'rgba(58,35,18,.08)',
-  boxShadow: 'inset 0 0 0 1px rgba(58,35,18,.25)',
 };
 const coinDot: React.CSSProperties = {
   width: 14,
