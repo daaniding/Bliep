@@ -206,9 +206,10 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     buildTimeGrowth: 1.5,
     maxLevel: 3,
     spritesPerLevel: lvls(
-      'farm:hut', 'farm:hut', 'farm:hut',
-      'farm:hut', 'farm:hut', 'farm:hut',
-      'farm:hut', 'farm:hut', 'farm:hut', 'farm:hut',
+      ts('yellow', 'house1'), ts('yellow', 'house1'), ts('yellow', 'house1'),
+      ts('blue', 'house1'), ts('blue', 'house1'), ts('blue', 'house1'),
+      ts('purple', 'house1'), ts('purple', 'house1'), ts('purple', 'house1'),
+      ts('black', 'house1'),
     ),
     spriteScale: 1.0,
     footprint: { w: 2, h: 2 },

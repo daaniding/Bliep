@@ -1759,19 +1759,7 @@ export default function CityCanvas({
     }
     if (placingType) {
       const slug = spriteForLevel(placingType, 1);
-      let tex: Texture | null = null;
-      // Farm-tileset buildings (lumber_hut etc) come from terrain cache
-      const farmSlug =
-        placingType === 'lumber_hut' ? 'farm:house_b' :
-        placingType === 'house' ? 'farm:house_a' :
-        placingType === 'farm' ? 'farm:barn' :
-        placingType === 'barracks' ? 'farm:shop' :
-        placingType === 'tower' ? 'farm:tower_a' :
-        placingType === 'fountain' ? 'farm:house_b' : null;
-      if (farmSlug) {
-        tex = terrainCacheRef.current?.buildings.get(farmSlug) ?? null;
-      }
-      if (!tex) tex = getTopdownTexture(atlas, slug);
+      const tex = getTopdownTexture(atlas, slug);
       if (tex && tex !== Texture.EMPTY) {
         const ghost = new Sprite(tex);
         ghost.anchor.set(0.5, 0.95);
@@ -1883,43 +1871,19 @@ export default function CityCanvas({
         continue;
       }
 
-      // Check if we have a farm building sprite first
-      const farmBuildingTex = terrainRef?.buildings.get(
-        b.type === 'house' ? 'farm:house_a' :
-        b.type === 'farm' ? 'farm:barn' :
-        b.type === 'barracks' ? 'farm:shop' :
-        b.type === 'tower' ? 'farm:tower_a' :
-        b.type === 'fountain' ? 'farm:house_b' :
-        b.type === 'lumber_hut' ? 'farm:house_b' :
-        ''
-      );
-
-      const isCastle = b.id === 'start-house';
-      let tex: Texture | null = null;
-      let useFarm = false;
-
-      if (isCastle && terrainRef?.buildings.has('farm:shop')) {
-        tex = terrainRef.buildings.get('farm:shop')!;
-        useFarm = true;
-      } else if (farmBuildingTex) {
-        tex = farmBuildingTex;
-        useFarm = true;
-      } else {
-        const slug = isCastle ? 'ts:yellow:castle' : spriteForLevel(b.type, b.level);
-        tex = getTopdownTexture(atlas, slug);
-      }
+      const slug = spriteForLevel(b.type, b.level);
+      const tex = getTopdownTexture(atlas, slug);
 
       if (!tex || tex === Texture.EMPTY) continue;
       const sprite = new Sprite(tex);
       sprite.anchor.set(0.5, 0.95);
       const longSide = Math.max(tex.width, tex.height);
       const footprintSpan = Math.max(fp.w, fp.h);
-      const targetTiles = footprintSpan * (isCastle ? 2.5 : 1.4);
+      const targetTiles = footprintSpan * 1.4;
       const baseScale = (TILE_W * targetTiles * (def.spriteScale ?? 1)) / longSide;
       sprite.scale.set(baseScale);
       const { sx, sy } = gridToScreen(centerGx, centerGy, 0, 0);
-      const yOffset = isCastle ? -TILE_H * 0.3 : TILE_H * 0.4;
-      sprite.position.set(sx, sy + yOffset);
+      sprite.position.set(sx, sy + TILE_H * 0.4);
       sprite.zIndex = Math.floor(sy + TILE_H * 0.4);
       layer.addChild(sprite);
 
