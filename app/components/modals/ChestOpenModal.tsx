@@ -48,29 +48,59 @@ function resReward(key: ResourceKey, amount: number): Reward {
 function rollRewards(kind: ChestKind): Reward[] {
   const out: Reward[] = [];
   if (kind === 'wood') {
-    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(50, 110), color: '#F5C842', rarity: 'common', apply: 'coins' });
-    out.push(resReward('wood', rand(2, 5)));
-    if (chance(0.55)) out.push(resReward('stone', rand(1, 3)));
-    if (chance(0.3))  out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: 1, color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
-    if (chance(0.15)) out.push(resReward('shards', rand(1, 2)));
+    // Base: just coins + a bit of wood. Everything else is a surprise.
+    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(40, 95), color: '#F5C842', rarity: 'common', apply: 'coins' });
+    if (chance(0.70)) out.push(resReward('wood', rand(2, 5)));
+    if (chance(0.35)) out.push(resReward('stone', rand(1, 3)));
+    if (chance(0.18)) out.push(resReward('shards', rand(1, 2)));
+    if (chance(0.12)) out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: 1, color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
+    // rare surprises in a wood chest
+    if (chance(0.06)) out.push(resReward('keys', 1));
+    if (chance(0.05)) out.push(resReward('scrolls', 1));
+    if (chance(0.04)) out.push(resReward('iron', rand(1, 2)));
+    // and the long-shot epics/legendaries
+    if (chance(0.025)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(2, 4), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
+    if (chance(0.015)) out.push(resReward('gems', rand(2, 5)));
+    if (chance(0.005)) out.push(resReward('banners', 1));
   } else if (kind === 'silver') {
-    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(160, 320), color: '#F5C842', rarity: 'common', apply: 'coins' });
-    out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: rand(1, 2), color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
-    out.push(resReward('iron', rand(1, 3)));
-    if (chance(0.6))  out.push(resReward('scrolls', 1));
-    if (chance(0.45)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(3, 7), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
-    if (chance(0.3))  out.push(resReward('magicDust', rand(1, 2)));
-    if (chance(0.2))  out.push(resReward('keys', 1));
+    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(140, 290), color: '#F5C842', rarity: 'common', apply: 'coins' });
+    if (chance(0.65)) out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: rand(1, 2), color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
+    if (chance(0.55)) out.push(resReward('iron', rand(1, 3)));
+    if (chance(0.35)) out.push(resReward('scrolls', 1));
+    if (chance(0.25)) out.push(resReward('shards', rand(2, 4)));
+    if (chance(0.22)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(3, 6), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
+    if (chance(0.18)) out.push(resReward('magicDust', rand(1, 2)));
+    if (chance(0.12)) out.push(resReward('keys', 1));
+    // epic/legendary surprises
+    if (chance(0.06)) out.push(resReward('potions', 1));
+    if (chance(0.04)) out.push(resReward('gems', rand(2, 5)));
+    if (chance(0.01)) out.push(resReward('banners', 1));
   } else {
-    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(420, 780), color: '#F5C842', rarity: 'common', apply: 'coins' });
-    out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: rand(2, 4), color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
-    out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(7, 15), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
-    out.push(resReward('gems', rand(4, 12)));
-    if (chance(0.7))  out.push(resReward('potions', 1));
-    if (chance(0.5))  out.push(resReward('keys', rand(1, 2)));
-    if (chance(0.25)) out.push(resReward('banners', 1));
+    // Gold — good stuff common, legendary still special
+    out.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(380, 720), color: '#F5C842', rarity: 'common', apply: 'coins' });
+    if (chance(0.80)) out.push({ id: 'speed', icon: '⚡', label: 'Versneller', amount: rand(2, 4), color: '#6fd4f0', rarity: 'rare', apply: 'speed' });
+    if (chance(0.70)) out.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(6, 12), color: '#b080e0', rarity: 'epic', apply: 'trophies' });
+    if (chance(0.45)) out.push(resReward('gems', rand(3, 10)));
+    if (chance(0.30)) out.push(resReward('potions', 1));
+    if (chance(0.22)) out.push(resReward('keys', rand(1, 2)));
+    if (chance(0.18)) out.push(resReward('magicDust', rand(1, 3)));
+    if (chance(0.15)) out.push(resReward('scrolls', rand(1, 2)));
+    if (chance(0.07)) out.push(resReward('banners', 1));
   }
   return out;
+}
+
+// Extra taps per non-common reward — more intense loot ⇒ harder to crack.
+// Player doesn't know what's inside until the chest bursts, so a wood chest
+// that rolled a legendary banner feels unexpectedly tough to break.
+function tapsFor(base: number, rewards: Reward[]): number {
+  let extra = 0;
+  for (const r of rewards) {
+    if (r.rarity === 'legendary') extra += 3;
+    else if (r.rarity === 'epic') extra += 2;
+    else if (r.rarity === 'rare') extra += 1;
+  }
+  return Math.min(base + extra, 9); // cap so users don't have to tap forever
 }
 
 // Sprite sheet: 240x256, 5 cols × 8 rows, each frame 48×32.
@@ -123,7 +153,10 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
   const skin = CHEST_SKIN[kind];
   const glow = skin.glow;
   const accent = skin.accent;
-  const tapsNeeded = skin.taps;
+  const tapsNeeded = useMemo(
+    () => (rewards.length === 0 ? skin.taps : tapsFor(skin.taps, rewards)),
+    [rewards, skin.taps],
+  );
   const aliveRef = useRef(true);
 
   useEffect(() => {
@@ -135,10 +168,11 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
     if (!open) return;
     setPhase('idle');
     setTaps(0);
-    setRewards([]);
+    // Roll contents up front so the tap count can reflect what's inside.
+    setRewards(rollRewards(kind));
     setRevealIdx(0);
     setClaimed(false);
-  }, [open]);
+  }, [open, kind]);
 
   async function tapChest() {
     if (phase === 'idle') {
@@ -151,14 +185,13 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
     const next = taps + 1;
     sfxTap();
     if (next >= tapsNeeded + 1) {
-      // last tap → burst
+      // last tap → burst. Rewards were rolled when the modal opened,
+      // so taps scale with how fancy the loot is.
       setTaps(tapsNeeded + 1);
       await wait(120);
       if (!aliveRef.current) return;
       sfxClaim();
       setPhase('burst');
-      const drops = rollRewards(kind);
-      setRewards(drops);
       // Enough time for the 10-frame sprite animation + items erupting
       await wait(1400);
       if (!aliveRef.current) return;
