@@ -674,6 +674,27 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
+      // ---- Central cobblestone plaza under the windmill (6×6 tiles) ----
+      if (terrain.stonePath.length > 0) {
+        const plazaRadius = 3; // 6×6 centered
+        for (let dy = -plazaRadius; dy < plazaRadius; dy++) {
+          for (let dx = -plazaRadius; dx < plazaRadius; dx++) {
+            const pgx = CITY_CENTER.gx + dx;
+            const pgy = CITY_CENTER.gy + dy;
+            const prx = pgx - mapOffsetGx;
+            const pry = pgy - mapOffsetGy;
+            if (prx < 0 || prx >= MAP_COLS || pry < 0 || pry >= MAP_ROWS) continue;
+            if (elevation[pry][prx] !== 3) continue;
+            const tex = terrain.stonePath[Math.floor(hash(pgx, pgy, 900) * terrain.stonePath.length)];
+            const stone = new Sprite(tex);
+            stone.anchor.set(0, 0);
+            stone.position.set(pgx * TILE_W, pgy * TILE_H);
+            stone.width = TILE_W; stone.height = TILE_H;
+            tileLayer.addChild(stone);
+          }
+        }
+      }
+
       // ---- Animated leaf wind overlays — scattered across the island ----
       const leafWindTex = await (async () => {
         try {
@@ -1147,6 +1168,22 @@ export default function CityCanvas({
         chestSpriteRef.current = chest;
       }
 
+      // ---- Windmill focal point (animated, dead-center on plaza) ----
+      if (terrain.windmill && terrain.windmill.frames.length > 0) {
+        const mill = new AnimatedSprite(terrain.windmill.frames);
+        mill.anchor.set(0.5, 1.0);
+        const mx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
+        const my = CITY_CENTER.gy * TILE_H + TILE_H;
+        mill.position.set(mx, my);
+        // 96×128 sprite → 6 tiles wide (TILE_W=64)
+        const millScale = (6 * TILE_W) / terrain.windmill.frameW;
+        mill.scale.set(millScale);
+        mill.animationSpeed = 0.12;
+        mill.play();
+        mill.zIndex = my;
+        buildingLayer.addChild(mill);
+      }
+
       // ---- Centering and zoom ----
       let islandMinX = Infinity, islandMaxX = -Infinity;
       let islandMinY = Infinity, islandMaxY = -Infinity;
@@ -1179,8 +1216,8 @@ export default function CityCanvas({
         app.renderer.height / extMapH,
       );
       const defaultZoom = Math.min(
-        app.renderer.width / (18 * TILE_W),
-        app.renderer.height / (18 * TILE_H),
+        app.renderer.width / (12 * TILE_W),
+        app.renderer.height / (12 * TILE_H),
       );
       const previewPadding = 16 * TILE_W;
       const previewZoom = Math.min(
