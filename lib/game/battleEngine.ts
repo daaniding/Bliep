@@ -128,8 +128,8 @@ const ARCHER_COOLDOWN = 1.3;
 const HP_PER_LEVEL = 50;
 const WALL_HP_BONUS = 25;
 const COUNTDOWN_SEC = 2.5;
-const WAVE_DELAY = 3.0;
-const MAX_TIME = 30;
+const WAVE_DELAY = 3.5;
+const MAX_TIME = 90;
 const RESOLVE_SEC = 2.5;
 
 // ---- Create ----
@@ -208,12 +208,15 @@ export function createBattle(
     }
   }
 
-  // Waves — each wave bigger than the last. Difficulty scales totals.
+  // Waves — 5 waves, elk groter/zwaarder dan vorige. Langere battles.
   const dm = DIFFICULTY_MULT[difficulty];
-  const total = Math.round((camp.spriteCount + 7) * dm.enemyCount);
-  const w1 = Math.max(3, Math.ceil(total * 0.22));
-  const w2 = Math.max(4, Math.ceil(total * 0.33));
-  const w3 = Math.max(5, total - w1 - w2);
+  const total = Math.round((camp.spriteCount + 14) * dm.enemyCount);
+  // Progressive distribution: 10% / 15% / 20% / 25% / 30%
+  const w1 = Math.max(3, Math.ceil(total * 0.10));
+  const w2 = Math.max(4, Math.ceil(total * 0.15));
+  const w3 = Math.max(5, Math.ceil(total * 0.20));
+  const w4 = Math.max(6, Math.ceil(total * 0.25));
+  const w5 = Math.max(7, total - w1 - w2 - w3 - w4);
 
   return {
     phase: 'countdown', elapsed: 0, won: null,
@@ -222,7 +225,7 @@ export function createBattle(
     countdownNum: 3, timeScale: 1, slowMoTimer: 0,
     castleId, castleHit: false, difficulty,
     damageEvents: [], waveAnnouncement: null, waveAnnouncementTimer: 0,
-    currentWave: 0, waveSpawned: [0, 0, 0], waveTotals: [w1, w2, w3], waveTimer: 0,
+    currentWave: 0, waveSpawned: [0, 0, 0, 0, 0], waveTotals: [w1, w2, w3, w4, w5], waveTimer: 0,
     buildingRects,
   };
 }
@@ -365,7 +368,7 @@ export function tickBattle(
     if (state.elapsed >= COUNTDOWN_SEC) {
       state.phase = 'battle'; state.elapsed = 0;
       state.waveAnnouncement = 'GOLF 1: VERKENNERS';
-      state.waveAnnouncementTimer = 2.0;
+      state.waveAnnouncementTimer = 2.2;
     }
     // Clean FX even during countdown
     for (let i = state.fx.length - 1; i >= 0; i--) if (state.fx[i].done) state.fx.splice(i, 1);
@@ -376,24 +379,26 @@ export function tickBattle(
     // ---- Spawn waves ----
     state.waveTimer += dt;
     const w = state.currentWave;
-    if (w < 3) {
+    // Tier pattern per wave: versterkt progressief, mix om variatie.
+    const WAVE_TIERS: ('scout' | 'soldier' | 'elite')[] = ['scout', 'soldier', 'elite', 'soldier', 'elite'];
+    const WAVE_NAMES = ['GOLF 2: SOLDATEN', 'GOLF 3: ELITE', 'GOLF 4: HORDE', 'GOLF 5: BAAS'];
+    if (w < 5) {
       const spawned = state.waveSpawned[w];
       const total = state.waveTotals[w];
-      if (spawned < total && state.waveTimer > spawned * 0.5) {
-        const tiers: ('scout' | 'soldier' | 'elite')[] = ['scout', 'soldier', 'elite'];
-        spawn(state, camp, tiers[w], buildings, ox, oy);
+      if (spawned < total && state.waveTimer > spawned * 0.65) {
+        spawn(state, camp, WAVE_TIERS[w], buildings, ox, oy);
         state.waveSpawned[w]++;
       }
       if (spawned >= total) {
         // Next wave when most enemies from this wave are dead
-        const waveAlive = state.enemies.filter(e => e.tier === (['scout', 'soldier', 'elite'] as const)[w] && e.state !== 'dead').length;
-        if (waveAlive <= 1 || state.waveTimer > 10) {
+        const currentTier = WAVE_TIERS[w];
+        const waveAlive = state.enemies.filter(e => e.tier === currentTier && e.state !== 'dead').length;
+        if (waveAlive <= 1 || state.waveTimer > 14) {
           state.currentWave++;
           state.waveTimer = -WAVE_DELAY;
-          const names = ['GOLF 2: LEGER', 'GOLF 3: ELITE'];
-          if (state.currentWave <= 2) {
-            state.waveAnnouncement = names[state.currentWave - 1];
-            state.waveAnnouncementTimer = 2.0;
+          if (state.currentWave >= 1 && state.currentWave <= 4) {
+            state.waveAnnouncement = WAVE_NAMES[state.currentWave - 1];
+            state.waveAnnouncementTimer = 2.2;
           }
         }
       }
@@ -677,6 +682,24 @@ function tickDefenders(state: BattleState, dt: number, buildings: PlacedBuilding
       if (Math.hypot(t.x - d.x, t.y - d.y) > TILE_W * 2) d.state = 'walk';
     }
   }
+}
+
+/** Pre-battle wave breakdown — gebruikt door AttackClient's pre-battle lobby. */
+export function waveBreakdown(camp: PveCamp, difficulty: Difficulty): Array<{ name: string; tier: 'scout' | 'soldier' | 'elite'; count: number }> {
+  const dm = DIFFICULTY_MULT[difficulty];
+  const total = Math.round((camp.spriteCount + 14) * dm.enemyCount);
+  const w1 = Math.max(3, Math.ceil(total * 0.10));
+  const w2 = Math.max(4, Math.ceil(total * 0.15));
+  const w3 = Math.max(5, Math.ceil(total * 0.20));
+  const w4 = Math.max(6, Math.ceil(total * 0.25));
+  const w5 = Math.max(7, total - w1 - w2 - w3 - w4);
+  return [
+    { name: 'Verkenners', tier: 'scout',   count: w1 },
+    { name: 'Soldaten',   tier: 'soldier', count: w2 },
+    { name: 'Elite',      tier: 'elite',   count: w3 },
+    { name: 'Horde',      tier: 'soldier', count: w4 },
+    { name: 'Baas',       tier: 'elite',   count: w5 },
+  ];
 }
 
 export function isBattleDone(state: BattleState): boolean {
