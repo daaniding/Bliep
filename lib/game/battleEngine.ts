@@ -49,6 +49,8 @@ export interface BattleArcher {
   x: number; y: number;
   state: 'idle' | 'shoot';
   shootTimer: number; shootCooldown: number;
+  /** Tower this archer stands on; dies if tower is destroyed. */
+  towerId: string;
 }
 
 export interface BattleArrow {
@@ -188,7 +190,7 @@ export function createBattle(
     }
   }
 
-  // Archers on towers
+  // Archers on towers (die when their tower is destroyed)
   const archers: BattleArcher[] = [];
   for (const t of buildings.filter(b => b.type === 'tower')) {
     const fp = footprintOf('tower');
@@ -200,6 +202,7 @@ export function createBattle(
         y: oy + (t.gy + fp.h * 0.3) * TILE_H,
         state: 'idle', shootTimer: Math.random(),
         shootCooldown: Math.max(0.4, ARCHER_COOLDOWN - t.level * 0.06),
+        towerId: t.id,
       });
     }
   }
@@ -589,6 +592,11 @@ function tickEnemies(state: BattleState, dt: number, buildings: PlacedBuilding[]
 }
 
 function tickArchers(state: BattleState, dt: number) {
+  // Remove archers whose tower is destroyed
+  state.archers = state.archers.filter(a => {
+    const hp = state.buildingHp.get(a.towerId);
+    return hp && !hp.destroyed;
+  });
   for (const a of state.archers) {
     a.shootTimer += dt;
     if (a.shootTimer >= a.shootCooldown) {

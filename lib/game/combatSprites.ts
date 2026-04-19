@@ -114,8 +114,8 @@ export async function loadCombatSprites(): Promise<CombatSprites> {
     loadUnit('black', 'lancer', 320),
     loadUnit('blue', 'warrior', 192),
     loadUnit('blue', 'lancer', 320),
-    Assets.load<Texture>(`${UNITS}/blue/archer/idle.png`),
-    Assets.load<Texture>(`${UNITS}/blue/archer/shoot.png`),
+    Assets.load<Texture>(`/assets/walkers2/archer-blue.png`),
+    Assets.load<Texture>(`/assets/walkers2/archer-blue.png`),
     Assets.load<Texture>(`${UNITS}/blue/archer/arrow.png`),
     Assets.load<Texture>(`${FX}/explosion.png`),
     Assets.load<Texture>(`${FX}/fire_small.png`),
@@ -136,10 +136,19 @@ export async function loadCombatSprites(): Promise<CombatSprites> {
     },
     blueWarrior,
     blueLancer,
-    archer: {
-      idle: sliceRow(archerIdle, 192, 192, 6),
-      shoot: sliceRow(archerShoot, 192, 192, 8),
-    },
+    archer: (() => {
+      // walkers2/archer-blue.png is a 4-frame horizontal strip
+      const fh = archerIdle.frame.height;
+      const count = Math.max(1, Math.floor(archerIdle.frame.width / fh));
+      const fw = Math.floor(archerIdle.frame.width / count);
+      const frames: Texture[] = [];
+      for (let i = 0; i < count; i++) {
+        const t = new Texture({ source: archerIdle.source, frame: new Rectangle(i * fw, 0, fw, fh) });
+        setNearest(t);
+        frames.push(t);
+      }
+      return { idle: frames, shoot: frames };
+    })(),
     arrow: arrowTex,
     fx: {
       explosion: sliceRow(explosion, 192, 192, 8),

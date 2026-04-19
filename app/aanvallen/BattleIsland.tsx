@@ -111,6 +111,9 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       const treeLayer = new Container();
       treeLayer.sortableChildren = true;
       world.addChild(treeLayer);
+      // HP bars + tracker arrows ABOVE trees so they're always visible
+      const hudLayer = new Container();
+      world.addChild(hudLayer);
       const fxLayer = new Container();
       world.addChild(fxLayer);
       const uiLayer = new Container();
@@ -436,15 +439,14 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
               .poly([-22, -6, 22, -6, 0, 22])
               .fill({ color: 0xff2828 })
               .stroke({ color: 0x0d0a06, width: 3 });
-            arrow.zIndex = 99999998;
-            fxLayer.addChild(arrow);
+            hudLayer.addChild(arrow);
             enemyArrowMap.set(enemy.id, arrow);
           }
           if (enemy.state === 'dead') {
             sprite.alpha = Math.max(0, sprite.alpha - rawDt * 3);
             if (sprite.alpha <= 0) { battleLayer.removeChild(sprite); enemySpriteMap.delete(enemy.id); }
             const a = enemyArrowMap.get(enemy.id);
-            if (a) { fxLayer.removeChild(a); a.destroy(); enemyArrowMap.delete(enemy.id); }
+            if (a) { if (a.parent) a.parent.removeChild(a); a.destroy(); enemyArrowMap.delete(enemy.id); }
           } else {
             sprite.x = enemy.x; sprite.y = enemy.y;
             sprite.zIndex = Math.floor(enemy.y);
@@ -495,7 +497,8 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
             archerSpriteMap.set(a.id, sprite);
           }
           sprite.x = a.x; sprite.y = a.y; sprite.zIndex = Math.floor(a.y);
-          sprite.scale.set(TILE_W / 192 * 2.8);
+          const frameH = combat.archer.idle[0]?.height ?? 48;
+          sprite.scale.set((TILE_W * 1.6) / frameH);
           const want = a.state === 'shoot' ? combat.archer.shoot : combat.archer.idle;
           if (sprite.textures !== want) { sprite.textures = want; sprite.play(); }
         }
@@ -599,13 +602,12 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
             continue;
           }
           let bar = unitHpBars.get(u.id);
-          if (!bar) { bar = new Graphics(); battleLayer.addChild(bar); unitHpBars.set(u.id, bar); }
+          if (!bar) { bar = new Graphics(); hudLayer.addChild(bar); unitHpBars.set(u.id, bar); }
           bar.clear();
-          const bw = 50, bh = 7, r = Math.max(0, u.hp / u.maxHp);
-          const by = u.y - TILE_W * 1.9;
-          bar.rect(u.x - bw / 2, by, bw, bh).fill({ color: 0x000000, alpha: 0.7 }).stroke({ color: 0x0d0a06, width: 1 });
-          bar.rect(u.x - bw / 2 + 1, by + 1, (bw - 2) * r, bh - 2).fill({ color: u.color });
-          bar.zIndex = 999998;
+          const bw = 60, bh = 9, r = Math.max(0, u.hp / u.maxHp);
+          const by = u.y - TILE_W * 2.0;
+          bar.rect(u.x - bw / 2, by, bw, bh).fill({ color: 0x0d0a06, alpha: 0.9 }).stroke({ color: 0xfff8d0, width: 2 });
+          bar.rect(u.x - bw / 2 + 2, by + 2, (bw - 4) * r, bh - 4).fill({ color: u.color });
         }
 
         // ---- Damage numbers (float up and fade) ----
