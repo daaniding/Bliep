@@ -46,12 +46,9 @@ export default function BookPicker({ tasks, onPick }: Props) {
         zIndex: 2147483647,
         padding: 12,
         overflow: 'hidden',
-        backgroundColor: '#0a0604',
-        backgroundImage:
-          'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,0,0,.55) 0%, rgba(0,0,0,.88) 70%, rgba(0,0,0,.96) 100%), ' +
-          'radial-gradient(ellipse 140% 100% at 30% 20%, #5a6b3e 0%, #3d4a2a 45%, #24301a 100%)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
       }}
     >
       <div
