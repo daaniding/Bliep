@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+const MLink = motion.create(Link);
 import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import CityPreview from './components/CityPreview';
@@ -145,7 +146,12 @@ export default function Home() {
         </Link>
 
         {/* TOP BAR — player chip + coins + trophies */}
-        <div className="bh-topbar">
+        <motion.div
+          className="bh-topbar"
+          initial={{ y: -24, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 28, delay: 0.1 }}
+        >
           <div className="bh-player-chip">
             <div className="bh-avatar" aria-label={`Niveau ${level}`}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
@@ -181,11 +187,23 @@ export default function Home() {
             </svg>
             <span>{trophies}</span>
           </Link>
-        </div>
+        </motion.div>
 
         {/* SIDE RAIL — streak, settings, meer */}
-        <div className="bh-rail">
-          <button className="bh-rail-btn" aria-label="Streak" onClick={() => vibrate(10)}>
+        <motion.div
+          className="bh-rail"
+          initial={{ x: 40, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 26, delay: 0.25, staggerChildren: 0.08 }}
+        >
+          <motion.button
+            className="bh-rail-btn"
+            aria-label="Streak"
+            onClick={() => vibrate(10)}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          >
             <svg width="22" height="26" viewBox="0 0 22 26" fill="none" aria-hidden>
               <path d="M11 2 Q12 7 14 8 Q18 10 18 15 Q18 21 11 22 Q4 21 4 15 Q4 11 6 9 Q8 11 8 13 Q9 8 11 2 Z"
                 fill="#e05a3a" stroke="#1A0A02" strokeWidth="1.3" strokeLinejoin="round" />
@@ -193,26 +211,47 @@ export default function Home() {
                 fill="#F5C842" />
             </svg>
             {streak > 0 && <span className="bh-notif">{streak}</span>}
-          </button>
-          <Link href="/settings" className="bh-rail-btn" aria-label="Instellingen" onClick={() => vibrate(10)}>
+          </motion.button>
+          <MLink
+            href="/settings"
+            className="bh-rail-btn"
+            aria-label="Instellingen"
+            onClick={() => vibrate(10)}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          >
             <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden>
               <circle cx="13" cy="13" r="4" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.5" />
               <path d="M13 1 L13 5 M13 21 L13 25 M1 13 L5 13 M21 13 L25 13 M4.5 4.5 L7.3 7.3 M18.7 18.7 L21.5 21.5 M4.5 21.5 L7.3 18.7 M18.7 7.3 L21.5 4.5"
                 stroke="#E8D5A3" strokeWidth="2" strokeLinecap="round" />
               <circle cx="13" cy="13" r="2" fill="#1A0A02" />
             </svg>
-          </Link>
-          <Link href="/meer" className="bh-rail-btn" aria-label="Inbox" onClick={() => vibrate(10)}>
+          </MLink>
+          <MLink
+            href="/meer"
+            className="bh-rail-btn"
+            aria-label="Inbox"
+            onClick={() => vibrate(10)}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          >
             <svg width="24" height="20" viewBox="0 0 24 20" fill="none" aria-hidden>
               <path d="M3 4 L21 4 L21 17 L3 17 Z" fill="#E8D5A3" stroke="#1A0A02" strokeWidth="1.3" />
               <path d="M3 4 L12 12 L21 4" fill="none" stroke="#1A0A02" strokeWidth="1.3" />
               <path d="M3 17 L9 11 M21 17 L15 11" stroke="#1A0A02" strokeWidth="1" />
             </svg>
-          </Link>
-        </div>
+          </MLink>
+        </motion.div>
 
         {/* BASE — dark stone panel: opdracht hero + chests + tabs */}
-        <div className="bh-base">
+        <motion.div
+          className="bh-base"
+          initial={{ y: 60, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 28, delay: 0.15 }}
+        >
           <span className="bh-rivet" style={{ top: 8, left: 10 }} />
           <span className="bh-rivet" style={{ top: 8, right: 10 }} />
 
@@ -270,7 +309,7 @@ export default function Home() {
             </div>
             <div className="bh-chests">
               {/* READY (placeholder — wire to free chest state later) */}
-              <button className="bh-chest-slot bh-chest-active" aria-label="Houten kist gereed">
+              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Houten kist gereed">
                 <div className="bh-chest-icon">
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#7a4320" stroke="#1A0A02" strokeWidth="1.5" />
@@ -282,8 +321,8 @@ export default function Home() {
                   </svg>
                 </div>
                 <span className="bh-chest-status bh-chest-ready">OPEN</span>
-              </button>
-              <button className="bh-chest-slot bh-chest-active" aria-label="Zilveren kist">
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Zilveren kist">
                 <div className="bh-chest-icon">
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#4a5a6a" stroke="#1A0A02" strokeWidth="1.5" />
@@ -295,8 +334,8 @@ export default function Home() {
                 </div>
                 <span className="bh-chest-status bh-chest-timer">2:14:38</span>
                 <span className="bh-chest-count">2</span>
-              </button>
-              <button className="bh-chest-slot bh-chest-active" aria-label="Gouden kist">
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Gouden kist">
                 <div className="bh-chest-icon">
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#C8882A" stroke="#1A0A02" strokeWidth="1.5" />
@@ -308,8 +347,8 @@ export default function Home() {
                   </svg>
                 </div>
                 <span className="bh-chest-status bh-chest-timer">8:00:00</span>
-              </button>
-              <button className="bh-chest-slot bh-chest-empty" aria-label="Leeg slot">
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-empty" aria-label="Leeg slot">
                 <div className="bh-chest-icon">
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="none" stroke="#5a3a22" strokeWidth="1.3" strokeDasharray="3 3" />
@@ -318,46 +357,46 @@ export default function Home() {
                   </svg>
                 </div>
                 <span className="bh-chest-status">LEEG</span>
-              </button>
+              </motion.button>
             </div>
           </div>
 
           {/* Tabs */}
           <div className="bh-tabs">
-            <button className="bh-tab bh-tab-active" aria-label="Home">
+            <motion.button whileTap={{ scale: 0.9 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-tab bh-tab-active" aria-label="Home">
               <svg viewBox="0 0 26 26" fill="none" aria-hidden>
                 <path d="M4 13 L13 4 L22 13 L22 22 L16 22 L16 16 L10 16 L10 22 L4 22 Z"
                   fill="#F5C842" stroke="#1A0A02" strokeWidth="1.5" strokeLinejoin="round" />
                 <path d="M11 4 L13 2 L15 4" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.3" strokeLinejoin="round" />
               </svg>
               <span>HOME</span>
-            </button>
-            <Link href="/stad" className="bh-tab" aria-label="Stad" onClick={() => vibrate(10)}>
+            </motion.button>
+            <MLink whileTap={{ scale: 0.9 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} href="/stad" className="bh-tab" aria-label="Stad" onClick={() => vibrate(10)}>
               <svg viewBox="0 0 26 26" fill="none" aria-hidden>
                 <path d="M6 4 L20 4 Q22 4 22 6 L22 22 Q22 24 20 24 L6 24 Q4 24 4 22 L4 6 Q4 4 6 4 Z"
                   fill="#8a6a3b" stroke="#1A0A02" strokeWidth="1.5" />
                 <path d="M8 12 L18 12 M8 15 L18 15 M8 18 L14 18" stroke="#1A0A02" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
               <span>STAD</span>
-            </Link>
-            <Link href="/aanvallen" className="bh-tab" aria-label="Battle" onClick={() => vibrate(10)}>
+            </MLink>
+            <MLink whileTap={{ scale: 0.9 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} href="/aanvallen" className="bh-tab" aria-label="Battle" onClick={() => vibrate(10)}>
               <svg viewBox="0 0 26 26" fill="none" aria-hidden>
                 <path d="M5 12 Q3 10 4 7 Q6 5 9 6 L13 9 L18 7 Q22 7 22 12 L22 17 Q22 20 19 21 L16 22 L11 22 L7 20 Q4 18 5 15 Z"
                   fill="#8a6a3b" stroke="#1A0A02" strokeWidth="1.5" strokeLinejoin="round" />
                 <circle cx="10" cy="12" r="1.3" fill="#1A0A02" />
               </svg>
               <span>BATTLE</span>
-            </Link>
-            <Link href="/league" className="bh-tab" aria-label="League" onClick={() => vibrate(10)}>
+            </MLink>
+            <MLink whileTap={{ scale: 0.9 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} href="/league" className="bh-tab" aria-label="League" onClick={() => vibrate(10)}>
               <svg viewBox="0 0 26 26" fill="none" aria-hidden>
                 <path d="M13 3 L22 5 L22 13 Q22 20 13 23 Q4 20 4 13 L4 5 Z"
                   fill="#8a6a3b" stroke="#1A0A02" strokeWidth="1.5" strokeLinejoin="round" />
                 <path d="M8 13 L13 18 L18 13" fill="none" stroke="#1A0A02" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span>LEAGUE</span>
-            </Link>
+            </MLink>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Timer modal */}
@@ -408,8 +447,13 @@ export default function Home() {
           pointer-events: none; z-index: 2;
         }
         .bh-stage-bot-fade {
-          position: absolute; left: 0; right: 0; bottom: 0; height: 60px;
-          background: linear-gradient(180deg, transparent 0%, rgba(10,18,28,.85) 100%);
+          position: absolute; left: 0; right: 0; bottom: -20px; height: 110px;
+          /* ends in the exact base-panel top color so water flows into nav */
+          background: linear-gradient(180deg,
+            transparent 0%,
+            rgba(42,58,80,.35) 40%,
+            rgba(42,58,80,.75) 70%,
+            rgba(42,58,80,.95) 100%);
           pointer-events: none; z-index: 2;
         }
 
@@ -530,7 +574,10 @@ export default function Home() {
 
         /* SIDE RAIL */
         .bh-rail {
-          position: absolute; right: 10px; top: 130px; z-index: 15;
+          /* motion.div uses transform for x-slide; use plain top/bottom,
+             not translateY, so entrance animation isn't overridden */
+          position: absolute; right: 10px; top: 38%;
+          z-index: 15;
           display: flex; flex-direction: column; gap: 12px;
         }
         .bh-rail-btn {
@@ -577,6 +624,8 @@ export default function Home() {
           padding: 14px 12px max(22px, env(safe-area-inset-bottom, 22px));
           background:
             url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2' seed='2'/><feColorMatrix values='0 0 0 0 .1  0 0 0 0 .14  0 0 0 0 .2  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+            /* water-teal wash at the very top so the sea color bleeds into the nav */
+            linear-gradient(180deg, rgba(90,150,190,.45) 0%, rgba(90,150,190,0) 16%, transparent 100%),
             radial-gradient(120% 80% at 50% 0%, rgba(90,120,160,.28) 0%, transparent 60%),
             linear-gradient(180deg, #2a3a50 0%, #1a2838 45%, #0e1824 100%);
           box-shadow:
@@ -584,19 +633,20 @@ export default function Home() {
             inset 0 2px 0 rgba(140,170,210,.22),
             inset 0 -3px 0 rgba(0,0,0,.5),
             0 -8px 24px rgba(0,0,0,.55);
-          border-top-left-radius: 18px;
-          border-top-right-radius: 18px;
+          border-top-left-radius: 22px;
+          border-top-right-radius: 22px;
         }
         .bh-base > * { position: relative; z-index: 2; }
+        /* gold seam moved down so it doesn't interrupt the water→panel flow */
         .bh-base::before {
-          content: ""; position: absolute; top: 4px; left: 0; right: 0; height: 2px;
-          background: linear-gradient(90deg, transparent 0%, #8e5a18 4%, #F5C842 50%, #8e5a18 96%, transparent 100%);
-          box-shadow: 0 1px 0 rgba(0,0,0,.6);
+          content: ""; position: absolute; top: 14px; left: 0; right: 0; height: 1.5px;
+          background: linear-gradient(90deg, transparent 0%, rgba(142,90,24,.6) 8%, rgba(245,200,66,.75) 50%, rgba(142,90,24,.6) 92%, transparent 100%);
+          box-shadow: 0 1px 0 rgba(0,0,0,.55);
           z-index: 1;
         }
         .bh-base::after {
-          content: ""; position: absolute; top: 9px; left: 0; right: 0; height: 1px;
-          background: linear-gradient(90deg, transparent 0%, rgba(142,90,24,.55) 8%, rgba(245,200,66,.8) 50%, rgba(142,90,24,.55) 92%, transparent 100%);
+          content: ""; position: absolute; top: 18px; left: 0; right: 0; height: 1px;
+          background: linear-gradient(90deg, transparent 0%, rgba(142,90,24,.35) 20%, rgba(245,200,66,.55) 50%, rgba(142,90,24,.35) 80%, transparent 100%);
           z-index: 1;
         }
         .bh-rivet {

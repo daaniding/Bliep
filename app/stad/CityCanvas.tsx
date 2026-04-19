@@ -1182,7 +1182,7 @@ export default function CityCanvas({
         app.renderer.width / (18 * TILE_W),
         app.renderer.height / (18 * TILE_H),
       );
-      const previewPadding = 4 * TILE_W;
+      const previewPadding = 10 * TILE_W;
       const previewZoom = Math.min(
         app.renderer.width / (islandW + previewPadding * 2),
         app.renderer.height / (islandH + previewPadding * 2),
