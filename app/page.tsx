@@ -627,15 +627,15 @@ export default function Home() {
       {showTimerModal && chosenTask && (
         <div
           className="fixed inset-0 z-[150] flex items-center justify-center p-4"
-          style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(40,20,5,0.85), rgba(10,6,4,0.95))', backdropFilter: 'blur(8px)' }}
+          style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 45%, rgba(40,20,5,0.85), rgba(0,0,0,0.95))', backdropFilter: 'blur(8px)' }}
           onClick={() => setShowTimerModal(false)}
         >
           <div className="max-w-sm w-full" onClick={e => e.stopPropagation()}>
-            <div className="surface-floating p-5" style={{ background: 'linear-gradient(180deg, #fff6dc 0%, #fae6b6 60%, #d6b67a 100%)', border: '4px solid #1a0f05', boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.6), 0 10px 40px rgba(0,0,0,0.6), 0 0 0 3px #f0b840', borderRadius: 20 }}>
+            <div className="game-panel game-panel-corners" style={{ padding: 18 }}>
               <TaskTimer task={chosenTask} onClaim={handleClaim} onAbort={handleAbort} onFailLock={handleFailLock} />
             </div>
-            <button onClick={() => setShowTimerModal(false)} className="mt-3 w-full text-center text-[var(--color-parch-200)] text-xs font-display uppercase tracking-wider py-2 hover:text-[var(--color-gold-100)] transition-colors">
-              Sluiten
+            <button onClick={() => setShowTimerModal(false)} className="mt-3 w-full text-center text-xs font-display py-2" style={{ color: '#a08560', background: 'transparent', border: 'none', cursor: 'pointer', letterSpacing: '0.12em' }}>
+              SLUITEN
             </button>
           </div>
         </div>

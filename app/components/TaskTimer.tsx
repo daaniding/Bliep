@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   loadTimer, startTimer, abortTimer, enterGrace, exitGrace, enforceGraceLimit,
   tickIfRunning, elapsedMs, remainingMs, graceRemainingMs, isFocused,
   type TimerState,
 } from '@/lib/focusTimer';
 import { TIER_CONFIG, type DailyTask } from '@/lib/dailyTasks';
-import KenneyButton from './KenneyButton';
 
 interface Props {
   task: DailyTask;
@@ -61,7 +61,7 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
     };
   }, []);
 
-  // Tick loop: runs while running OR in grace (so we can fail without a return)
+  // Tick loop: runs while running OR in grace
   useEffect(() => {
     if (state.status !== 'running' && state.status !== 'grace') {
       if (tickRef.current) {
@@ -118,136 +118,313 @@ export default function TaskTimer({ task, onClaim, onAbort, onFailLock }: Props)
   const progress = task.durationMin * 60_000 > 0 ? elapsed / (task.durationMin * 60_000) : 0;
   const graceLeft = isOurs ? graceRemainingMs(state) : 0;
 
-  const ringColor =
-    status === 'failed' ? '#C75B3D' :
-    status === 'grace' ? '#E8B84A' :
-    status === 'done' ? '#6BA368' :
-    status === 'running' ? '#6BA368' : '#9A8470';
+  // Ring colors per state
+  const ringPalette = {
+    idle:    { primary: '#a08560', secondary: '#6a4f2e', glow: 'rgba(253,208,105,0.25)' },
+    running: { primary: '#fdd069', secondary: '#a3701a', glow: 'rgba(253,208,105,0.65)' },
+    grace:   { primary: '#ff9a3a', secondary: '#b85a10', glow: 'rgba(255,154,58,0.75)' },
+    done:    { primary: '#7ad18c', secondary: '#2a6a3a', glow: 'rgba(122,209,140,0.7)' },
+    failed:  { primary: '#e07260', secondary: '#7a1e0a', glow: 'rgba(224,114,96,0.55)' },
+  }[status];
 
-  const RADIUS = 92;
+  const RADIUS = 96;
   const STROKE = 12;
   const C = 2 * Math.PI * RADIUS;
 
   return (
-    <div className="animate-fade-up">
+    <div>
+      {/* Tier badge + coin reward pill */}
       <div className="flex items-center justify-between mb-3">
-        <div className="inline-flex items-center gap-1.5 bg-[var(--color-night-700)] text-[var(--color-gold-100)] px-2.5 py-1 rounded-md text-[10px] font-display font-bold uppercase tracking-wider border-2 border-[var(--color-gold-400)]">
-          <span>{cfg.emoji}</span>
-          <span>{cfg.label}</span>
+        <div
+          className="inline-flex items-center gap-1.5 font-display"
+          style={{
+            padding: '4px 10px',
+            borderRadius: 999,
+            background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+            border: '2px solid #0d0a06',
+            boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.25), 0 2px 0 #0d0a06',
+            fontSize: 10,
+            color: '#fdd069',
+            letterSpacing: '0.12em',
+            textShadow: '0 1px 0 #0d0a06',
+          }}
+        >
+          <span style={{ fontSize: 12 }}>{cfg.emoji}</span>
+          <span>{cfg.label.toUpperCase()}</span>
         </div>
-        <div className="flex items-center gap-1 text-[var(--color-ink-900)] font-display font-bold text-sm">
+        <div
+          className="flex items-center gap-1.5 font-display tabular-nums"
+          style={{
+            padding: '4px 10px',
+            borderRadius: 999,
+            background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+            border: '2px solid #0d0a06',
+            boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.25), 0 2px 0 #0d0a06',
+            fontSize: 13,
+            color: '#fdd069',
+            textShadow: '0 1px 0 #0d0a06',
+          }}
+        >
           <span>{task.coins}</span>
-          <span>🪙</span>
+          <span style={{ fontSize: 12 }}>🪙</span>
         </div>
       </div>
-      <p className="text-[var(--color-ink-900)] text-[15px] leading-snug font-medium mb-4">{task.text}</p>
 
-      <div className="flex items-center justify-center mb-4">
-        <div className="relative">
-          <svg width={RADIUS * 2 + STROKE * 2} height={RADIUS * 2 + STROKE * 2}>
+      {/* Task description */}
+      <p
+        className="mb-4"
+        style={{
+          fontFamily: 'var(--font-philosopher), serif',
+          fontStyle: 'italic',
+          fontSize: 14,
+          color: '#e0c890',
+          lineHeight: 1.4,
+          letterSpacing: '0.01em',
+          textAlign: 'center',
+        }}
+      >
+        {task.text}
+      </p>
+
+      {/* The ring */}
+      <div className="flex items-center justify-center mb-5" style={{ height: (RADIUS + STROKE) * 2 + 10 }}>
+        <div className="relative" style={{ width: (RADIUS + STROKE) * 2, height: (RADIUS + STROKE) * 2 }}>
+          {/* Outer glow ring (pulse when running/grace) */}
+          {(status === 'running' || status === 'grace') && (
+            <motion.div
+              aria-hidden
+              animate={{ scale: [1, 1.08, 1], opacity: [0.8, 0.3, 0.8] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                inset: -4,
+                border: `3px solid ${ringPalette.primary}`,
+                boxShadow: `0 0 28px ${ringPalette.glow}`,
+              }}
+            />
+          )}
+          <svg width={(RADIUS + STROKE) * 2} height={(RADIUS + STROKE) * 2}>
             <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fff6dc" />
+                <stop offset="50%" stopColor={ringPalette.primary} />
+                <stop offset="100%" stopColor={ringPalette.secondary} />
+              </linearGradient>
               <filter id="ringGlow">
-                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
             </defs>
+            {/* Track */}
             <circle
               cx={RADIUS + STROKE}
               cy={RADIUS + STROKE}
               r={RADIUS}
-              fill="rgba(0,0,0,0.08)"
-              stroke="rgba(0,0,0,0.15)"
-              strokeWidth={STROKE}
+              fill="rgba(0,0,0,0.55)"
+              stroke="rgba(0,0,0,0.7)"
+              strokeWidth={STROKE + 4}
             />
+            {/* Inner shadow ring */}
             <circle
               cx={RADIUS + STROKE}
               cy={RADIUS + STROKE}
               r={RADIUS}
               fill="none"
-              stroke={ringColor}
+              stroke="rgba(255,230,160,0.12)"
+              strokeWidth={STROKE}
+            />
+            {/* Progress fill */}
+            <circle
+              cx={RADIUS + STROKE}
+              cy={RADIUS + STROKE}
+              r={RADIUS}
+              fill="none"
+              stroke="url(#ringGrad)"
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={C}
               strokeDashoffset={C * (1 - Math.min(1, progress))}
               transform={`rotate(-90 ${RADIUS + STROKE} ${RADIUS + STROKE})`}
-              style={{ transition: 'stroke-dashoffset 250ms linear' }}
+              style={{ transition: 'stroke-dashoffset 300ms linear' }}
               filter="url(#ringGlow)"
             />
+            {/* Tick marks every 25% */}
+            {[0.25, 0.5, 0.75].map(t => {
+              const a = -Math.PI / 2 + t * Math.PI * 2;
+              const cx = RADIUS + STROKE + Math.cos(a) * (RADIUS + STROKE / 2 + 2);
+              const cy = RADIUS + STROKE + Math.sin(a) * (RADIUS + STROKE / 2 + 2);
+              return (
+                <circle
+                  key={t}
+                  cx={cx}
+                  cy={cy}
+                  r={2}
+                  fill="rgba(253,208,105,0.35)"
+                />
+              );
+            })}
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {/* Center display */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             {status === 'failed' ? (
               <>
-                <p className="font-display-bold text-3xl text-[#7a2e1a]">Mislukt</p>
-                <p className="text-[#7a2e1a] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Te lang weg</p>
+                <p
+                  className="font-display"
+                  style={{
+                    fontSize: 38,
+                    color: '#e07260',
+                    textShadow: '0 2px 0 #0d0a06, 0 0 14px rgba(224,114,96,0.5)',
+                    letterSpacing: '0.04em',
+                    lineHeight: 1,
+                  }}
+                >
+                  MISLUKT
+                </p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-cinzel), serif',
+                    fontSize: 10,
+                    color: '#c98a80',
+                    letterSpacing: '0.22em',
+                    marginTop: 8,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Te lang weg
+                </p>
               </>
             ) : (
               <>
-                <p className="font-display-bold text-5xl text-[var(--color-ink-900)] tabular-nums">{fmt(remaining)}</p>
-                {status === 'running' && <p className="text-[var(--color-forest-700)] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Bezig</p>}
-                {status === 'grace' && (
-                  <p className="text-[#8a6320] text-[10px] uppercase tracking-wider mt-1 tabular-nums font-display font-bold">
-                    Kom terug · {Math.ceil(graceLeft / 1000)}s
-                  </p>
-                )}
-                {status === 'done' && <p className="text-[var(--color-forest-700)] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Klaar!</p>}
-                {status === 'idle' && <p className="text-[var(--color-ink-500)] text-[10px] uppercase tracking-wider mt-1 font-display font-bold">Klaar om te starten</p>}
+                <motion.p
+                  key={fmt(remaining)}
+                  initial={{ scale: 0.94, opacity: 0.7 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="font-display tabular-nums"
+                  style={{
+                    fontSize: 56,
+                    color: '#fff6dc',
+                    textShadow: `0 3px 0 #0d0a06, 0 0 22px ${ringPalette.glow}`,
+                    letterSpacing: '0.04em',
+                    lineHeight: 1,
+                  }}
+                >
+                  {fmt(remaining)}
+                </motion.p>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-cinzel), serif',
+                    fontSize: 10,
+                    letterSpacing: '0.22em',
+                    marginTop: 10,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {status === 'running' && <span style={{ color: ringPalette.primary, textShadow: '0 1px 0 #0d0a06' }}>● Bezig</span>}
+                  {status === 'grace' && (
+                    <span className="tabular-nums" style={{ color: ringPalette.primary, textShadow: '0 1px 0 #0d0a06' }}>
+                      ⚠ Kom terug · {Math.ceil(graceLeft / 1000)}s
+                    </span>
+                  )}
+                  {status === 'done' && <span style={{ color: ringPalette.primary, textShadow: '0 1px 0 #0d0a06' }}>✓ Klaar!</span>}
+                  {status === 'idle' && <span style={{ color: '#a08560' }}>Klaar om te starten</span>}
+                </div>
               </>
             )}
           </div>
         </div>
       </div>
 
-      {status === 'grace' && (
-        <p className="text-center text-[12px] text-[#8a6320] mb-3 font-display font-bold">
-          Open Bliep binnen {Math.ceil(graceLeft / 1000)} sec of de taak mislukt
-        </p>
-      )}
+      {/* Status message bars */}
+      <AnimatePresence>
+        {status === 'grace' && (
+          <motion.p
+            initial={{ y: -6, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-center mb-3 font-display"
+            style={{
+              fontSize: 12,
+              color: '#ff9a3a',
+              letterSpacing: '0.06em',
+              textShadow: '0 1px 0 #0d0a06',
+            }}
+          >
+            Open Bliep binnen {Math.ceil(graceLeft / 1000)} sec of de taak mislukt
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {status === 'failed' && (
-        <p className="text-center text-[12px] text-[#7a2e1a] mb-3 font-display font-semibold">
+        <p
+          className="text-center mb-3"
+          style={{
+            fontFamily: 'var(--font-philosopher), serif',
+            fontStyle: 'italic',
+            fontSize: 12,
+            color: '#c98a80',
+          }}
+        >
           Je was te lang weg. Geen coins en geen tweede kans vandaag.
         </p>
       )}
 
+      {/* Action buttons */}
       {status === 'idle' && (
-        <KenneyButton xl fullWidth onClick={handleStart}>
-          ⚔ Start
-        </KenneyButton>
+        <button onClick={handleStart} className="game-btn-gold w-full" style={{ padding: '14px 16px', fontSize: 15 }}>
+          ⚔ START TIMER
+        </button>
       )}
 
       {status === 'failed' && (
-        <KenneyButton variant="brown" fullWidth onClick={handleAcceptFail}>
-          Sluit
-        </KenneyButton>
+        <button onClick={handleAcceptFail} className="game-btn-dark w-full" style={{ padding: '12px 16px', fontSize: 13 }}>
+          SLUIT
+        </button>
       )}
 
       {(status === 'running' || status === 'grace') && !confirmAbort && (
         <button
           onClick={() => setConfirmAbort(true)}
-          className="w-full text-[var(--color-ink-500)] text-xs font-display font-bold uppercase tracking-wider py-2 hover:text-[var(--color-ink-700)] transition-colors"
+          className="w-full py-2"
+          style={{
+            fontFamily: 'var(--font-lilita), sans-serif',
+            fontSize: 11,
+            color: '#8a6a3e',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            letterSpacing: '0.14em',
+          }}
         >
-          Ik geef op
+          IK GEEF OP
         </button>
       )}
 
       {confirmAbort && (
         <div className="flex items-center gap-2">
-          <KenneyButton variant="brown" fullWidth onClick={handleAbort}>
-            Ja, opgeven
-          </KenneyButton>
-          <KenneyButton variant="grey" fullWidth onClick={() => setConfirmAbort(false)}>
-            Annuleer
-          </KenneyButton>
+          <button onClick={handleAbort} className="game-btn-blood flex-1" style={{ padding: '10px 12px', fontSize: 12 }}>
+            JA, OPGEVEN
+          </button>
+          <button onClick={() => setConfirmAbort(false)} className="game-btn-dark flex-1" style={{ padding: '10px 12px', fontSize: 12 }}>
+            ANNULEER
+          </button>
         </div>
       )}
 
       {status === 'done' && (
-        <KenneyButton xl fullWidth onClick={handleClaim}>
-          Klaim {task.coins} 🪙
-        </KenneyButton>
+        <motion.button
+          initial={{ scale: 0.95 }}
+          animate={{ scale: [1, 1.03, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+          onClick={handleClaim}
+          className="game-btn-gold w-full"
+          style={{ padding: '14px 16px', fontSize: 15 }}
+        >
+          CLAIM {task.coins} 🪙
+        </motion.button>
       )}
     </div>
   );
