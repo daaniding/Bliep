@@ -1043,6 +1043,7 @@ function ChestSlot({
             backgroundPosition: `-${frame * 48 * scale}px -${row * 32 * scale}px`,
             backgroundRepeat: 'no-repeat',
             imageRendering: 'pixelated',
+            transform: `translateX(${3 * scale}px)`,
           }}
         />
       </motion.div>

@@ -89,6 +89,11 @@ const CHEST_SKIN: Record<ChestKind, { label: string; glow: string; accent: strin
   gold:   { label: 'GOUDEN KIST',   glow: '#ffe07a', accent: '#F5C842', taps: 4, baseRow: 4 }, // rows 4-5 red/gold
 };
 
+// The chest art inside each 48-wide cell sits a few pixels left of cell
+// center (the lid drifts outward in the later open frames). Shift the
+// whole sprite right a bit so it reads as centered in the box.
+const SPRITE_NUDGE_X = 3; // unscaled pixels
+
 function chestSpriteStyle(baseRow: number, frame: number, scale: number): React.CSSProperties {
   const col = frame % COLS;
   const row = baseRow + Math.floor(frame / COLS);
@@ -101,6 +106,7 @@ function chestSpriteStyle(baseRow: number, frame: number, scale: number): React.
     backgroundRepeat: 'no-repeat',
     imageRendering: 'pixelated',
     display: 'block',
+    transform: `translateX(${SPRITE_NUDGE_X * scale}px)`,
   };
 }
 
@@ -393,44 +399,6 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
             </div>
           </motion.button>
 
-          {/* REWARD ITEMS erupting from the chest — each reward icon
-             literally shoots out of the chest center in a parabolic arc
-             during burst, before the big Clash-style reveal takes over */}
-          {phase === 'burst' && rewards.map((r, i) => {
-            const total = rewards.length;
-            const spread = Math.min(220, total * 60);
-            const xOff = total === 1 ? 0 : (i / (total - 1) - 0.5) * spread;
-            return (
-              <motion.span
-                key={`fly-${i}`}
-                initial={{ x: 0, y: 10, opacity: 0, scale: 0.3, rotate: 0 }}
-                animate={{
-                  x: xOff,
-                  y: [10, -90, -150, -100],
-                  opacity: [0, 1, 1, 0],
-                  scale: [0.3, 1.5, 1.3, 0.9],
-                  rotate: 360 + (i % 2 === 0 ? 180 : -180),
-                }}
-                transition={{
-                  duration: 1.1,
-                  ease: 'easeOut',
-                  delay: 0.15 + i * 0.07,
-                  times: [0, 0.35, 0.7, 1],
-                }}
-                style={{
-                  position: 'absolute', left: '50%', top: '55%',
-                  fontSize: 46,
-                  pointerEvents: 'none',
-                  textShadow: `0 0 16px ${rarityColor(r.rarity)}, 0 0 30px ${rarityColor(r.rarity)}88`,
-                  filter: `drop-shadow(0 4px 6px rgba(0,0,0,0.6))`,
-                  zIndex: 5,
-                }}
-              >
-                {r.icon}
-              </motion.span>
-            );
-          })}
-
           {/* burst sparkles */}
           {phase === 'burst' && (
             <>
@@ -495,13 +463,52 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
                   position: 'fixed', inset: 0,
                   background: `radial-gradient(circle at center, #fff6d0 0%, ${glow}cc 35%, transparent 80%)`,
                   pointerEvents: 'none',
-                  zIndex: 2147483647,
+                  zIndex: 10,
                   mixBlendMode: 'screen',
                 }}
               />
             )}
           </AnimatePresence>
         </div>
+
+        {/* REWARD ITEMS erupting from the chest — fixed-position + max
+           z-index so they render ABOVE the fullscreen white flash */}
+        {phase === 'burst' && rewards.map((r, i) => {
+          const total = rewards.length;
+          const spread = Math.min(280, 80 + total * 50);
+          const xOff = total === 1 ? 0 : (i / (total - 1) - 0.5) * spread;
+          return (
+            <motion.span
+              key={`fly-${i}`}
+              initial={{ x: 0, y: 10, opacity: 0, scale: 0.3, rotate: 0 }}
+              animate={{
+                x: xOff,
+                y: [10, -60, -140, -90],
+                opacity: [0, 1, 1, 0],
+                scale: [0.3, 1.6, 1.35, 0.95],
+                rotate: (i % 2 === 0 ? 420 : -420),
+              }}
+              transition={{
+                duration: 1.2,
+                ease: 'easeOut',
+                delay: 0.45 + i * 0.08,
+                times: [0, 0.3, 0.7, 1],
+              }}
+              style={{
+                position: 'fixed',
+                left: '50%', top: '48%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: 56,
+                pointerEvents: 'none',
+                textShadow: `0 0 18px ${rarityColor(r.rarity)}, 0 0 36px ${rarityColor(r.rarity)}aa, 0 2px 4px rgba(0,0,0,0.7)`,
+                filter: `drop-shadow(0 4px 8px rgba(0,0,0,0.55))`,
+                zIndex: 2147483647,
+              }}
+            >
+              {r.icon}
+            </motion.span>
+          );
+        })}
 
         {/* ============= TAP HINT + CRACK PROGRESS ============= */}
         <div style={{ width: '100%', minHeight: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
