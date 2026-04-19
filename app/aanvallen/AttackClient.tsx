@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { CAMPS, DIFFICULTY_MULT, loadPveState, savePveState, cooldownRemainingMs, isOnCooldown, winChance, wallRefundFraction, type PveCamp, type Difficulty } from '@/lib/pveCamps';
 import { loadCity, saveCity, addCoins, spendCoins, resetCity, addXp } from '@/lib/cityStore';
 import { XP_SOURCES } from '@/lib/xp';
@@ -50,6 +51,115 @@ function SpritePreview({ spriteKey, size = 40 }: { spriteKey: EnemySpriteKey; si
   );
 }
 
+interface ResultState {
+  camp: PveCamp;
+  won: boolean;
+  coinsDelta?: number;
+  trophiesDelta?: number;
+  xpGained?: number;
+  refund?: number;
+}
+
+function ResultModal({ result, onClose }: { result: ResultState; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-30 flex items-end sm:items-center justify-center p-4"
+      style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgba(0,0,0,0.55), rgba(0,0,0,0.85))', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0, scale: 0.92 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+        className="bg-surface rounded-3xl p-6 w-full max-w-sm shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-center">
+          <motion.div
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 14, delay: 0.1 }}
+            className="text-6xl mb-2"
+          >
+            {result.won ? '🎉' : '💀'}
+          </motion.div>
+          <motion.h3
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.25 }}
+            className="font-serif text-2xl text-ink italic mb-1"
+          >
+            {result.won ? 'Overwinning!' : 'Verslagen'}
+          </motion.h3>
+          <motion.p
+            initial={{ y: 4, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.32 }}
+            className="text-muted text-sm mb-4"
+          >
+            {result.camp.name}
+          </motion.p>
+
+          {/* Reward cascade */}
+          <div className="bg-subtle rounded-2xl p-4 mb-5 space-y-2">
+            {result.won ? (
+              <>
+                {typeof result.coinsDelta === 'number' && (
+                  <RewardTick icon="🪙" label={`+${result.coinsDelta} coins`} color="#3a6a3a" delay={0.42} />
+                )}
+                {typeof result.trophiesDelta === 'number' && result.trophiesDelta > 0 && (
+                  <RewardTick icon="🏆" label={`+${result.trophiesDelta} trofeeën`} color="#7a2e1a" delay={0.6} />
+                )}
+                {typeof result.xpGained === 'number' && (
+                  <RewardTick icon="⚡" label={`+${result.xpGained} XP`} color="#2a6690" delay={0.78} />
+                )}
+              </>
+            ) : (
+              <>
+                <RewardTick icon="🏆" label="−3 trofeeën" color="#7a2e1a" delay={0.42} />
+                {typeof result.refund === 'number' && result.refund > 0 && (
+                  <RewardTick icon="🛡" label={`+${result.refund} muur-refund`} color="#6a5828" delay={0.6} />
+                )}
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                  className="text-faint text-xs mt-1"
+                >
+                  Bouw sterkere muren voor meer refund volgende keer.
+                </motion.p>
+              </>
+            )}
+          </div>
+          <motion.button
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            onClick={onClose}
+            className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl active:scale-[0.98] transition-transform text-sm"
+          >
+            Sluiten
+          </motion.button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function RewardTick({ icon, label, color, delay }: { icon: string; label: string; color: string; delay: number }) {
+  return (
+    <motion.div
+      initial={{ x: -10, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 360, damping: 22, delay }}
+      className="flex items-center justify-center gap-2"
+    >
+      <span style={{ fontSize: 20 }}>{icon}</span>
+      <span className="font-bold text-lg" style={{ color }}>{label}</span>
+    </motion.div>
+  );
+}
+
 function fmtCooldown(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
   const h = Math.floor(totalSec / 3600);
@@ -66,8 +176,23 @@ export default function AttackClient() {
   const [pveState, setPveState] = useState<Record<string, number>>(() => loadPveState());
   const [, setNow] = useState(Date.now());
   const [confirmCamp, setConfirmCamp] = useState<PveCamp | null>(null);
+  const [devMode, setDevMode] = useState(false);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setDevMode(params.get('dev') === '1');
+    } catch { /* ignore */ }
+  }, []);
   const [battling, setBattling] = useState<{ camp: PveCamp; cityState: CityState; difficulty: Difficulty } | null>(null);
-  const [result, setResult] = useState<{ camp: PveCamp; won: boolean } | null>(null);
+  const [result, setResult] = useState<{
+    camp: PveCamp;
+    won: boolean;
+    coinsDelta?: number;
+    trophiesDelta?: number;
+    xpGained?: number;
+    refund?: number;
+  } | null>(null);
   const [kazerneLvl, setKazerneLvl] = useState(0);
   const [totalWallLevel, setTotalWallLevel] = useState(0);
   const [levelUp, setLevelUp] = useState<{ level: number; chestKind: ChestKind } | null>(null);
@@ -139,6 +264,7 @@ export default function AttackClient() {
       savePveState(next);
       setPveState(next);
       awardTrophies(rewardTrophies, `${battleCamp.name} verslagen (${dm.label})`);
+      setResult({ camp: battleCamp, won, coinsDelta: rewardCoins, trophiesDelta: rewardTrophies, xpGained: xpAmount });
     } else {
       const cost = Math.round(battleCamp.hireCost * dm.cost);
       const refunded = Math.floor(cost * wallRefundFraction(totalWallLevel));
@@ -147,9 +273,9 @@ export default function AttackClient() {
         saveCity(addCoins(after, refunded));
       }
       awardTrophies(-3, `${battleCamp.name} verloren`);
+      setResult({ camp: battleCamp, won, trophiesDelta: -3, refund: refunded });
     }
 
-    setResult({ camp: battleCamp, won });
     setBattling(null);
   }, [battling, pveState, awardTrophies, totalWallLevel]);
 
@@ -191,32 +317,34 @@ export default function AttackClient() {
             </div>
           )}
 
-          {/* DEV: test buttons */}
-          <div className="flex gap-3 mb-4">
-            <button
-              className="text-[10px] text-faint underline"
-              onClick={() => {
-                const city = loadCity();
-                const c = addCoins(city, 5000);
-                c.speedTokens += 20;
-                saveCity(c);
-                window.location.reload();
-              }}
-            >
-              +5000 coins (test)
-            </button>
-            <button
-              className="text-[10px] text-[#c75b3d] underline"
-              onClick={() => {
-                resetCity();
-                localStorage.removeItem('bliep:pve:v1');
-                localStorage.removeItem('bliep:streak');
-                window.location.reload();
-              }}
-            >
-              Reset alles (test)
-            </button>
-          </div>
+          {/* DEV: test buttons — gated achter ?dev=1 */}
+          {devMode && (
+            <div className="flex gap-3 mb-4">
+              <button
+                className="text-[10px] text-faint underline"
+                onClick={() => {
+                  const city = loadCity();
+                  const c = addCoins(city, 5000);
+                  c.speedTokens += 20;
+                  saveCity(c);
+                  window.location.reload();
+                }}
+              >
+                +5000 coins (test)
+              </button>
+              <button
+                className="text-[10px] text-[#c75b3d] underline"
+                onClick={() => {
+                  resetCity();
+                  localStorage.removeItem('bliep:pve:v1');
+                  localStorage.removeItem('bliep:streak');
+                  window.location.reload();
+                }}
+              >
+                Reset alles (test)
+              </button>
+            </div>
+          )}
 
           <div className="space-y-3">
             {CAMPS.map(camp => {
@@ -356,35 +484,7 @@ export default function AttackClient() {
       )}
 
       {/* Result */}
-      {result && (
-        <div className="fixed inset-0 z-30 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setResult(null)}>
-          <div className="bg-surface rounded-3xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="text-center">
-              <div className="text-6xl mb-2">{result.won ? '🎉' : '💀'}</div>
-              <h3 className="font-serif text-2xl text-ink italic mb-1">
-                {result.won ? 'Overwinning!' : 'Verslagen'}
-              </h3>
-              <p className="text-muted text-sm mb-4">{result.camp.name}</p>
-              <div className="bg-subtle rounded-2xl p-4 mb-5">
-                {result.won ? (
-                  <>
-                    <p className="text-[#3a6a3a] font-bold text-lg">+{result.camp.rewardCoins} 🪙</p>
-                    <p className="text-[#7a2e1a] font-bold text-lg">+{result.camp.rewardTrophies} 🏆</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[#7a2e1a] font-bold text-lg">−3 🏆</p>
-                    <p className="text-faint text-xs mt-1">Je verdediging was niet sterk genoeg</p>
-                  </>
-                )}
-              </div>
-              <button onClick={() => setResult(null)} className="w-full bg-accent text-white font-semibold py-3.5 rounded-2xl active:scale-[0.98] transition-transform text-sm">
-                Sluiten
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {result && <ResultModal result={result} onClose={() => setResult(null)} />}
 
       {/* Level-up celebration */}
       <LevelUpModal
