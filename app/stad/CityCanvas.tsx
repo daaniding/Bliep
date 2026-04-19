@@ -845,25 +845,10 @@ export default function CityCanvas({
         const py = sy + tp.offsetY * TILE_H;
         let tex: Texture | null = null;
 
+        // Always use animated sheets (complete sprites, no cropping artifacts).
+        // Previously 'large'/'cherry'/'fruit' used tileset-rect crops which
+        // sometimes showed half-trees — now they fallback to basic sheets.
         switch (tp.type) {
-          case 'basic':
-            if (terrain.trees.length > 0) {
-              const sheet = terrain.trees[tp.sheetIndex % terrain.trees.length];
-              tex = sheet.frames[0] ?? null;
-            }
-            break;
-          case 'large':
-            if (terrain.largeTrees.length > 0)
-              tex = terrain.largeTrees[tp.sheetIndex % terrain.largeTrees.length];
-            break;
-          case 'cherry':
-            if (terrain.cherryTrees.length > 0)
-              tex = terrain.cherryTrees[tp.sheetIndex % terrain.cherryTrees.length];
-            break;
-          case 'fruit':
-            if (terrain.fruitTrees.length > 0)
-              tex = terrain.fruitTrees[tp.sheetIndex % terrain.fruitTrees.length];
-            break;
           case 'pine':
             if (terrain.trees.length > 0) {
               const pineIdx = Math.min(4, terrain.trees.length - 1);
@@ -873,6 +858,18 @@ export default function CityCanvas({
           case 'bush':
             if (terrain.bushes.length > 0)
               tex = terrain.bushes[tp.sheetIndex % terrain.bushes.length];
+            break;
+          case 'basic':
+          case 'large':
+          case 'cherry':
+          case 'fruit':
+          default:
+            if (terrain.trees.length > 0) {
+              // Pick from basic_1..4 (index 0-3), skip pine at index 4
+              const basicCount = Math.min(4, terrain.trees.length);
+              const sheet = terrain.trees[tp.sheetIndex % basicCount];
+              tex = sheet.frames[0] ?? null;
+            }
             break;
         }
 
@@ -891,6 +888,15 @@ export default function CityCanvas({
 
       } // end SHAPE_ONLY
       } // end HIDE_ISLAND
+
+      // ---- Always-night overlay — darken everything for moonlit vibe ----
+      if (mode !== 'preview') {
+        const night = new Graphics();
+        night.rect(0, 0, GRID_SIZE * TILE_W, GRID_SIZE * TILE_H);
+        night.fill({ color: 0x1a2850, alpha: 0.55 });
+        night.blendMode = 'multiply';
+        world.addChild(night);
+      }
 
       // ---- Clouds layer — varied depth and layering ----
       const cloudLayer = new Container();
@@ -1161,40 +1167,29 @@ export default function CityCanvas({
         decorLayer.addChild(mill);
       }
 
-      // ---- Gate on south edge of plaza ----
-      const gateTex = await (async () => {
-        try {
-          const t = await (await import('pixi.js')).Assets.load<Texture>('/assets/farm/fence/gate_spring_summer_autumn-Sheet.png');
-          if (t?.source) t.source.scaleMode = 'nearest';
-          return t;
-        } catch { return null; }
-      })();
-      if (gateTex) {
-        const frameH = gateTex.frame.height;
-        const frameCount = Math.max(1, Math.floor(gateTex.frame.width / frameH));
-        const frameW = Math.floor(gateTex.frame.width / frameCount);
-        const frames: Texture[] = [];
-        for (let i = 0; i < frameCount; i++) {
-          const t = new Texture({
-            source: gateTex.source,
-            frame: new Rectangle(i * frameW, 0, frameW, frameH),
-          });
-          if (t.source) t.source.scaleMode = 'nearest';
-          frames.push(t);
-        }
-        const gate = new AnimatedSprite(frames);
-        gate.anchor.set(0.5, 1.0);
-        const gsx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
-        const gsy = (CITY_CENTER.gy + 5) * TILE_H + TILE_H / 2;
-        gate.position.set(gsx, gsy);
-        const gateScale = (2 * TILE_W) / frameW;
-        gate.scale.set(gateScale);
-        gate.animationSpeed = 0.08;
-        gate.loop = true;
-        gate.play();
-        gate.zIndex = gsy;
-        decorLayer.addChild(gate);
-      }
+      // ---- Plaza decor: haystacks, bales, crates scattered around plaza ----
+      const placeDecor = (slug: string, pgx: number, pgy: number, tileW: number, tileH: number) => {
+        const tex = terrain.buildings.get(slug);
+        if (!tex) return;
+        const sprite = new Sprite(tex);
+        sprite.anchor.set(0.5, 1.0);
+        const px = pgx * TILE_W + TILE_W / 2;
+        const py = (pgy + 1) * TILE_H;
+        sprite.position.set(px, py);
+        const targetW = tileW * TILE_W;
+        const targetH = tileH * TILE_H;
+        const s = Math.min(targetW / tex.width, targetH / tex.height);
+        sprite.scale.set(s);
+        sprite.zIndex = py;
+        decorLayer.addChild(sprite);
+      };
+      // Plaza is 9×9 centered at (CITY_CENTER.gx, CITY_CENTER.gy), radius 4
+      // Windmill occupies roughly top-center. Decor goes on south half + corners.
+      placeDecor('farm:hay_stack', CITY_CENTER.gx - 3, CITY_CENTER.gy + 3, 3, 2);
+      placeDecor('farm:hay_bale',  CITY_CENTER.gx + 2, CITY_CENTER.gy + 3, 2, 2);
+      placeDecor('farm:crate',     CITY_CENTER.gx - 4, CITY_CENTER.gy + 1, 2, 2);
+      placeDecor('farm:crate',     CITY_CENTER.gx + 3, CITY_CENTER.gy + 1, 2, 2);
+      placeDecor('farm:hay_bale',  CITY_CENTER.gx,     CITY_CENTER.gy + 4, 2, 2);
 
       // ---- Centering and zoom ----
       let islandMinX = Infinity, islandMaxX = -Infinity;
