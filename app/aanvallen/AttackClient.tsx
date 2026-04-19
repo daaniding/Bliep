@@ -12,7 +12,7 @@ import { useTrophies } from '@/lib/useTrophies';
 import BattleIsland from './BattleIsland';
 import LevelUpModal from '../components/modals/LevelUpModal';
 import ChestOpenModal from '../components/modals/ChestOpenModal';
-import StoneArchNav from '../components/StoneArchNav';
+import BHNav from '../components/BHNav';
 import { loadInventory, consumeChest, grantChest, type ChestKind, type ChestSlot as ChestSlotType } from '@/lib/chests';
 import type { EnemySpriteKey } from '@/lib/pveCamps';
 import type { CityState } from '@/lib/cityStore';
@@ -807,7 +807,7 @@ export default function AttackClient() {
         </div>
       </main>
 
-      <StoneArchNav />
+      <BHNav />
 
       {/* Pre-battle lobby */}
       {confirmCamp && !battling && !result && (

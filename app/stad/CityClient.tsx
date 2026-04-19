@@ -46,7 +46,7 @@ import {
 import { inBuildZone } from '@/lib/game/iso';
 import { playSfx, vibrate, burstAt, shakeCity } from '@/lib/juice';
 import { useCitySync } from '@/lib/useCitySync';
-import StoneArchNav from '../components/StoneArchNav';
+import BHNav from '../components/BHNav';
 
 const CityCanvas = dynamic(() => import('./CityCanvas'), { ssr: false });
 
@@ -779,7 +779,7 @@ function ChestStatus({ state }: { state: CityState }) {
           🎁 {fmtCountdown(remaining)}
         </div>
       )}
-      <StoneArchNav />
+      <BHNav />
     </div>
   );
 }

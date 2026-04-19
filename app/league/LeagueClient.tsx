@@ -12,7 +12,7 @@ import {
 } from '@/lib/league';
 import { useTrophies } from '@/lib/useTrophies';
 import { useUser } from '@/lib/useUser';
-import StoneArchNav from '../components/StoneArchNav';
+import BHNav from '../components/BHNav';
 
 type View = 'menu' | 'create' | 'join' | 'view';
 
@@ -620,7 +620,7 @@ export default function LeagueClient() {
           <p className="game-body-italic text-center mt-8" style={{ fontSize: 13 }}>League laden…</p>
         )}
       </main>
-      <StoneArchNav />
+      <BHNav />
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { useUser, apiLogout, apiUpdateDisplayName } from '@/lib/useUser';
 import { useRouter } from 'next/navigation';
 import { useXp } from '@/lib/useXp';
 import { isSfxEnabled, setSfxEnabled, sfxTap } from '@/lib/sound';
-import StoneArchNav from '../components/StoneArchNav';
+import BHNav from '../components/BHNav';
 
 interface Settings {
   name: string;
@@ -365,7 +365,7 @@ export default function SettingsPage() {
 
         </div>
       </main>
-      <StoneArchNav />
+      <BHNav />
     </div>
   );
 }
