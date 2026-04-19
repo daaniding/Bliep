@@ -46,6 +46,7 @@ import {
 import { inBuildZone } from '@/lib/game/iso';
 import { playSfx, vibrate, burstAt, shakeCity } from '@/lib/juice';
 import { useCitySync } from '@/lib/useCitySync';
+import StoneArchNav from '../components/StoneArchNav';
 
 const CityCanvas = dynamic(() => import('./CityCanvas'), { ssr: false });
 
@@ -392,7 +393,7 @@ export default function CityClient() {
 
       {/* Bottom buttons — BOUWEN + HAKKEN */}
       {!placingType && (
-        <div className="fixed bottom-5 left-0 right-0 z-20 flex items-center justify-center gap-3 pointer-events-none">
+        <div className="fixed left-0 right-0 z-20 flex items-center justify-center gap-3 pointer-events-none" style={{ bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
           <button
             onClick={() => { setDrawerOpen(true); playSfx('tap'); setChopMode(false); }}
             className="pointer-events-auto font-display text-xl px-7 py-3.5 rounded-2xl border-4 border-[#0d0a06] active:translate-y-[3px] transition-transform"
@@ -427,7 +428,7 @@ export default function CityClient() {
 
       {/* Placement controls */}
       {placingType && (
-        <div className="fixed bottom-5 left-0 right-0 z-20 flex flex-col items-center pointer-events-none gap-2">
+        <div className="fixed left-0 right-0 z-20 flex flex-col items-center pointer-events-none gap-2" style={{ bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
           <div
             className="font-display text-sm px-5 py-2.5 rounded-2xl border-2 border-[#3a2718] pointer-events-auto"
             style={{ background: 'linear-gradient(180deg, #2a1a0a 0%, #0d0a06 100%)', color: '#fdd069', textShadow: '0 1px 0 #0d0a06', boxShadow: 'inset 0 1px 0 rgba(255,230,160,0.2), 0 3px 0 #0d0a06' }}
@@ -778,6 +779,7 @@ function ChestStatus({ state }: { state: CityState }) {
           🎁 {fmtCountdown(remaining)}
         </div>
       )}
+      <StoneArchNav />
     </div>
   );
 }
