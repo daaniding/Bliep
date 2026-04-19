@@ -159,7 +159,7 @@ export default function CityCanvas({
         }
       });
       observer.observe(host);
-      window.setTimeout(() => { observer.disconnect(); resolve(); }, 500);
+      window.setTimeout(() => { observer.disconnect(); resolve(); }, 2000);
     });
 
     (async () => {
@@ -1682,6 +1682,30 @@ export default function CityCanvas({
         }
       });
       ro.observe(host);
+
+      // Force a deferred recenter/refit a few frames after init — covers the
+      // case where the host grew between Pixi init and first paint, but
+      // ResizeObserver didn't re-fire.
+      const forceRefit = () => {
+        if (cancelled || !appRef.current) return;
+        const fitMin = Math.max(
+          app.renderer.width / extMapW,
+          app.renderer.height / extMapH,
+        );
+        const defZ = Math.min(
+          app.renderer.width / (12 * TILE_W),
+          app.renderer.height / (12 * TILE_H),
+        );
+        const minZ = Math.max(fitMin, MIN_ZOOM_INTERACTIVE);
+        (app as Application & { __minZoom?: number }).__minZoom = minZ;
+        if (mode !== 'preview' && world.scale.x < minZ) {
+          world.scale.set(Math.max(defZ, minZ));
+        }
+        centerWorld();
+      };
+      requestAnimationFrame(() => requestAnimationFrame(forceRefit));
+      window.setTimeout(forceRefit, 200);
+      window.setTimeout(forceRefit, 800);
 
       syncBuildings();
       onReady?.();
