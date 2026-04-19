@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import LeagueClient from './LeagueClient';
 
 export const metadata = {
@@ -5,5 +6,9 @@ export const metadata = {
 };
 
 export default function LeaguePage() {
-  return <LeagueClient />;
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-surface" />}>
+      <LeagueClient />
+    </Suspense>
+  );
 }

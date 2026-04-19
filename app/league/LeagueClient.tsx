@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import { getClientId } from '@/lib/clientId';
 import {
   apiCreateLeague, apiGetLeague, apiJoinLeague, apiUpdateScore,
@@ -16,6 +18,7 @@ type View = 'menu' | 'create' | 'join' | 'view';
 export default function LeagueClient() {
   const { trophies } = useTrophies();
   const { user } = useUser();
+  const searchParams = useSearchParams();
   const [clientId, setClientId] = useState('');
   const [displayName, setName] = useState('');
   const [view, setView] = useState<View>('menu');
@@ -24,6 +27,7 @@ export default function LeagueClient() {
   const [activeLeague, setActiveLeague] = useState<League | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState(false);
 
   // Form fields
   const [createName, setCreateName] = useState('');
@@ -46,11 +50,16 @@ export default function LeagueClient() {
     }
     const list = getMyLeagues();
     setMyLeagues(list);
-    if (list.length > 0) {
+    // Deep-link: ?join=ABC123 → open join-form with code prefilled
+    const joinParam = searchParams?.get('join');
+    if (joinParam) {
+      setJoinCode(joinParam.toUpperCase().slice(0, 6));
+      setView('join');
+    } else if (list.length > 0) {
       setActiveCode(list[0]);
       setView('view');
     }
-  }, [user]);
+  }, [user, searchParams]);
 
   // Load active league
   const refreshLeague = useCallback(async (code: string) => {
@@ -314,60 +323,155 @@ export default function LeagueClient() {
         {/* League view */}
         {displayName && view === 'view' && activeLeague && (
           <section>
-            <div className="card-elevated p-5 mb-4">
-              <div className="flex items-start justify-between mb-3">
+            {/* League header card */}
+            <div className="card-elevated p-5 mb-4 relative overflow-hidden">
+              <div
+                aria-hidden
+                className="absolute inset-0 pointer-events-none opacity-[0.08]"
+                style={{
+                  background: 'radial-gradient(ellipse at 80% 0%, #E8B84A 0%, transparent 60%)',
+                }}
+              />
+              <div className="relative flex items-start justify-between mb-3">
                 <div>
                   <p className="text-muted text-[11px] font-semibold uppercase tracking-wider">League</p>
                   <h2 className="font-serif text-xl text-ink italic">{activeLeague.name}</h2>
+                  <p className="text-faint text-[11px] mt-1">{Object.keys(activeLeague.members).length} leden</p>
                 </div>
                 <div className="bg-accent/10 px-3 py-1.5 rounded-full">
                   <p className="font-mono text-accent font-bold text-sm tracking-widest">{activeLeague.code}</p>
                 </div>
               </div>
-              <p className="text-muted text-xs mb-3">
-                Deel deze code met vrienden zodat ze kunnen joinen. Iedereen die in de league zit kan elkaars trofeeën zien.
-              </p>
-              <button
-                onClick={() => navigator.clipboard?.writeText(activeLeague.code).catch(() => {})}
-                className="w-full bg-subtle text-ink font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform"
-              >
-                Code kopiëren
-              </button>
+              <div className="relative grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(activeLeague.code).catch(() => {});
+                    setCopyFeedback(true);
+                    window.setTimeout(() => setCopyFeedback(false), 1600);
+                  }}
+                  className="bg-subtle text-ink font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform"
+                >
+                  {copyFeedback ? '✓ Gekopieerd' : '📋 Code kopiëren'}
+                </button>
+                <button
+                  onClick={() => {
+                    const url = `${location.origin}/league?join=${encodeURIComponent(activeLeague.code)}`;
+                    const nav = navigator as Navigator & { share?: (d: { url: string; title?: string; text?: string }) => Promise<void> };
+                    if (nav.share) {
+                      nav.share({ title: `Bliep: ${activeLeague.name}`, text: 'Speel met me mee!', url }).catch(() => {});
+                    } else {
+                      navigator.clipboard?.writeText(url).catch(() => {});
+                      setCopyFeedback(true);
+                      window.setTimeout(() => setCopyFeedback(false), 1600);
+                    }
+                  }}
+                  className="bg-accent text-white font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform"
+                >
+                  🔗 Deel link
+                </button>
+              </div>
             </div>
 
-            <div className="card-elevated p-5">
-              <p className="text-muted text-[11px] font-semibold uppercase tracking-wider mb-3">Ranglijst</p>
-              <div className="space-y-2">
-                {sortedMembers.map((m, idx) => {
-                  const isMe = m.clientId === clientId;
-                  return (
-                    <div
-                      key={m.clientId}
-                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                        isMe ? 'bg-accent/8 ring-1 ring-accent/30' : 'bg-subtle/40'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        idx === 0 ? 'bg-[#E8B84A] text-[#3a2a18]' :
-                        idx === 1 ? 'bg-[#C0C0C0] text-[#3a2a18]' :
-                        idx === 2 ? 'bg-[#CD7F32] text-white' :
-                        'bg-subtle text-faint'
-                      }`}>
-                        {idx + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-sm truncate ${isMe ? 'text-ink' : 'text-muted'}`}>
-                          {m.name}{isMe && ' (jij)'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm font-bold text-[#7a2e1a]">
-                        <span>{m.trophies}</span>
-                        <span>🏆</span>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Leaderboard */}
+            <div className="card-elevated p-4 overflow-hidden">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <p className="text-muted text-[11px] font-semibold uppercase tracking-wider">Ranglijst</p>
+                <p className="text-faint text-[11px] tabular-nums">
+                  {myRank >= 0 ? `Jij #${myRank + 1}` : ''}
+                </p>
               </div>
+              <motion.div className="flex flex-col gap-2" layout>
+                <AnimatePresence initial={false}>
+                  {sortedMembers.map((m, idx) => {
+                    const isMe = m.clientId === clientId;
+                    const rank = idx + 1;
+                    const isTop3 = rank <= 3;
+                    const rankColor = rank === 1 ? '#E8B84A' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#6a4f2e';
+                    const firstLetter = (m.name || '?').charAt(0).toUpperCase();
+                    return (
+                      <motion.div
+                        key={m.clientId}
+                        layout="position"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+                        className="relative flex items-center gap-3 p-3 rounded-xl"
+                        style={{
+                          background: isMe
+                            ? 'linear-gradient(90deg, rgba(232,184,74,0.18) 0%, rgba(232,184,74,0.05) 100%)'
+                            : isTop3
+                              ? `linear-gradient(90deg, ${rankColor}18 0%, transparent 70%)`
+                              : 'rgba(245,240,230,0.4)',
+                          border: isMe ? '1.5px solid rgba(232,184,74,0.45)' : isTop3 ? `1px solid ${rankColor}40` : '1px solid transparent',
+                          boxShadow: isTop3 ? `0 0 0 0 transparent, 0 2px 6px ${rankColor}22` : 'none',
+                        }}
+                      >
+                        {/* Rank badge */}
+                        <div
+                          className="relative flex-shrink-0 flex items-center justify-center font-bold text-sm"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            background: isTop3
+                              ? `radial-gradient(circle at 30% 28%, #fff6dc 0%, ${rankColor} 60%, #3a2a18 100%)`
+                              : 'rgba(120,90,50,0.15)',
+                            color: isTop3 ? '#2a1a06' : '#6a4f2e',
+                            border: isTop3 ? '1.5px solid #3a2a18' : '1px solid rgba(120,90,50,0.25)',
+                            boxShadow: isTop3 ? 'inset 0 1px 0 rgba(255,255,255,0.35)' : 'none',
+                            textShadow: isTop3 ? '0 1px 0 rgba(255,255,255,0.4)' : 'none',
+                          }}
+                        >
+                          {rank}
+                        </div>
+                        {/* Avatar letter */}
+                        <div
+                          className="flex-shrink-0 flex items-center justify-center"
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '50%',
+                            background: isMe
+                              ? 'linear-gradient(180deg, #E8B84A, #8a6320)'
+                              : `hsl(${(m.clientId.charCodeAt(0) * 17 + m.clientId.charCodeAt(m.clientId.length - 1)) % 360} 45% 60%)`,
+                            color: '#fff',
+                            fontWeight: 800,
+                            fontSize: 14,
+                            fontFamily: "'Lilita One', sans-serif",
+                            border: '2px solid rgba(58,42,24,0.25)',
+                            textShadow: '0 1px 0 rgba(0,0,0,0.3)',
+                          }}
+                        >
+                          {firstLetter}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium text-sm truncate ${isMe ? 'text-ink' : 'text-muted'}`}>
+                            {m.name}
+                            {isMe && <span className="text-accent text-[10px] ml-1.5 font-bold">· JIJ</span>}
+                          </p>
+                          {isTop3 && (
+                            <p className="text-[10px] font-bold tracking-wider" style={{ color: rankColor }}>
+                              {rank === 1 ? '👑 LEIDER' : rank === 2 ? '⚔️ TWEEDE' : '🥉 DERDE'}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-sm font-bold text-[#7a2e1a] tabular-nums">
+                          <motion.span
+                            key={m.trophies}
+                            initial={{ y: -4, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            {m.trophies}
+                          </motion.span>
+                          <span>🏆</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
               {myRank === -1 && (
                 <p className="text-[11px] text-faint mt-3 text-center">
                   Je staat nog niet in deze league als lid. Verlaat en join opnieuw met je naam.
@@ -381,7 +485,7 @@ export default function LeagueClient() {
                 disabled={loading}
                 className="flex-1 bg-subtle text-ink font-medium py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform disabled:opacity-50"
               >
-                {loading ? 'Vernieuwen...' : 'Vernieuwen'}
+                {loading ? 'Vernieuwen...' : '↻ Vernieuwen'}
               </button>
               <button
                 onClick={() => setView('menu')}
