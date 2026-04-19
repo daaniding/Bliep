@@ -1,15 +1,9 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
 /**
- * Combat sprite loader for on-island battles.
- *
- * Enemies swapped to side-view sprite packs under /assets/enemies/*.
- * Each camp mapped to a different enemy type:
- *   bandiet → soldier, wolven → warrior, fort → orc,
- *   goblin  → skeleton, draak  → samurai.
- *
- * Blue defenders (barracks troops) and blue archers (on towers) stay
- * Tiny Swords top-down units.
+ * Combat sprite loader.
+ * Enemies = side-view strips onder /assets/enemies/*.
+ * Defenders + archers = Tiny Swords top-down units.
  */
 
 const UNITS = '/assets/topdown/units';
@@ -31,8 +25,6 @@ function sliceRow(tex: Texture, frameW: number, frameH: number, count: number): 
 function setNearest(t: Texture) {
   if (t.source) t.source.scaleMode = 'nearest';
 }
-
-// ---- Types ----
 
 export interface UnitFrames {
   idle: Texture[];
@@ -61,7 +53,7 @@ export interface CombatSprites {
   fx: FxFrames;
 }
 
-// ---- Side-view enemy strip loader (auto frame-count from width/height) ----
+// ---- Side-view strip auto-slicer ----
 
 async function loadStripAuto(url: string): Promise<{ frames: Texture[]; frameH: number } | null> {
   try {
@@ -84,11 +76,7 @@ async function loadStripAuto(url: string): Promise<{ frames: Texture[]; frameH: 
   }
 }
 
-interface EnemyPaths {
-  idle: string;
-  walk: string;
-  attack: string;
-}
+interface EnemyPaths { idle: string; walk: string; attack: string; }
 
 const ENEMY_PATHS: Record<string, EnemyPaths> = {
   bandiet: {
@@ -131,73 +119,84 @@ async function loadSideviewEnemy(paths: EnemyPaths): Promise<UnitFrames> {
   return { idle, run: walk, attack, frameH };
 }
 
-// ---- Defender loader (unchanged Tiny Swords) ----
+// ---- Tiny Swords top-down unit (defenders) ----
 
 async function loadUnit(color: string, unit: string, frameH: number): Promise<UnitFrames> {
   const base = `${UNITS}/${color}/${unit}`;
   const [idle, run, attack] = await Promise.all([
-    Assets.load<Texture>(`${base}/idle.png`),
-    Assets.load<Texture>(`${base}/run.png`),
+    Assets.load<Texture>(`${base}/idle.png`).catch(() => null),
+    Assets.load<Texture>(`${base}/run.png`).catch(() => null),
     Assets.load<Texture>(`${base}/attack.png`).catch(() => null),
   ]);
   for (const t of [idle, run, attack]) { if (t) setNearest(t); }
   const frameW = frameH;
+  if (!idle && !run) return { idle: [], run: [], attack: [], frameH };
+  const src = run ?? idle!;
   const attackFrames = attack
     ? sliceRow(attack, frameW, frameH, 12)
-    : sliceRow(idle, frameW, frameH, 8);
+    : sliceRow(src, frameW, frameH, 8);
   return {
-    idle: sliceRow(idle, frameW, frameH, 12),
-    run: sliceRow(run, frameW, frameH, 6),
+    idle: idle ? sliceRow(idle, frameW, frameH, 12) : [],
+    run: run ? sliceRow(run, frameW, frameH, 6) : (idle ? sliceRow(idle, frameW, frameH, 6) : []),
     attack: attackFrames,
     frameH,
   };
 }
 
-// ---- Public loader ----
+async function safeLoad(url: string): Promise<Texture | null> {
+  try { const t = await Assets.load<Texture>(url); if (t) setNearest(t); return t ?? null; }
+  catch { return null; }
+}
 
 let cache: CombatSprites | null = null;
 
 export async function loadCombatSprites(): Promise<CombatSprites> {
   if (cache) return cache;
 
+  const emptyUnit: UnitFrames = { idle: [], run: [], attack: [], frameH: 48 };
+
   const [
     bandiet, wolven, fort, goblin, draak,
     blueWarrior, blueLancer,
-    archerIdle, archerShoot, arrowTex,
+    archerIdle, arrowTex,
     explosion, fireSmall, fireLarge,
   ] = await Promise.all([
-    loadSideviewEnemy(ENEMY_PATHS.bandiet),
-    loadSideviewEnemy(ENEMY_PATHS.wolven),
-    loadSideviewEnemy(ENEMY_PATHS.fort),
-    loadSideviewEnemy(ENEMY_PATHS.goblin),
-    loadSideviewEnemy(ENEMY_PATHS.draak),
-    loadUnit('blue', 'warrior', 192),
-    loadUnit('blue', 'lancer', 320),
-    Assets.load<Texture>(`${UNITS}/blue/archer/idle.png`),
-    Assets.load<Texture>(`${UNITS}/blue/archer/shoot.png`),
-    Assets.load<Texture>(`${UNITS}/blue/archer/arrow.png`),
-    Assets.load<Texture>(`${FX}/explosion.png`),
-    Assets.load<Texture>(`${FX}/fire_small.png`),
-    Assets.load<Texture>(`${FX}/fire_large.png`),
+    loadSideviewEnemy(ENEMY_PATHS.bandiet).catch(() => emptyUnit),
+    loadSideviewEnemy(ENEMY_PATHS.wolven).catch(() => emptyUnit),
+    loadSideviewEnemy(ENEMY_PATHS.fort).catch(() => emptyUnit),
+    loadSideviewEnemy(ENEMY_PATHS.goblin).catch(() => emptyUnit),
+    loadSideviewEnemy(ENEMY_PATHS.draak).catch(() => emptyUnit),
+    loadUnit('blue', 'warrior', 192).catch(() => emptyUnit),
+    loadUnit('blue', 'lancer', 320).catch(() => emptyUnit),
+    safeLoad(`/assets/walkers2/archer-blue.png`),
+    safeLoad(`${UNITS}/blue/archer/arrow.png`),
+    safeLoad(`${FX}/explosion.png`),
+    safeLoad(`${FX}/fire_small.png`),
+    safeLoad(`${FX}/fire_large.png`),
   ]);
-
-  for (const t of [archerIdle, archerShoot, arrowTex, explosion, fireSmall, fireLarge]) {
-    setNearest(t);
-  }
 
   cache = {
     enemies: { bandiet, wolven, fort, goblin, draak },
     blueWarrior,
     blueLancer,
-    archer: {
-      idle: sliceRow(archerIdle, 192, 192, 6),
-      shoot: sliceRow(archerShoot, 192, 192, 8),
-    },
-    arrow: arrowTex,
+    archer: (() => {
+      if (!archerIdle) return { idle: [], shoot: [] };
+      const fh = archerIdle.frame.height;
+      const count = Math.max(1, Math.floor(archerIdle.frame.width / fh));
+      const fw = Math.floor(archerIdle.frame.width / count);
+      const frames: Texture[] = [];
+      for (let i = 0; i < count; i++) {
+        const t = new Texture({ source: archerIdle.source, frame: new Rectangle(i * fw, 0, fw, fh) });
+        setNearest(t);
+        frames.push(t);
+      }
+      return { idle: frames, shoot: frames };
+    })(),
+    arrow: arrowTex ?? Texture.WHITE,
     fx: {
-      explosion: sliceRow(explosion, 192, 192, 8),
-      fireSmall: sliceRow(fireSmall, 64, 64, 8),
-      fireLarge: sliceRow(fireLarge, 64, 64, 12),
+      explosion: explosion ? sliceRow(explosion, 192, 192, 8) : [],
+      fireSmall: fireSmall ? sliceRow(fireSmall, 64, 64, 8) : [],
+      fireLarge: fireLarge ? sliceRow(fireLarge, 64, 64, 12) : [],
     },
   };
   return cache;
