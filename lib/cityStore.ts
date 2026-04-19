@@ -1,5 +1,7 @@
 import { BUILDINGS, buildTimeSec, farmRateFor, footprintOf, footprintsOverlap, populationFor, populationCostOf, type BuildingType } from './game/buildings';
-import { inBuildZone } from './game/iso';
+import { inBuildZone, CITY_CENTER } from './game/iso';
+import { generateGroves } from './game/treeGroves';
+import { parseElevation, processElevation, MAP_COLS, MAP_ROWS } from './game/staticMap';
 
 const STORAGE_KEY = 'bliep:city:v2';
 const LEGACY_KEY = 'bliep:city:v1';
@@ -31,12 +33,25 @@ export interface BuildQueueItem {
   finishesAt: number;
 }
 
+export interface ChopJob {
+  id: string;
+  gx: number;
+  gy: number;
+  startedAt: number;
+  finishesAt: number;
+}
+
 export interface CityState {
   version: 2;
   coins: number;
+  wood: number;
   speedTokens: number;
   buildings: PlacedBuilding[];
   buildQueue: BuildQueueItem[];
+  /** Active tree-chop jobs with timers. */
+  chopJobs: ChopJob[];
+  /** "gx,gy" strings of trees already chopped (persisted so they don't respawn). */
+  choppedTrees: string[];
   chest: { lastOpenAt: number };
   npcSeed: number;
   lastProductionTickAt: number;
@@ -85,11 +100,14 @@ function defaultCity(): CityState {
   return {
     version: 2,
     coins: 0,
+    wood: 0,
     speedTokens: 0,
     buildings: [
       { id: 'start-house', type: 'house', gx: 93, gy: 91, level: 1 },
     ],
     buildQueue: [],
+    chopJobs: [],
+    choppedTrees: [],
     chest: { lastOpenAt: 0 },
     npcSeed: Math.floor(Math.random() * 100000),
     lastProductionTickAt: Date.now(),
@@ -114,9 +132,12 @@ function normalize(parsed: Partial<CityState>): CityState {
   return {
     version: 2,
     coins: parsed.coins ?? base.coins,
+    wood: parsed.wood ?? 0,
     speedTokens: parsed.speedTokens ?? 0,
     buildings,
     buildQueue: parsed.buildQueue ?? [],
+    chopJobs: parsed.chopJobs ?? [],
+    choppedTrees: parsed.choppedTrees ?? [],
     chest: parsed.chest ?? base.chest,
     npcSeed: parsed.npcSeed ?? base.npcSeed,
     lastProductionTickAt: parsed.lastProductionTickAt ?? Date.now(),
@@ -197,6 +218,95 @@ export function addSpeedTokens(state: CityState, amount: number): CityState {
   return { ...state, speedTokens: state.speedTokens + amount };
 }
 
+export function addWood(state: CityState, amount: number): CityState {
+  return { ...state, wood: state.wood + amount };
+}
+
+export function spendWood(state: CityState, amount: number): CityState {
+  return { ...state, wood: state.wood - amount };
+}
+
+/** True if player has at least one lumber hut built. */
+export function hasLumberHut(state: CityState): boolean {
+  return state.buildings.some(b => b.type === 'lumber_hut');
+}
+
+// ---- Tree cells (deterministic from seed) ----
+
+let _cachedTreeSet: { seed: number; set: Set<string> } | null = null;
+
+/** All world cells occupied by a still-standing random tree (minus chopped). */
+export function getTreeCellSet(state: CityState): Set<string> {
+  const seed = state.npcSeed;
+  if (!_cachedTreeSet || _cachedTreeSet.seed !== seed) {
+    const elev = processElevation(parseElevation());
+    const offsetGx = CITY_CENTER.gx - Math.floor(MAP_COLS / 2);
+    const offsetGy = CITY_CENTER.gy - Math.floor(MAP_ROWS / 2);
+    const placements = generateGroves(elev, MAP_COLS, MAP_ROWS, CITY_CENTER.gx, CITY_CENTER.gy, offsetGx, offsetGy, seed);
+    const set = new Set<string>();
+    for (const p of placements) {
+      if (p.type === 'bush') continue; // bushes are walkable/buildable
+      set.add(`${p.gx},${p.gy}`);
+    }
+    _cachedTreeSet = { seed, set };
+  }
+  // Subtract chopped
+  if (state.choppedTrees.length === 0) return _cachedTreeSet.set;
+  const live = new Set(_cachedTreeSet.set);
+  for (const k of state.choppedTrees) live.delete(k);
+  return live;
+}
+
+/** Max concurrent chop jobs = number of lumber huts. */
+export function maxChoppers(state: CityState): number {
+  return state.buildings.filter(b => b.type === 'lumber_hut').length;
+}
+
+/** Chop-job duration in ms. */
+export const CHOP_DURATION_MS = 2 * 60 * 1000;
+export const CHOP_COIN_COST = 5;
+export const CHOP_WOOD_REWARD = 5;
+export const CHOP_COIN_REWARD = 3;
+
+/** Start a chop job on a tree cell. Deducts coin cost; refuses if slots full. */
+export function startChop(state: CityState, gx: number, gy: number): CityState | null {
+  if (state.chopJobs.length >= maxChoppers(state)) return null;
+  if (state.coins < CHOP_COIN_COST) return null;
+  if (state.chopJobs.some(j => j.gx === gx && j.gy === gy)) return null;
+  if (state.choppedTrees.includes(`${gx},${gy}`)) return null;
+  const now = Date.now();
+  const job: ChopJob = {
+    id: Math.random().toString(36).slice(2, 10),
+    gx, gy,
+    startedAt: now,
+    finishesAt: now + CHOP_DURATION_MS,
+  };
+  return {
+    ...state,
+    coins: state.coins - CHOP_COIN_COST,
+    chopJobs: [...state.chopJobs, job],
+  };
+}
+
+/** Finish any completed chop jobs: remove, reward, mark tree chopped. */
+export function settleChops(state: CityState, now = Date.now()): CityState {
+  const ripe = state.chopJobs.filter(j => j.finishesAt <= now);
+  if (ripe.length === 0) return state;
+  const remaining = state.chopJobs.filter(j => j.finishesAt > now);
+  const newChopped = [...state.choppedTrees];
+  for (const j of ripe) {
+    const k = `${j.gx},${j.gy}`;
+    if (!newChopped.includes(k)) newChopped.push(k);
+  }
+  return {
+    ...state,
+    coins: state.coins + ripe.length * CHOP_COIN_REWARD,
+    wood: state.wood + ripe.length * CHOP_WOOD_REWARD,
+    chopJobs: remaining,
+    choppedTrees: newChopped,
+  };
+}
+
 /** Demolish a building. Refunds 50% of base cost. Removes any pending build queue items. */
 export function removeBuilding(state: CityState, buildingId: string): { state: CityState; refund: number } {
   if (buildingId === 'start-house') return { state, refund: 0 }; // castle can't be demolished
@@ -234,6 +344,14 @@ export function placeBuilding(state: CityState, type: BuildingType, gx: number, 
     })
   ) {
     return state;
+  }
+
+  // No building on still-standing trees
+  const trees = getTreeCellSet(state);
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      if (trees.has(`${gx + dx},${gy + dy}`)) return state;
+    }
   }
 
   const id = `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;

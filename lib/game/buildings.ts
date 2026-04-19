@@ -1,4 +1,4 @@
-export type BuildingType = 'house' | 'farm' | 'barracks' | 'wall' | 'tower' | 'fountain' | 'tree' | 'path';
+export type BuildingType = 'house' | 'farm' | 'barracks' | 'wall' | 'tower' | 'fountain' | 'tree' | 'path' | 'lumber_hut';
 
 export interface BuildingDef {
   type: BuildingType;
@@ -196,6 +196,24 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
                           'decor:tree', 'decor:tree', 'decor:tree', 'decor:tree', 'decor:tree'),
     spriteScale: 1.4,
   },
+  lumber_hut: {
+    type: 'lumber_hut',
+    name: 'Houthakkershut',
+    description: 'Je houthakkers kunnen bomen omhakken. Eerste hut: 50 🪙.',
+    baseCost: 50,
+    costGrowth: 1.5,
+    baseBuildSec: 30,
+    buildTimeGrowth: 1.5,
+    maxLevel: 3,
+    spritesPerLevel: lvls(
+      'farm:hut', 'farm:hut', 'farm:hut',
+      'farm:hut', 'farm:hut', 'farm:hut',
+      'farm:hut', 'farm:hut', 'farm:hut', 'farm:hut',
+    ),
+    spriteScale: 1.0,
+    footprint: { w: 2, h: 2 },
+    populationCost: 0,
+  },
   path: {
     type: 'path',
     name: 'Pad',
@@ -211,7 +229,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   },
 };
 
-export const BUILDING_ORDER: BuildingType[] = ['house', 'farm', 'barracks', 'tower', 'wall', 'fountain', 'tree', 'path'];
+export const BUILDING_ORDER: BuildingType[] = ['lumber_hut', 'house', 'farm', 'barracks', 'tower', 'wall', 'fountain', 'tree', 'path'];
 
 export function buildCost(type: BuildingType): number {
   return BUILDINGS[type].baseCost;

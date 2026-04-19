@@ -500,6 +500,7 @@ export default function CityCanvas({
       }
 
       const swayTrees: { sprite: Sprite; baseX: number; phase: number }[] = [];
+      const treeSpritesByCell = new Map<string, Sprite[]>();
       if (!HIDE_ISLAND) {
       // ---- Shallow water gradient ----
       const waterOverlay = new Graphics();
@@ -884,10 +885,30 @@ export default function CityCanvas({
         if (swayTrees.length < 120 && tp.type !== 'bush') {
           swayTrees.push({ sprite, baseX: px, phase: hash(tp.gx, tp.gy, 4000) * Math.PI * 2 });
         }
+        if (tp.type !== 'bush') {
+          const key = `${tp.gx},${tp.gy}`;
+          const list = treeSpritesByCell.get(key) ?? [];
+          list.push(sprite);
+          treeSpritesByCell.set(key, list);
+        }
+      }
+
+      // Remove trees already chopped (from saved state)
+      for (const k of stateRef.current.choppedTrees) {
+        const list = treeSpritesByCell.get(k);
+        if (list) {
+          for (const s of list) {
+            decorLayer.removeChild(s);
+            s.destroy();
+          }
+          treeSpritesByCell.delete(k);
+        }
       }
 
       } // end SHAPE_ONLY
       } // end HIDE_ISLAND
+
+      // Expose tree-cell set for tap-detection (decor pass fills treeSpritesByCell above)
 
       // ---- Day/night cycle overlay — 10 min per full day ----
       // Phase 0-0.5 = day, 0.5-1.0 = night, smooth transitions in-between.
@@ -937,6 +958,51 @@ export default function CityCanvas({
       };
       updateDayNight();
       app.ticker.add(updateDayNight);
+
+      // ---- Chop sync: remove tree sprites when state.choppedTrees grows ----
+      const syncChopped = () => {
+        for (const k of stateRef.current.choppedTrees) {
+          const list = treeSpritesByCell.get(k);
+          if (!list) continue;
+          for (const s of list) {
+            decorLayer.removeChild(s);
+            s.destroy();
+          }
+          treeSpritesByCell.delete(k);
+        }
+      };
+      app.ticker.add(syncChopped);
+
+      // ---- Chop-job indicators: axe emoji above tree being chopped ----
+      const chopBadges = new Map<string, Graphics>();
+      const syncChopJobs = () => {
+        const active = new Set(stateRef.current.chopJobs.map(j => `${j.gx},${j.gy}`));
+        // Remove stale badges
+        for (const [k, g] of chopBadges) {
+          if (!active.has(k)) {
+            overlayLayer.removeChild(g);
+            g.destroy();
+            chopBadges.delete(k);
+          }
+        }
+        // Add new badges + pulse
+        for (const job of stateRef.current.chopJobs) {
+          const k = `${job.gx},${job.gy}`;
+          let g = chopBadges.get(k);
+          if (!g) {
+            g = new Graphics();
+            g.rect(-14, -10, 28, 20).fill({ color: 0x1a1410, alpha: 0.85 }).stroke({ color: 0xfdd069, width: 2 });
+            const { sx, sy } = gridToScreen(job.gx, job.gy, 0, 0);
+            g.position.set(sx, sy - 80);
+            g.zIndex = 999999;
+            overlayLayer.addChild(g);
+            chopBadges.set(k, g);
+          }
+          const pulse = 1 + Math.sin(Date.now() / 180) * 0.08;
+          g.scale.set(pulse);
+        }
+      };
+      app.ticker.add(syncChopJobs);
 
       // ---- Fireflies — visible at night, floating glowy specks ----
       type Firefly = { g: Graphics; baseX: number; baseY: number; phase: number; speed: number; amp: number; twinkle: number };
@@ -1215,25 +1281,7 @@ export default function CityCanvas({
         }
       });
 
-      // ---- Daily chest ----
-      const chestTex = getTopdownTexture(atlas, 'chest');
-      if (!HIDE_ISLAND && chestTex && chestTex !== Texture.EMPTY) {
-        const chest = new Sprite(chestTex);
-        chest.anchor.set(0.5, 0.95);
-        const { sx, sy } = gridToScreen(CITY_CENTER.gx, CITY_CENTER.gy, 0, 0);
-        chest.position.set(sx, sy + TILE_H * 0.4);
-        const baseScale = (TILE_W * 1.4) / Math.max(chestTex.width, chestTex.height);
-        chest.scale.set(baseScale);
-        chest.zIndex = CITY_CENTER.gy * 1000 + CITY_CENTER.gx + 100;
-        chest.eventMode = mode === 'interactive' ? 'static' : 'none';
-        chest.cursor = 'pointer';
-        chest.on('pointertap', (e: FederatedPointerEvent) => {
-          e.stopPropagation();
-          callbacksRef.current.onTapChest?.();
-        });
-        overlayLayer.addChild(chest);
-        chestSpriteRef.current = chest;
-      }
+      // Chest sprite removed — chests open via inventory/topbar flow.
 
       // ---- Windmill focal point (animated, dead-center on plaza) ----
       // Placed in decorLayer so tree y-sort can overlap naturally.
@@ -1465,6 +1513,11 @@ export default function CityCanvas({
               return;
             }
             callbacksRef.current.onTapBuilding?.(existing);
+            return;
+          }
+          // Tapped a tree?
+          if (treeSpritesByCell.has(`${gx},${gy}`)) {
+            window.dispatchEvent(new CustomEvent('bliep:tap-tree', { detail: { gx, gy } }));
             return;
           }
           callbacksRef.current.onTapTile?.(gx, gy);
@@ -1767,6 +1820,7 @@ export default function CityCanvas({
         b.type === 'barracks' ? 'farm:shop' :
         b.type === 'tower' ? 'farm:tower_a' :
         b.type === 'fountain' ? 'farm:house_b' :
+        b.type === 'lumber_hut' ? 'farm:house_b' :
         ''
       );
 

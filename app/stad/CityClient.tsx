@@ -23,6 +23,14 @@ import {
   totalPopulation,
   usedPopulation,
   canAffordPopulation,
+  hasLumberHut,
+  maxChoppers,
+  startChop,
+  settleChops,
+  CHOP_COIN_COST,
+  CHOP_DURATION_MS,
+  CHOP_WOOD_REWARD,
+  CHOP_COIN_REWARD,
   type CityState,
   type PlacedBuilding,
 } from '@/lib/cityStore';
@@ -60,6 +68,7 @@ export default function CityClient() {
   const [canvasReady, setCanvasReady] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [, forceTick] = useState(0);
+  const [chopTarget, setChopTarget] = useState<{ gx: number; gy: number } | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
 
   // Initial load
@@ -78,15 +87,46 @@ export default function CityClient() {
   // Server sync
   useCitySync(state, setState, loaded);
 
-  // Periodic tick (1s) for queue countdown + farm coin badges
+  // Periodic tick (1s) for queue countdown + farm coin badges + chop settle
   useEffect(() => {
     if (!loaded) return;
     const id = window.setInterval(() => {
-      setState(s => processBuildQueue(s));
+      setState(s => settleChops(processBuildQueue(s)));
       forceTick(n => n + 1);
     }, 1000);
     return () => clearInterval(id);
   }, [loaded]);
+
+  // Tap-tree event → open chop modal
+  useEffect(() => {
+    const onTapTree = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { gx: number; gy: number } | undefined;
+      if (!detail) return;
+      setChopTarget(detail);
+    };
+    window.addEventListener('bliep:tap-tree', onTapTree);
+    return () => window.removeEventListener('bliep:tap-tree', onTapTree);
+  }, []);
+
+  function handleChopConfirm() {
+    if (!chopTarget) return;
+    if (!hasLumberHut(state)) {
+      showFlash('Bouw eerst een Houthakkershut');
+      setChopTarget(null);
+      return;
+    }
+    const next = startChop(state, chopTarget.gx, chopTarget.gy);
+    if (!next) {
+      const busy = state.chopJobs.length >= maxChoppers(state);
+      showFlash(busy ? 'Alle houthakkers zijn bezig' : 'Niet genoeg coins');
+      setChopTarget(null);
+      return;
+    }
+    setState(next);
+    setChopTarget(null);
+    vibrate(20);
+    playSfx('tap');
+  }
 
   function showFlash(msg: string) {
     setFlash(msg);
@@ -330,6 +370,11 @@ export default function CityClient() {
               <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#0d0a06] text-sm" style={{ background: 'radial-gradient(circle at 35% 30%, #c0e8ff 0%, #4fa3d9 40%, #1e6fa8 100%)' }}>⚡</div>
               <span className="font-display text-[#9bdbff] text-sm tabular-nums" style={{ textShadow: '0 1px 0 #0d0a06' }}>{state.speedTokens}</span>
             </div>
+            {/* Wood pill */}
+            <div className="flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border-2 border-[#5a3a10] shadow-[inset_0_2px_0_rgba(210,160,110,0.25),0_3px_0_#0d0a06,0_5px_10px_rgba(0,0,0,0.45)]" style={{ background: 'linear-gradient(180deg, #3a2412 0%, #1c100a 100%)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#0d0a06] text-sm" style={{ background: 'radial-gradient(circle at 35% 30%, #e5b07a 0%, #9c6838 40%, #5a3a18 100%)' }}>🪵</div>
+              <span className="font-display text-[#e0b080] text-sm tabular-nums" style={{ textShadow: '0 1px 0 #0d0a06' }}>{state.wood}</span>
+            </div>
             {/* Population pill */}
             <div className="flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border-2 border-[#1e4a26] shadow-[inset_0_2px_0_rgba(94,160,92,0.2),0_3px_0_#0d0a06,0_5px_10px_rgba(0,0,0,0.45)]" style={{ background: 'linear-gradient(180deg, #1a2a18 0%, #0d150a 100%)' }}>
               <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#0d0a06] text-sm" style={{ background: 'radial-gradient(circle at 35% 30%, #c0ffc0 0%, #5ea05c 40%, #2a6a2a 100%)' }}>👤</div>
@@ -429,6 +474,54 @@ export default function CityClient() {
           }}
         >
           {flash}
+        </div>
+      )}
+
+      {/* Chop confirmation modal */}
+      {chopTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setChopTarget(null)}>
+          <div
+            className="relative w-[min(380px,92%)] rounded-2xl border-2 border-[#5a3a10] p-5"
+            style={{
+              background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
+              boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.3), 0 8px 0 #0d0a06, 0 14px 30px rgba(0,0,0,0.7)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🪓</div>
+              <div className="font-display text-[#fdd069] text-lg mb-1">Boom omhakken?</div>
+              {hasLumberHut(state) ? (
+                <div className="text-[#a08060] text-xs">
+                  2 min • {CHOP_COIN_COST} 🪙 • houthakker {state.chopJobs.length + 1}/{maxChoppers(state)}
+                </div>
+              ) : (
+                <div className="text-[#e0704a] text-xs">
+                  Bouw eerst een <b>Houthakkershut</b> (50 🪙)
+                </div>
+              )}
+              <div className="mt-3 text-[#88dd88] text-sm font-display">
+                Beloning: +{CHOP_WOOD_REWARD} 🪵 +{CHOP_COIN_REWARD} 🪙
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                className="flex-1 py-2.5 rounded-lg font-display text-sm border-2 border-[#5a3a10]"
+                style={{ background: 'linear-gradient(180deg, #2a1a0a 0%, #1c0f06 100%)', color: '#a08060' }}
+                onClick={() => setChopTarget(null)}
+              >
+                Annuleer
+              </button>
+              <button
+                className="flex-1 py-2.5 rounded-lg font-display text-sm border-2 border-[#5a3a10] disabled:opacity-50"
+                disabled={!hasLumberHut(state) || state.chopJobs.length >= maxChoppers(state) || state.coins < CHOP_COIN_COST}
+                style={{ background: 'linear-gradient(180deg, #fdd069 0%, #b8791f 100%)', color: '#1c0f06', textShadow: '0 1px 0 rgba(255,230,160,0.5)', boxShadow: 'inset 0 2px 0 rgba(255,255,220,0.5), 0 3px 0 #0d0a06' }}
+                onClick={handleChopConfirm}
+              >
+                🪓 Hak om
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
