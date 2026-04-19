@@ -65,6 +65,30 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       ]);
       if (cancelled) { app.destroy(true, { children: true, texture: false }); return; }
 
+      // Load custom tower sheets (per-level animated, match /stad)
+      type TowerSheet = { frames: Texture[]; frameW: number; frameH: number };
+      const towerSheets: Array<TowerSheet | null> = [];
+      {
+        const pixi = await import('pixi.js');
+        for (let lv = 1; lv <= 7; lv++) {
+          try {
+            const tex = await pixi.Assets.load<Texture>(`/assets/towers/idle/${lv}.png`);
+            if (!tex) { towerSheets.push(null); continue; }
+            if (tex.source) tex.source.scaleMode = 'nearest';
+            const fh = tex.frame.height;
+            const count = Math.max(1, Math.floor(tex.frame.width / fh));
+            const fw = Math.floor(tex.frame.width / count);
+            const frames: Texture[] = [];
+            for (let i = 0; i < count; i++) {
+              const t = new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, fh) });
+              if (t.source) t.source.scaleMode = 'nearest';
+              frames.push(t);
+            }
+            towerSheets.push({ frames, frameW: fw, frameH: fh });
+          } catch { towerSheets.push(null); }
+        }
+      }
+
       // ---- Scene ----
       const world = new Container();
       app.stage.addChild(world);
@@ -213,8 +237,31 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
           continue;
         }
 
-        // Start-house gets castle sprite regardless of level
-        const slug = b.id === 'start-house' ? 'ts:yellow:castle' : spriteForLevel(b.type, b.level);
+        // Custom animated tower sheets (match /stad rendering)
+        if (b.type === 'tower') {
+          const lvIdx = Math.max(0, Math.min(6, b.level - 1));
+          const sheet = towerSheets[lvIdx];
+          if (sheet && sheet.frames.length > 0) {
+            const anim = new AnimatedSprite(sheet.frames);
+            anim.anchor.set(0.5, 0.95);
+            const longSide = Math.max(sheet.frameW, sheet.frameH);
+            const targetTiles = Math.max(fp.w, fp.h) * 1.4;
+            const baseScaleTower = (TILE_W * targetTiles * (BUILDINGS.tower.spriteScale ?? 1)) / longSide;
+            anim.scale.set(baseScaleTower);
+            const cx = (b.gx + fp.w / 2) * TILE_W;
+            const cy = (b.gy + fp.h / 2) * TILE_H;
+            anim.position.set(cx, cy);
+            anim.zIndex = Math.floor(cy + TILE_H * 0.4);
+            anim.animationSpeed = 0.12;
+            anim.loop = true;
+            anim.play();
+            buildingLayer.addChild(anim);
+            buildingSpriteMap.set(b.id, anim as unknown as Sprite);
+            continue;
+          }
+        }
+
+        const slug = spriteForLevel(b.type, b.level);
         const tex = getTopdownTexture(atlas, slug);
         if (!tex) continue;
         const sprite = new Sprite(tex);
@@ -222,13 +269,12 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
         const cx = (b.gx + fp.w / 2) * TILE_W;
         const cy = (b.gy + fp.h / 2) * TILE_H;
         const bdef = BUILDINGS[b.type];
-        const isCastle = b.id === 'start-house';
-        const baseScale = (bdef.spriteScale ?? 1) * (isCastle ? 2.8 : 1.4);
+        const baseScale = (bdef.spriteScale ?? 1) * 1.4;
         const span = Math.max(fp.w, fp.h) * TILE_W;
         sprite.width = span * baseScale;
         sprite.height = (tex.height / tex.width) * span * baseScale;
         sprite.x = cx;
-        sprite.y = cy + (isCastle ? -TILE_H * 0.5 : 0); // castle higher
+        sprite.y = cy;
         sprite.zIndex = Math.floor(cy + TILE_H * 0.4);
         buildingLayer.addChild(sprite);
         buildingSpriteMap.set(b.id, sprite);
@@ -299,6 +345,7 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
 
       // ---- Sprite pools ----
       const enemySpriteMap = new Map<number, AnimatedSprite>();
+      const enemyArrowMap = new Map<number, Graphics>();
       const defenderSpriteMap = new Map<number, AnimatedSprite>();
       const archerSpriteMap = new Map<number, AnimatedSprite>();
       const arrowSpriteMap = new Map<number, Sprite>();
@@ -378,9 +425,20 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
             battleLayer.addChild(sprite);
             enemySpriteMap.set(enemy.id, sprite);
           }
+          // Tracker arrow above head (always visible, bobs + pulses red)
+          let arrow = enemyArrowMap.get(enemy.id);
+          if (!arrow && enemy.state !== 'dead') {
+            arrow = new Graphics();
+            arrow.poly([-9, 0, 9, 0, 0, 13]).fill({ color: 0xff3838 }).stroke({ color: 0x0d0a06, width: 2 });
+            arrow.zIndex = 99999998;
+            fxLayer.addChild(arrow);
+            enemyArrowMap.set(enemy.id, arrow);
+          }
           if (enemy.state === 'dead') {
             sprite.alpha = Math.max(0, sprite.alpha - rawDt * 3);
             if (sprite.alpha <= 0) { battleLayer.removeChild(sprite); enemySpriteMap.delete(enemy.id); }
+            const a = enemyArrowMap.get(enemy.id);
+            if (a) { fxLayer.removeChild(a); a.destroy(); enemyArrowMap.delete(enemy.id); }
           } else {
             sprite.x = enemy.x; sprite.y = enemy.y;
             sprite.zIndex = Math.floor(enemy.y);
@@ -388,6 +446,13 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
             sprite.scale.set(enemy.facingLeft ? -sc : sc, sc);
             const want = enemy.state === 'walk' ? enemyUnit.run : enemy.state === 'attack' ? enemyUnit.attack : enemyUnit.idle;
             if (sprite.textures !== want) { sprite.textures = want; sprite.play(); }
+            if (arrow) {
+              const bob = Math.sin(Date.now() / 180) * 4;
+              arrow.x = enemy.x;
+              arrow.y = enemy.y - TILE_W * 1.8 + bob;
+              const pulse = 1 + Math.sin(Date.now() / 200) * 0.18;
+              arrow.scale.set(pulse);
+            }
           }
         }
 

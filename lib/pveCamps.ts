@@ -24,8 +24,8 @@ export interface PveCamp {
 /** Multipliers per difficulty level. */
 export const DIFFICULTY_MULT: Record<Difficulty, { enemyCount: number; enemyHp: number; cost: number; reward: number; label: string; color: string }> = {
   easy:   { enemyCount: 1.0, enemyHp: 1.0, cost: 1.0, reward: 1.0, label: 'Makkelijk', color: '#6BA368' },
-  normal: { enemyCount: 1.5, enemyHp: 1.4, cost: 1.5, reward: 2.0, label: 'Normaal',   color: '#E8B84A' },
-  hard:   { enemyCount: 2.0, enemyHp: 2.0, cost: 2.5, reward: 3.5, label: 'Moeilijk',  color: '#C75B3D' },
+  normal: { enemyCount: 2.2, enemyHp: 2.0, cost: 1.5, reward: 2.5, label: 'Normaal',   color: '#E8B84A' },
+  hard:   { enemyCount: 3.2, enemyHp: 3.0, cost: 2.5, reward: 4.5, label: 'Moeilijk',  color: '#C75B3D' },
 };
 
 export const CAMPS: PveCamp[] = [
