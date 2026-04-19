@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Tile Verification</title>
+<style>
+  body { background: #222; color: #fff; font: 14px monospace; margin: 20px; }
+  .section { margin: 20px 0; }
+  .section h2 { color: #fdd069; }
+  .tiles { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tile-box { text-align: center; }
+  .tile-box canvas { border: 1px solid #555; display: block; }
+  .tile-box span { font-size: 10px; color: #aaa; }
+</style>
+</head><body>
+<h1>Farm Tileset Tile Verification</h1>
+<p>Each tile is shown at 4x zoom (64×64px from 16×16 source)</p>
+
+<div id="sections"></div>
+
+<script>
+const TILE = 16;
+const COLS = 75;
+const img = new Image();
+img.src = '/assets/farm/tilesets/farm_spring_summer.png';
+img.onload = () => {
+  const sections = {
+    'Water + Coast 3×3 (Frame 1)': [
+      { c: 0, r: 21, label: 'water' },
+      { c: 1, r: 22, label: 'coast NW' }, { c: 2, r: 22, label: 'coast N' }, { c: 3, r: 22, label: 'coast NE' },
+      { c: 1, r: 23, label: 'coast W' },  { c: 2, r: 23, label: 'coast C' }, { c: 3, r: 23, label: 'coast E' },
+      { c: 1, r: 24, label: 'coast SW' }, { c: 2, r: 24, label: 'coast S' }, { c: 3, r: 24, label: 'coast SE' },
+    ],
+    'Coast Inner Corners': [
+      { c: 5, r: 21, label: 'inner NW' }, { c: 8, r: 21, label: 'inner NE' },
+      { c: 5, r: 24, label: 'inner SW' }, { c: 8, r: 24, label: 'inner SE' },
+    ],
+    'Water Edge Frame 1 (around pond preview)': [
+      { c: 0, r: 21, label: 'WE NW' }, { c: 1, r: 21, label: 'WE N' },  { c: 2, r: 21, label: 'WE ?' }, { c: 3, r: 21, label: 'WE NE' },
+      { c: 0, r: 22, label: 'WE W' },  { c: 3, r: 22, label: 'WE E' },
+      { c: 0, r: 23, label: 'WE W2' }, { c: 3, r: 23, label: 'WE E2' },
+      { c: 0, r: 24, label: 'WE SW' }, { c: 1, r: 24, label: 'WE S' },  { c: 2, r: 24, label: 'WE ?' }, { c: 3, r: 24, label: 'WE SE' },
+    ],
+    'Grass Tiles': [
+      { c: 19, r: 0, label: 'grass A' }, { c: 20, r: 0, label: 'grass B' },
+      { c: 19, r: 1, label: 'grass C' }, { c: 20, r: 1, label: 'grass D' },
+      { c: 21, r: 1, label: 'grass E' },
+    ],
+    'Sand/Path Autotile 3×3': [
+      { c: 15, r: 36, label: 'stg NW' }, { c: 16, r: 36, label: 'stg N' }, { c: 17, r: 36, label: 'stg NE' },
+      { c: 15, r: 37, label: 'stg W' },  { c: 16, r: 37, label: 'stg C/fill' }, { c: 17, r: 37, label: 'stg E' },
+      { c: 15, r: 38, label: 'stg SW' }, { c: 16, r: 38, label: 'stg S' }, { c: 17, r: 38, label: 'stg SE' },
+    ],
+    'Full Coast Area Rows 21-25': Array.from({length: 50}, (_, i) => ({
+      c: i % 10, r: 21 + Math.floor(i / 10), label: `${i%10},${21+Math.floor(i/10)}`
+    })),
+    'Full Tileset Row 0-5 Cols 13-26 (grass/flowers/decor)': (() => {
+      const tiles = [];
+      for (let r = 0; r <= 7; r++) {
+        for (let c = 13; c <= 26; c++) {
+          tiles.push({ c, r, label: `${c},${r}` });
+        }
+      }
+      return tiles;
+    })(),
+    'Cliff/Terrain Rows 8-20 Cols 0-10': (() => {
+      const tiles = [];
+      for (let r = 8; r <= 20; r++) {
+        for (let c = 0; c <= 10; c++) {
+          tiles.push({ c, r, label: `${c},${r}` });
+        }
+      }
+      return tiles;
+    })(),
+  };
+
+  const container = document.getElementById('sections');
+  for (const [name, tiles] of Object.entries(sections)) {
+    const section = document.createElement('div');
+    section.className = 'section';
+    section.innerHTML = `<h2>${name}</h2><div class="tiles"></div>`;
+    const tilesDiv = section.querySelector('.tiles');
+    for (const t of tiles) {
+      const box = document.createElement('div');
+      box.className = 'tile-box';
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, t.c * TILE, t.r * TILE, TILE, TILE, 0, 0, 64, 64);
+      box.appendChild(canvas);
+      box.innerHTML += `<span>${t.label}</span>`;
+      tilesDiv.appendChild(box);
+    }
+    container.appendChild(section);
+  }
+};
+</script>
+</body></html>

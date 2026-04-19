@@ -8,6 +8,13 @@ import TaskTimer from './components/TaskTimer';
 import GameShell from './components/GameShell';
 import CityPreview from './components/CityPreview';
 import BookPicker from './components/BookPicker';
+import ProfileModal from './components/modals/ProfileModal';
+import StreakModal from './components/modals/StreakModal';
+import QuickSettingsModal from './components/modals/QuickSettingsModal';
+import InboxModal from './components/modals/InboxModal';
+import ChestOpenModal from './components/modals/ChestOpenModal';
+import LeagueModal from './components/modals/LeagueModal';
+import PassModal from './components/modals/PassModal';
 import { vibrate } from '@/lib/juice';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
@@ -59,13 +66,22 @@ export default function Home() {
   const { coins, award } = useCoins();
   const { trophies, awardTrophies } = useTrophies();
   const [streak, setStreak] = useState(0);
+  const [streakLongest, setStreakLongest] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
+  const [buildings, setBuildings] = useState(0);
+  const [modal, setModal] = useState<'profile' | 'streak' | 'settings' | 'inbox' | 'pass' | 'league' | null>(null);
+  const [chestModal, setChestModal] = useState<'wood' | 'silver' | 'gold' | null>(null);
 
   const chosenTask = pick.chosenId ? tasks.find(t => t.id === pick.chosenId) ?? null : null;
   const showPickerModal = !chosenTask && !pick.completed;
 
   useEffect(() => {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
-    setStreak(loadStreakLS().current || 0);
+    const s = loadStreakLS();
+    setStreak(s.current || 0);
+    setStreakLongest(s.longest || 0);
+    setStreakDays((s.history || []).length);
+    try { setBuildings(loadCity().buildings.length); } catch { /* ignore */ }
   }, []);
 
   const completeStreak = useCallback(() => {
@@ -152,7 +168,11 @@ export default function Home() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 340, damping: 28, delay: 0.1 }}
         >
-          <div className="bh-player-chip">
+          <button
+            className="bh-player-chip"
+            onClick={() => { vibrate(10); setModal('profile'); }}
+            style={{ border: 'none', cursor: 'pointer' }}
+          >
             <div className="bh-avatar" aria-label={`Niveau ${level}`}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
                 <path d="M7 8 Q7 3 14 3 Q21 3 21 8 L21 16 Q21 20 18 21 L18 25 L10 25 L10 21 Q7 20 7 16 Z"
@@ -171,7 +191,7 @@ export default function Home() {
                 <div className="bh-xp-label">{xp} / {xpMax}</div>
               </div>
             </div>
-          </div>
+          </button>
 
           <motion.div
             className="bh-stat"
@@ -194,14 +214,14 @@ export default function Home() {
             </motion.span>
           </motion.div>
 
-          <MLink
-            href="/league"
+          <motion.button
             className="bh-stat bh-stat-link"
-            onClick={() => vibrate(10)}
+            onClick={() => { vibrate(10); setModal('league'); }}
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             whileTap={{ scale: 0.92 }}
             transition={{ type: 'spring', stiffness: 480, damping: 18, delay: 0.38 }}
+            style={{ border: 'none', cursor: 'pointer' }}
           >
             <svg className="bh-trophy" viewBox="0 0 20 20" aria-hidden>
               <path d="M5 3 L15 3 L15 9 Q15 13 10 14 Q5 13 5 9 Z" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.3" />
@@ -217,7 +237,7 @@ export default function Home() {
             >
               {trophies}
             </motion.span>
-          </MLink>
+          </motion.button>
         </motion.div>
 
         {/* SIDE RAIL — streak, settings, meer */}
@@ -230,7 +250,7 @@ export default function Home() {
           <motion.button
             className="bh-rail-btn"
             aria-label="Streak"
-            onClick={() => vibrate(10)}
+            onClick={() => { vibrate(10); setModal('streak'); }}
             whileTap={{ scale: 0.92 }}
             whileHover={{ y: -2 }}
             transition={{ type: 'spring', stiffness: 500, damping: 22 }}
@@ -243,11 +263,10 @@ export default function Home() {
             </svg>
             {streak > 0 && <span className="bh-notif">{streak}</span>}
           </motion.button>
-          <MLink
-            href="/settings"
+          <motion.button
             className="bh-rail-btn"
             aria-label="Instellingen"
-            onClick={() => vibrate(10)}
+            onClick={() => { vibrate(10); setModal('settings'); }}
             whileTap={{ scale: 0.92 }}
             whileHover={{ y: -2 }}
             transition={{ type: 'spring', stiffness: 500, damping: 22 }}
@@ -258,12 +277,11 @@ export default function Home() {
                 stroke="#E8D5A3" strokeWidth="2" strokeLinecap="round" />
               <circle cx="13" cy="13" r="2" fill="#1A0A02" />
             </svg>
-          </MLink>
-          <MLink
-            href="/meer"
+          </motion.button>
+          <motion.button
             className="bh-rail-btn"
             aria-label="Inbox"
-            onClick={() => vibrate(10)}
+            onClick={() => { vibrate(10); setModal('inbox'); }}
             whileTap={{ scale: 0.92 }}
             whileHover={{ y: -2 }}
             transition={{ type: 'spring', stiffness: 500, damping: 22 }}
@@ -273,7 +291,37 @@ export default function Home() {
               <path d="M3 4 L12 12 L21 4" fill="none" stroke="#1A0A02" strokeWidth="1.3" />
               <path d="M3 17 L9 11 M21 17 L15 11" stroke="#1A0A02" strokeWidth="1" />
             </svg>
-          </MLink>
+          </motion.button>
+          <motion.button
+            className="bh-rail-btn"
+            aria-label="Battle Pass"
+            onClick={() => { vibrate(10); setModal('pass'); }}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          >
+            <svg width="22" height="26" viewBox="0 0 22 26" fill="none" aria-hidden>
+              <path d="M3 4 L19 4 L19 20 L11 24 L3 20 Z" fill="#d43b2a" stroke="#1A0A02" strokeWidth="1.5" strokeLinejoin="round" />
+              <path d="M7 10 L11 14 L15 10 M11 14 L11 19" stroke="#F5C842" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="11" cy="7" r="1.5" fill="#F5C842" />
+            </svg>
+            <span className="bh-notif">NEW</span>
+          </motion.button>
+          <motion.button
+            className="bh-rail-btn"
+            aria-label="League"
+            onClick={() => { vibrate(10); setModal('league'); }}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          >
+            <svg width="22" height="26" viewBox="0 0 22 26" fill="none" aria-hidden>
+              <path d="M5 4 L17 4 L17 10 Q17 16 11 17 Q5 16 5 10 Z" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.4" />
+              <path d="M5 6 Q2 6 2 10 Q2 12 5 12 M17 6 Q20 6 20 10 Q20 12 17 12" fill="none" stroke="#1A0A02" strokeWidth="1.4" />
+              <rect x="9" y="17" width="4" height="3" fill="#C8882A" stroke="#1A0A02" strokeWidth="1" />
+              <rect x="6" y="20" width="10" height="2" fill="#8e5a18" stroke="#1A0A02" strokeWidth="1" />
+            </svg>
+          </motion.button>
         </motion.div>
 
         {/* BASE — dark stone panel: opdracht hero + chests + tabs */}
@@ -349,7 +397,7 @@ export default function Home() {
             </div>
             <div className="bh-chests">
               {/* READY (placeholder — wire to free chest state later) */}
-              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Houten kist gereed">
+              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Houten kist gereed" onClick={() => { vibrate(12); setChestModal('wood'); }}>
                 <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#7a4320" stroke="#1A0A02" strokeWidth="1.5" />
@@ -362,7 +410,7 @@ export default function Home() {
                 </motion.div>
                 <span className="bh-chest-status bh-chest-ready">OPEN</span>
               </motion.button>
-              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Zilveren kist">
+              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Zilveren kist" onClick={() => { vibrate(12); setChestModal('silver'); }}>
                 <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#4a5a6a" stroke="#1A0A02" strokeWidth="1.5" />
@@ -375,7 +423,7 @@ export default function Home() {
                 <span className="bh-chest-status bh-chest-timer">2:14:38</span>
                 <span className="bh-chest-count">2</span>
               </motion.button>
-              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Gouden kist">
+              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Gouden kist" onClick={() => { vibrate(12); setChestModal('gold'); }}>
                 <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
                   <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
                     <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#C8882A" stroke="#1A0A02" strokeWidth="1.5" />
@@ -439,6 +487,28 @@ export default function Home() {
         </motion.div>
       </div>
 
+      {/* Modals */}
+      <ProfileModal
+        open={modal === 'profile'}
+        onClose={() => setModal(null)}
+        stats={{
+          level, xp, xpMax,
+          coins, trophies,
+          streakCurrent: streak, streakLongest,
+          buildings, completed: streakDays,
+        }}
+      />
+      <StreakModal open={modal === 'streak'} onClose={() => setModal(null)} />
+      <QuickSettingsModal open={modal === 'settings'} onClose={() => setModal(null)} />
+      <InboxModal open={modal === 'inbox'} onClose={() => setModal(null)} />
+      <PassModal open={modal === 'pass'} onClose={() => setModal(null)} trophies={trophies} />
+      <LeagueModal open={modal === 'league'} onClose={() => setModal(null)} trophies={trophies} />
+      <ChestOpenModal
+        open={chestModal !== null}
+        onClose={() => setChestModal(null)}
+        kind={chestModal ?? 'wood'}
+      />
+
       {/* Timer modal */}
       {showTimerModal && chosenTask && (
         <div
@@ -487,15 +557,19 @@ export default function Home() {
           pointer-events: none; z-index: 2;
         }
         .bh-stage-bot-fade {
-          position: absolute; left: 0; right: 0; bottom: 0; height: 170px;
-          /* Water (#2f6e8c teal) → deep dusk water → panel-top color
-             (#0d1a2a). Same hue family the whole way, just darker. */
-          background: linear-gradient(180deg,
-            transparent 0%,
-            rgba(20,55,80,.35) 28%,
-            rgba(14,38,58,.65) 55%,
-            rgba(10,24,40,.88) 80%,
-            rgba(13,26,42,1) 100%);
+          position: absolute; left: 0; right: 0; bottom: 0; height: 210px;
+          /* Water (#2f6e8c teal) → deep dusk water → panel-top (#0d1a2a).
+             Noise overlay breaks up banding so the transition reads as
+             atmospheric haze instead of a gradient. */
+          background:
+            url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence baseFrequency='1.1' numOctaves='2' seed='11'/><feColorMatrix values='0 0 0 0 .06  0 0 0 0 .1  0 0 0 0 .15  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+            linear-gradient(180deg,
+              transparent 0%,
+              rgba(20,55,80,.18) 18%,
+              rgba(18,50,75,.42) 38%,
+              rgba(14,38,58,.68) 60%,
+              rgba(11,28,45,.88) 82%,
+              rgba(13,26,42,1) 100%);
           pointer-events: none; z-index: 2;
         }
 
@@ -618,12 +692,12 @@ export default function Home() {
         .bh-rail {
           /* motion.div uses transform for x-slide; use plain top/bottom,
              not translateY, so entrance animation isn't overridden */
-          position: absolute; right: 10px; top: 38%;
+          position: absolute; right: 10px; top: 90px;
           z-index: 15;
-          display: flex; flex-direction: column; gap: 12px;
+          display: flex; flex-direction: column; gap: 8px;
         }
         .bh-rail-btn {
-          position: relative; width: 54px; height: 54px;
+          position: relative; width: 46px; height: 46px;
           border: none; cursor: pointer;
           border-radius: 12px;
           background: linear-gradient(180deg, #7a4320 0%, #3a1e0a 55%, #1a0a02 100%);
