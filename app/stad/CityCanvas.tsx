@@ -648,47 +648,9 @@ export default function CityCanvas({
         tileLayer.addChild(sprite);
       }
 
-      // ---- Water-edge foam on water cells bordering grass ----
-      {
-        const isGrass = (rx: number, ry: number) =>
-          (elevation[ry]?.[rx] ?? 0) === 3;
-        const isW = (rx: number, ry: number) => {
-          const v = elevation[ry]?.[rx] ?? 0;
-          return v === 0 || v === 1;
-        };
-        for (let ry = 0; ry < MAP_ROWS; ry++) {
-          for (let rx = 0; rx < MAP_COLS; rx++) {
-            if (!isW(rx, ry)) continue;
-            const gN = isGrass(rx, ry - 1);
-            const gS = isGrass(rx, ry + 1);
-            const gW = isGrass(rx - 1, ry);
-            const gE = isGrass(rx + 1, ry);
-            let tex: Texture | null = null;
-            if (gN && gW) tex = terrain.waterEdge.NW[0];
-            else if (gN && gE) tex = terrain.waterEdge.NE[0];
-            else if (gS && gW) tex = terrain.waterEdge.SW[0];
-            else if (gS && gE) tex = terrain.waterEdge.SE[0];
-            else if (gN) tex = terrain.waterEdge.N[0];
-            else if (gS) tex = terrain.waterEdge.S[0];
-            else if (gW) tex = terrain.waterEdge.W[0];
-            else if (gE) tex = terrain.waterEdge.E[0];
-            else {
-              // Diagonal-only: inner corner (land juts into water at corner)
-              if (isGrass(rx - 1, ry - 1)) tex = terrain.coastInner[0];
-              else if (isGrass(rx + 1, ry - 1)) tex = terrain.coastInner[1];
-              else if (isGrass(rx - 1, ry + 1)) tex = terrain.coastInner[2];
-              else if (isGrass(rx + 1, ry + 1)) tex = terrain.coastInner[3];
-            }
-            if (!tex) continue;
-            const gx = worldGx(rx), gy = worldGy(ry);
-            const sprite = new Sprite(tex);
-            sprite.anchor.set(0, 0);
-            sprite.position.set(gx * TILE_W, gy * TILE_H);
-            sprite.width = TILE_W; sprite.height = TILE_H;
-            tileLayer.addChild(sprite);
-          }
-        }
-      }
+      // Note: coast-tile autotile is disabled. These tiles are pond-specific
+      // (4×4 water-with-land-corners) and don't tile seamlessly along a big
+      // coastline. Relying on grass → shallow-water gradient instead.
 
       // ---- Central cobblestone plaza under the windmill (9×9 symmetric) ----
       const PLAZA_RADIUS = 4;
@@ -917,8 +879,7 @@ export default function CityCanvas({
         if (!tex) continue;
         const sprite = new Sprite(tex);
         sprite.anchor.set(0.5, 0.9);
-        // Trees are 1.5x bigger than before for that lush canopy feel
-        const treeScale = (TILE_W * tp.scale * 1.5) / Math.max(tex.width, tex.height);
+        const treeScale = (TILE_W * tp.scale * 1.0) / Math.max(tex.width, tex.height);
         sprite.scale.set(treeScale);
         sprite.position.set(px, py);
         sprite.zIndex = Math.floor(py);
@@ -1185,6 +1146,7 @@ export default function CityCanvas({
       }
 
       // ---- Windmill focal point (animated, dead-center on plaza) ----
+      // Placed in decorLayer so tree y-sort can overlap naturally.
       if (terrain.windmill && terrain.windmill.frames.length > 0) {
         const mill = new AnimatedSprite(terrain.windmill.frames);
         mill.anchor.set(0.5, 1.0);
@@ -1196,7 +1158,7 @@ export default function CityCanvas({
         mill.animationSpeed = 0.12;
         mill.play();
         mill.zIndex = my;
-        buildingLayer.addChild(mill);
+        decorLayer.addChild(mill);
       }
 
       // ---- Gate on south edge of plaza ----
@@ -1225,13 +1187,13 @@ export default function CityCanvas({
         const gsx = CITY_CENTER.gx * TILE_W + TILE_W / 2;
         const gsy = (CITY_CENTER.gy + 5) * TILE_H + TILE_H / 2;
         gate.position.set(gsx, gsy);
-        const gateScale = (3 * TILE_W) / frameW;
+        const gateScale = (2 * TILE_W) / frameW;
         gate.scale.set(gateScale);
         gate.animationSpeed = 0.08;
         gate.loop = true;
         gate.play();
         gate.zIndex = gsy;
-        buildingLayer.addChild(gate);
+        decorLayer.addChild(gate);
       }
 
       // ---- Centering and zoom ----
