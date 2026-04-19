@@ -25,38 +25,33 @@ interface Reward {
   label: string;
   amount: number;
   color: string;
+  rarity: 'common' | 'rare' | 'epic';
 }
 
 function rollRewards(kind: ChestKind): Reward[] {
   const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
   const pool: Reward[] = [];
   if (kind === 'wood') {
-    pool.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(40, 90), color: '#F5C842' });
-    if (Math.random() < 0.35) {
-      pool.push({ id: 'speed', icon: '⚡', label: 'Bouw-versneller', amount: 1, color: '#6fd4f0' });
-    }
+    pool.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(40, 90), color: '#F5C842', rarity: 'common' });
+    if (Math.random() < 0.4) pool.push({ id: 'speed', icon: '⚡', label: 'Bouwversneller', amount: 1, color: '#6fd4f0', rarity: 'rare' });
   } else if (kind === 'silver') {
-    pool.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(120, 260), color: '#F5C842' });
-    pool.push({ id: 'speed', icon: '⚡', label: 'Bouw-versneller', amount: rand(1, 2), color: '#6fd4f0' });
-    if (Math.random() < 0.4) {
-      pool.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(2, 5), color: '#b080e0' });
-    }
+    pool.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(140, 280), color: '#F5C842', rarity: 'common' });
+    pool.push({ id: 'speed', icon: '⚡', label: 'Bouwversneller', amount: rand(1, 2), color: '#6fd4f0', rarity: 'rare' });
+    if (Math.random() < 0.5) pool.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(2, 6), color: '#b080e0', rarity: 'epic' });
   } else {
-    pool.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(350, 600), color: '#F5C842' });
-    pool.push({ id: 'speed', icon: '⚡', label: 'Bouw-versneller', amount: rand(2, 4), color: '#6fd4f0' });
-    pool.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(6, 12), color: '#b080e0' });
-    if (Math.random() < 0.5) {
-      pool.push({ id: 'gems', icon: '💎', label: 'Gems', amount: rand(2, 8), color: '#6fd4f0' });
-    }
+    pool.push({ id: 'coins', icon: '🪙', label: 'Coins', amount: rand(380, 700), color: '#F5C842', rarity: 'common' });
+    pool.push({ id: 'speed', icon: '⚡', label: 'Bouwversneller', amount: rand(2, 4), color: '#6fd4f0', rarity: 'rare' });
+    pool.push({ id: 'trophies', icon: '🏆', label: 'Trofeeën', amount: rand(6, 14), color: '#b080e0', rarity: 'epic' });
+    if (Math.random() < 0.5) pool.push({ id: 'gems', icon: '💎', label: 'Edelstenen', amount: rand(3, 10), color: '#6fd4f0', rarity: 'epic' });
   }
   return pool;
 }
 
-function chestPalette(kind: ChestKind) {
-  if (kind === 'wood')   return { body: '#7a4320', lid: '#c98c1a', gold: '#F5C842', label: 'HOUTEN KIST' };
-  if (kind === 'silver') return { body: '#4a5a6a', lid: '#9aaab8', gold: '#d0dae4', label: 'ZILVEREN KIST' };
-  return { body: '#C8882A', lid: '#F5C842', gold: '#ffe07a', label: 'GOUDEN KIST' };
-}
+const CHEST_SKIN: Record<ChestKind, { label: string; filter: string; glow: string; accent: string }> = {
+  wood:   { label: 'HOUTEN KIST',   filter: 'saturate(0.55) brightness(0.95) hue-rotate(-14deg)', glow: '#c98c1a', accent: '#7a4320' },
+  silver: { label: 'ZILVEREN KIST', filter: 'grayscale(0.95) brightness(1.08) contrast(1.02)',    glow: '#d0dae4', accent: '#9aaab8' },
+  gold:   { label: 'GOUDEN KIST',   filter: 'saturate(1.15) brightness(1.04)',                    glow: '#ffe07a', accent: '#F5C842' },
+};
 
 type Phase = 'idle' | 'shake' | 'burst' | 'reveal' | 'done';
 
@@ -66,9 +61,11 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
   const [claimed, setClaimed] = useState(false);
   const { award } = useCoins();
   const { awardTrophies } = useTrophies();
-  const palette = useMemo(() => chestPalette(kind), [kind]);
+  const skin = CHEST_SKIN[kind];
+  const glow = skin.glow;
+  const accent = skin.accent;
 
-  // Reset state when modal opens
+  // Reset on open
   useEffect(() => {
     if (!open) return;
     setPhase('idle');
@@ -80,14 +77,14 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
     if (phase !== 'idle') return;
     sfxTap();
     setPhase('shake');
-    await wait(900);
+    await wait(950);
     sfxClaim();
     setPhase('burst');
     const drops = rollRewards(kind);
     setRewards(drops);
-    await wait(450);
+    await wait(700);
     setPhase('reveal');
-    await wait(300 + drops.length * 260);
+    await wait(400 + drops.length * 280);
     setPhase('done');
   }
 
@@ -96,175 +93,239 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
     sfxClaim();
     for (const r of rewards) {
       if (r.id === 'coins') award(r.amount);
-      if (r.id === 'trophies') awardTrophies(r.amount, `Kist geopend (${kind})`);
+      if (r.id === 'trophies') awardTrophies(r.amount, `Kist (${kind})`);
       if (r.id === 'speed') saveCity(addSpeedTokens(loadCity(), r.amount));
-      // gems: placeholder (no live state yet)
     }
     setClaimed(true);
     window.setTimeout(onClose, 520);
   }
 
+  // Screen-shake wrapper variants
+  const shakeVariants = useMemo(() => ({
+    idle:  { x: 0, y: 0 },
+    shake: { x: [0, -6, 6, -4, 4, -2, 2, 0], y: [0, -3, 2, -2, 2, 0], transition: { duration: 0.9, ease: 'easeInOut' as const } },
+    burst: { x: [0, -12, 12, 0], y: [0, -8, 0], transition: { duration: 0.35, ease: 'easeOut' as const } },
+    reveal: { x: 0, y: 0 },
+    done: { x: 0, y: 0 },
+  }), []);
+
   return (
-    <BHModal open={open} onClose={onClose} title={palette.label} subtitle={phase === 'idle' ? 'Tik om te openen' : undefined}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, minHeight: 320 }}>
-        {/* Chest stage */}
+    <BHModal open={open} onClose={onClose} title={skin.label} accent={accent}>
+      <motion.div
+        animate={phase}
+        variants={shakeVariants}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, minHeight: 340 }}
+      >
+        {/* ============= CHEST STAGE ============= */}
         <div
           style={{
             position: 'relative',
-            width: 220,
-            height: 180,
+            width: '100%',
+            height: 200,
             display: 'grid',
             placeItems: 'center',
+            overflow: 'visible',
           }}
         >
-          {/* glow burst */}
+          {/* god-ray beams (during burst/reveal) */}
           <AnimatePresence>
             {(phase === 'burst' || phase === 'reveal' || phase === 'done') && (
               <motion.div
-                initial={{ scale: 0.2, opacity: 0.9 }}
-                animate={{ scale: 3, opacity: 0 }}
+                initial={{ opacity: 0, scale: 0.4, rotate: 0 }}
+                animate={{ opacity: [0.9, 0.7, 0.4], scale: 2.2, rotate: 90 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.9, ease: 'easeOut' }}
+                transition={{ duration: 1.2, ease: 'easeOut' }}
                 style={{
                   position: 'absolute', inset: 0,
-                  background: `radial-gradient(circle at center, ${palette.gold} 0%, ${palette.gold}88 25%, transparent 60%)`,
+                  backgroundImage: `conic-gradient(from 0deg at 50% 50%,
+                    ${glow}00 0deg,   ${glow}aa 12deg,  ${glow}00 24deg,
+                    ${glow}00 45deg,  ${glow}88 57deg,  ${glow}00 69deg,
+                    ${glow}00 90deg,  ${glow}aa 102deg, ${glow}00 114deg,
+                    ${glow}00 135deg, ${glow}88 147deg, ${glow}00 159deg,
+                    ${glow}00 180deg, ${glow}aa 192deg, ${glow}00 204deg,
+                    ${glow}00 225deg, ${glow}88 237deg, ${glow}00 249deg,
+                    ${glow}00 270deg, ${glow}aa 282deg, ${glow}00 294deg,
+                    ${glow}00 315deg, ${glow}88 327deg, ${glow}00 339deg)`,
+                  mixBlendMode: 'screen',
                   pointerEvents: 'none',
+                  maskImage: 'radial-gradient(circle at center, black 0%, black 35%, transparent 75%)',
+                  WebkitMaskImage: 'radial-gradient(circle at center, black 0%, black 35%, transparent 75%)',
                 }}
               />
             )}
           </AnimatePresence>
 
-          {/* Chest */}
+          {/* radial glow disk underneath */}
+          <AnimatePresence>
+            {phase !== 'idle' && (
+              <motion.div
+                initial={{ scale: 0.2, opacity: 0 }}
+                animate={{ scale: phase === 'shake' ? 1 : 3, opacity: phase === 'shake' ? 0.35 : 0 }}
+                transition={{ duration: phase === 'shake' ? 0.9 : 1.1, ease: 'easeOut' }}
+                style={{
+                  position: 'absolute', inset: 0,
+                  background: `radial-gradient(circle at center, ${glow}cc 0%, ${glow}55 30%, transparent 65%)`,
+                  pointerEvents: 'none',
+                  mixBlendMode: 'screen',
+                }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* floor shadow */}
+          <motion.div
+            animate={{
+              scale: phase === 'burst' || phase === 'reveal' || phase === 'done' ? 1.4 : 1,
+              opacity: phase === 'burst' ? 0.55 : 0.4,
+            }}
+            transition={{ duration: 0.4 }}
+            style={{
+              position: 'absolute', bottom: 28,
+              width: 180, height: 24, borderRadius: '50%',
+              background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%)',
+              filter: 'blur(2px)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* chest image */}
           <motion.button
             onClick={openChest}
             disabled={phase !== 'idle'}
             aria-label="Open kist"
             animate={
-              phase === 'shake'
-                ? { rotate: [0, -8, 8, -6, 6, -3, 3, 0], scale: [1, 1.05, 1] }
-                : phase === 'burst'
-                  ? { scale: 1.15, rotate: 0 }
-                  : { scale: 1, rotate: 0 }
+              phase === 'idle'
+                ? { y: [0, -4, 0], rotate: 0, scale: 1 }
+                : phase === 'shake'
+                  ? { rotate: [0, -10, 10, -8, 8, -4, 4, 0], scale: [1, 1.06, 1.09, 1.06, 1], y: [0, -2, -4, -2, 0] }
+                  : phase === 'burst'
+                    ? { rotate: 0, scale: [1, 1.4, 1.25], y: [0, -18, -8] }
+                    : { rotate: 0, scale: 1, y: 0 }
             }
             transition={
-              phase === 'shake'
-                ? { duration: 0.9, ease: 'easeInOut' }
-                : { type: 'spring', stiffness: 300, damping: 18 }
+              phase === 'idle'
+                ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }
+                : phase === 'shake'
+                  ? { duration: 0.95, ease: 'easeInOut' }
+                  : phase === 'burst'
+                    ? { duration: 0.7, ease: 'easeOut' }
+                    : { type: 'spring', stiffness: 240, damping: 20 }
             }
-            whileHover={phase === 'idle' ? { y: -4 } : undefined}
+            whileHover={phase === 'idle' ? { scale: 1.04 } : undefined}
             style={{
-              background: 'transparent', border: 'none',
+              position: 'relative', zIndex: 3,
+              background: 'transparent', border: 'none', padding: 0,
               cursor: phase === 'idle' ? 'pointer' : 'default',
-              position: 'relative', zIndex: 2,
-              padding: 0,
+              filter: `drop-shadow(0 10px 14px rgba(0,0,0,0.55)) drop-shadow(0 0 18px ${glow}88)`,
             }}
           >
-            <svg width="140" height="120" viewBox="0 0 42 38" fill="none">
-              {/* body */}
-              <path d="M3 14 L39 14 L39 34 L3 34 Z" fill={palette.body} stroke="#1A0A02" strokeWidth="1.5" />
-              {/* lid — lifts on burst */}
-              <motion.g
-                animate={
-                  phase === 'burst' || phase === 'reveal' || phase === 'done'
-                    ? { y: -12, rotate: -18 }
-                    : { y: 0, rotate: 0 }
-                }
-                transition={{ type: 'spring', stiffness: 220, damping: 14 }}
-                style={{ transformOrigin: '3px 14px' }}
-              >
-                <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill={palette.lid} stroke="#1A0A02" strokeWidth="1.5" />
-              </motion.g>
-              <rect x="3" y="18" width="36" height="3" fill={palette.gold} stroke="#1A0A02" strokeWidth=".8" />
-              <rect x="17" y="14" width="8" height="12" fill={palette.gold} stroke="#1A0A02" strokeWidth=".8" />
-              <circle cx="21" cy="21" r="1.4" fill="#1A0A02" />
-            </svg>
+            <img
+              src="/assets/icons-rpg/kist.png"
+              alt=""
+              draggable={false}
+              style={{
+                width: 150,
+                height: 'auto',
+                display: 'block',
+                filter: skin.filter,
+                imageRendering: 'auto',
+              }}
+            />
           </motion.button>
 
-          {/* sparkles during burst */}
+          {/* burst sparkles */}
           {(phase === 'burst' || phase === 'reveal') && (
             <>
-              {Array.from({ length: 14 }).map((_, i) => {
-                const angle = (i / 14) * Math.PI * 2;
-                const dist = 60 + Math.random() * 40;
+              {Array.from({ length: 18 }).map((_, i) => {
+                const angle = (i / 18) * Math.PI * 2 + Math.random() * 0.3;
+                const dist = 90 + Math.random() * 80;
+                const sz = 12 + Math.random() * 14;
                 return (
                   <motion.span
                     key={i}
-                    initial={{ x: 0, y: 0, opacity: 1, scale: 0.5 }}
+                    initial={{ x: 0, y: 0, opacity: 1, scale: 0.4, rotate: 0 }}
                     animate={{
                       x: Math.cos(angle) * dist,
-                      y: Math.sin(angle) * dist - 20,
-                      opacity: 0,
-                      scale: 1.2,
+                      y: Math.sin(angle) * dist - 14,
+                      opacity: [1, 1, 0],
+                      scale: [0.4, 1.3, 0.8],
+                      rotate: 360,
                     }}
-                    transition={{ duration: 0.9, ease: 'easeOut', delay: Math.random() * 0.15 }}
+                    transition={{ duration: 1.2, ease: 'easeOut', delay: Math.random() * 0.2 }}
                     style={{
                       position: 'absolute', left: '50%', top: '50%',
-                      fontSize: 18, pointerEvents: 'none',
+                      fontSize: sz,
+                      pointerEvents: 'none',
+                      textShadow: `0 0 8px ${glow}`,
+                      zIndex: 4,
                     }}
                   >
-                    {['✨', '⭐', '💫'][i % 3]}
+                    {['✨', '⭐', '💫', '✦'][i % 4]}
                   </motion.span>
                 );
               })}
             </>
           )}
+
+          {/* white screen flash */}
+          <AnimatePresence>
+            {phase === 'burst' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.9, 0] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.45, ease: 'easeOut' }}
+                style={{
+                  position: 'fixed', inset: 0,
+                  background: `radial-gradient(circle at center, #fff6d0 0%, ${glow}aa 40%, transparent 80%)`,
+                  pointerEvents: 'none',
+                  zIndex: 2147483647,
+                  mixBlendMode: 'screen',
+                }}
+              />
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Rewards reveal */}
-        <AnimatePresence>
-          {phase === 'reveal' || phase === 'done' ? (
+        {/* ============= REWARDS REVEAL ============= */}
+        <AnimatePresence mode="wait">
+          {phase === 'idle' && (
+            <motion.div
+              key="hint"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              style={{ fontFamily: philosopher, fontStyle: 'italic', fontSize: 13, color: '#5a3a22', textAlign: 'center' }}
+            >
+              Tik op de kist om te openen
+            </motion.div>
+          )}
+          {(phase === 'reveal' || phase === 'done') && (
             <motion.div
               key="rewards"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              style={{ width: '100%', display: 'grid', gridTemplateColumns: `repeat(${Math.min(rewards.length, 4)}, 1fr)`, gap: 8 }}
+              exit={{ opacity: 0 }}
+              style={{
+                width: '100%',
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(rewards.length, 4)}, 1fr)`,
+                gap: 8,
+              }}
             >
               {rewards.map((r, i) => (
-                <motion.div
-                  key={r.id}
-                  initial={{ y: 20, opacity: 0, scale: 0.6 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 20, delay: i * 0.22 }}
-                  style={{
-                    padding: '8px 4px',
-                    borderRadius: 10,
-                    background: 'rgba(42,22,8,0.12)',
-                    boxShadow: `inset 0 0 0 1.5px ${r.color}aa, inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 14px ${r.color}55`,
-                    textAlign: 'center',
-                  }}
-                >
-                  <div style={{ fontSize: 28 }}>{r.icon}</div>
-                  <div style={{ fontFamily: cinzel, fontWeight: 900, fontSize: 16, color: '#2a1608', lineHeight: 1 }}>
-                    +{r.amount}
-                  </div>
-                  <div style={{ fontFamily: philosopher, fontSize: 10, color: '#5a3a22', letterSpacing: '0.04em', marginTop: 2 }}>
-                    {r.label}
-                  </div>
-                </motion.div>
+                <RewardCard key={r.id} r={r} index={i} />
               ))}
             </motion.div>
-          ) : (
-            phase === 'idle' && (
-              <motion.div
-                key="hint"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                style={{
-                  fontFamily: philosopher, fontStyle: 'italic', fontSize: 12, color: '#5a3a22', textAlign: 'center',
-                }}
-              >
-                Tik op de kist om te openen
-              </motion.div>
-            )
           )}
         </AnimatePresence>
 
-        {/* Claim button */}
+        {/* ============= CLAIM BUTTON ============= */}
         {phase === 'done' && (
           <motion.button
-            initial={{ y: 16, opacity: 0 }}
+            initial={{ y: 18, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 360, damping: 22, delay: 0.1 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 22, delay: 0.15 }}
             whileTap={{ scale: 0.95 }}
             onClick={claim}
             disabled={claimed}
@@ -285,8 +346,60 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
             {claimed ? '✓ OPGEHAALD' : 'CLAIM'}
           </motion.button>
         )}
-      </div>
+      </motion.div>
     </BHModal>
+  );
+}
+
+function RewardCard({ r, index }: { r: Reward; index: number }) {
+  // Each reward flies out of the chest on a little arc, lands in its grid cell
+  const rarityColor = r.rarity === 'epic' ? '#b080e0' : r.rarity === 'rare' ? '#6fd4f0' : r.color;
+  return (
+    <motion.div
+      initial={{ y: -120, x: (index - 1) * 10, opacity: 0, scale: 0.3, rotate: -25 + index * 15 }}
+      animate={{ y: 0, x: 0, opacity: 1, scale: 1, rotate: 0 }}
+      transition={{
+        type: 'spring', stiffness: 320, damping: 18,
+        delay: 0.1 + index * 0.25,
+      }}
+      style={{
+        position: 'relative',
+        padding: '10px 4px 8px',
+        borderRadius: 10,
+        background: `linear-gradient(180deg, ${rarityColor}2c 0%, ${rarityColor}10 100%)`,
+        boxShadow: `inset 0 0 0 1.5px ${rarityColor}bb, inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 14px ${rarityColor}55`,
+        textAlign: 'center',
+        overflow: 'hidden',
+      }}
+    >
+      {/* rarity shimmer sweep */}
+      {r.rarity !== 'common' && (
+        <motion.div
+          initial={{ x: '-130%' }}
+          animate={{ x: '130%' }}
+          transition={{ duration: 1.6, ease: 'easeInOut', delay: 0.4 + index * 0.25 }}
+          style={{
+            position: 'absolute', inset: 0,
+            background: `linear-gradient(100deg, transparent 40%, ${rarityColor}88 50%, transparent 60%)`,
+            pointerEvents: 'none',
+            mixBlendMode: 'screen',
+          }}
+        />
+      )}
+      <motion.div
+        animate={{ y: [0, -2, 0] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: index * 0.15 }}
+        style={{ fontSize: 28, lineHeight: 1, filter: `drop-shadow(0 2px 4px ${rarityColor}88)` }}
+      >
+        {r.icon}
+      </motion.div>
+      <div style={{ fontFamily: cinzel, fontWeight: 900, fontSize: 17, color: '#2a1608', lineHeight: 1, marginTop: 3 }}>
+        +{r.amount}
+      </div>
+      <div style={{ fontFamily: philosopher, fontSize: 9.5, color: '#5a3a22', letterSpacing: '0.04em', marginTop: 3, lineHeight: 1.1 }}>
+        {r.label}
+      </div>
+    </motion.div>
   );
 }
 

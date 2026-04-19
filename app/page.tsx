@@ -396,56 +396,10 @@ export default function Home() {
               <span className="bh-chests-subtitle">4 / 4 slots</span>
             </div>
             <div className="bh-chests">
-              {/* READY (placeholder — wire to free chest state later) */}
-              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Houten kist gereed" onClick={() => { vibrate(12); setChestModal('wood'); }}>
-                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
-                  <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
-                    <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#7a4320" stroke="#1A0A02" strokeWidth="1.5" />
-                    <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="#c98c1a" stroke="#1A0A02" strokeWidth="1.5" />
-                    <rect x="3" y="18" width="36" height="3" fill="#F5C842" stroke="#1A0A02" strokeWidth=".8" />
-                    <rect x="17" y="14" width="8" height="12" fill="#F5C842" stroke="#1A0A02" strokeWidth=".8" />
-                    <circle cx="21" cy="21" r="1.4" fill="#1A0A02" />
-                    <path d="M21 2 L22 4 L24 5 L22 6 L21 8 L20 6 L18 5 L20 4 Z" fill="#F5C842" stroke="#1A0A02" strokeWidth=".6" />
-                  </svg>
-                </motion.div>
-                <span className="bh-chest-status bh-chest-ready">OPEN</span>
-              </motion.button>
-              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Zilveren kist" onClick={() => { vibrate(12); setChestModal('silver'); }}>
-                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
-                  <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
-                    <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#4a5a6a" stroke="#1A0A02" strokeWidth="1.5" />
-                    <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="#9aaab8" stroke="#1A0A02" strokeWidth="1.5" />
-                    <rect x="3" y="18" width="36" height="3" fill="#d0dae4" stroke="#1A0A02" strokeWidth=".8" />
-                    <rect x="17" y="14" width="8" height="12" fill="#d0dae4" stroke="#1A0A02" strokeWidth=".8" />
-                    <circle cx="21" cy="21" r="1.4" fill="#1A0A02" />
-                  </svg>
-                </motion.div>
-                <span className="bh-chest-status bh-chest-timer">2:14:38</span>
-                <span className="bh-chest-count">2</span>
-              </motion.button>
-              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-active" aria-label="Gouden kist" onClick={() => { vibrate(12); setChestModal('gold'); }}>
-                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
-                  <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
-                    <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="#C8882A" stroke="#1A0A02" strokeWidth="1.5" />
-                    <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="#F5C842" stroke="#1A0A02" strokeWidth="1.5" />
-                    <rect x="3" y="18" width="36" height="3" fill="#ffe07a" stroke="#1A0A02" strokeWidth=".8" />
-                    <rect x="17" y="14" width="8" height="12" fill="#ffe07a" stroke="#1A0A02" strokeWidth=".8" />
-                    <circle cx="21" cy="21" r="1.4" fill="#1A0A02" />
-                    <circle cx="21" cy="10" r="1.8" fill="#d43b2a" stroke="#1A0A02" strokeWidth=".6" />
-                  </svg>
-                </motion.div>
-                <span className="bh-chest-status bh-chest-timer">8:00:00</span>
-              </motion.button>
-              <motion.button whileTap={{ scale: 0.94 }} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }} className="bh-chest-slot bh-chest-empty" aria-label="Leeg slot">
-                <motion.div className="bh-chest-icon" animate={{ y: [0, -3, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
-                  <svg width="42" height="38" viewBox="0 0 42 38" fill="none" aria-hidden>
-                    <path d="M3 14 L39 14 L39 34 L3 34 Z" fill="none" stroke="#5a3a22" strokeWidth="1.3" strokeDasharray="3 3" />
-                    <path d="M3 14 Q3 6 11 6 L31 6 Q39 6 39 14" fill="none" stroke="#5a3a22" strokeWidth="1.3" strokeDasharray="3 3" />
-                    <path d="M18 18 L24 24 M24 18 L18 24" stroke="#5a3a22" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </motion.div>
-                <span className="bh-chest-status">LEEG</span>
-              </motion.button>
+              <ChestSlot tier="wood"   status="ready" onClick={() => { vibrate(12); setChestModal('wood');   }} />
+              <ChestSlot tier="silver" status="2:14:38" count={2} onClick={() => { vibrate(12); setChestModal('silver'); }} />
+              <ChestSlot tier="gold"   status="8:00:00" onClick={() => { vibrate(12); setChestModal('gold');   }} />
+              <ChestSlot tier="empty"  status="LEEG" />
             </div>
           </div>
 
@@ -527,6 +481,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* (ChestSlot helper defined below) */}
       <style jsx global>{`
         /* ============ Bliep Home (bh-*) ============ */
         .bh-home {
@@ -1025,5 +980,61 @@ export default function Home() {
         }
       `}</style>
     </GameShell>
+  );
+}
+
+/* ======================== ChestSlot ======================== */
+const CHEST_TIER_FILTER: Record<'wood' | 'silver' | 'gold' | 'empty', string> = {
+  wood:   'saturate(0.55) brightness(0.95) hue-rotate(-14deg)',
+  silver: 'grayscale(0.95) brightness(1.08) contrast(1.02)',
+  gold:   'saturate(1.15) brightness(1.04)',
+  empty:  'grayscale(1) brightness(0.45) opacity(0.45)',
+};
+
+function ChestSlot({
+  tier, status, count, onClick,
+}: {
+  tier: 'wood' | 'silver' | 'gold' | 'empty';
+  status: string;
+  count?: number;
+  onClick?: () => void;
+}) {
+  const isReady = status.toUpperCase() === 'OPEN';
+  const isEmpty = tier === 'empty';
+  const cls = `bh-chest-slot ${isEmpty ? 'bh-chest-empty' : 'bh-chest-active'}`;
+  const statusCls = `bh-chest-status ${isReady ? 'bh-chest-ready' : (!isEmpty && status.includes(':')) ? 'bh-chest-timer' : ''}`;
+  return (
+    <motion.button
+      whileTap={onClick ? { scale: 0.94 } : undefined}
+      whileHover={onClick ? { y: -2 } : undefined}
+      transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+      className={cls}
+      onClick={onClick}
+      disabled={!onClick}
+      aria-label={isEmpty ? 'Leeg slot' : `${tier} kist — ${status}`}
+    >
+      <motion.div
+        className="bh-chest-icon"
+        animate={isReady ? { y: [0, -4, 0], rotate: [0, -3, 3, -2, 2, 0] } : { y: [0, -2, 0] }}
+        transition={isReady
+          ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
+          : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <img
+          src="/assets/icons-rpg/kist.png"
+          alt=""
+          draggable={false}
+          style={{
+            width: 44,
+            height: 'auto',
+            display: 'block',
+            filter: CHEST_TIER_FILTER[tier],
+            imageRendering: 'auto',
+          }}
+        />
+      </motion.div>
+      <span className={statusCls}>{status}</span>
+      {count !== undefined && <span className="bh-chest-count">{count}</span>}
+    </motion.button>
   );
 }
