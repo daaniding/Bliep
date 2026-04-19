@@ -22,13 +22,14 @@ export default function BookPicker({ tasks, onPick }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] grid place-items-center p-6 overflow-y-auto"
+      className="fixed inset-0 z-[9999] grid place-items-center p-6 overflow-y-auto"
       style={{
-        background:
-          'radial-gradient(60% 50% at 50% 50%, rgba(0,0,0,.35) 0%, rgba(0,0,0,.75) 75%, rgba(0,0,0,.88) 100%), ' +
-          'radial-gradient(1200px 800px at 30% 20%, #5a6b3e 0%, #3d4a2a 45%, #24301a 100%)',
-        backdropFilter: 'blur(1.5px)',
-        WebkitBackdropFilter: 'blur(1.5px)',
+        backgroundColor: '#0a0604',
+        backgroundImage:
+          'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,0,0,.55) 0%, rgba(0,0,0,.88) 70%, rgba(0,0,0,.96) 100%), ' +
+          'radial-gradient(ellipse 140% 100% at 30% 20%, #5a6b3e 0%, #3d4a2a 45%, #24301a 100%)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
       }}
     >
       <div
