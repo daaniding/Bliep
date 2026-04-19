@@ -973,33 +973,94 @@ export default function CityCanvas({
       };
       app.ticker.add(syncChopped);
 
-      // ---- Chop-job indicators: axe emoji above tree being chopped ----
-      const chopBadges = new Map<string, Graphics>();
+      // ---- Chop-job visuals: NPC walker + circular progress ring ----
+      type ChopVisual = { ring: Graphics; npc: Sprite; hutGx: number; hutGy: number };
+      const chopVisuals = new Map<string, ChopVisual>();
+      const smithTex = await (async () => {
+        try {
+          const t = await (await import('pixi.js')).Assets.load<Texture>('/assets/npc/idle/smith_idle.png');
+          if (t?.source) t.source.scaleMode = 'nearest';
+          return t;
+        } catch { return null; }
+      })();
       const syncChopJobs = () => {
         const active = new Set(stateRef.current.chopJobs.map(j => `${j.gx},${j.gy}`));
-        // Remove stale badges
-        for (const [k, g] of chopBadges) {
+        // Remove stale
+        for (const [k, v] of chopVisuals) {
           if (!active.has(k)) {
-            overlayLayer.removeChild(g);
-            g.destroy();
-            chopBadges.delete(k);
+            overlayLayer.removeChild(v.ring);
+            v.ring.destroy();
+            decorLayer.removeChild(v.npc);
+            v.npc.destroy();
+            chopVisuals.delete(k);
           }
         }
-        // Add new badges + pulse
+        // Pick nearest lumber hut for each chop job
+        const huts = stateRef.current.buildings.filter(b => b.type === 'lumber_hut');
         for (const job of stateRef.current.chopJobs) {
           const k = `${job.gx},${job.gy}`;
-          let g = chopBadges.get(k);
-          if (!g) {
-            g = new Graphics();
-            g.rect(-14, -10, 28, 20).fill({ color: 0x1a1410, alpha: 0.85 }).stroke({ color: 0xfdd069, width: 2 });
-            const { sx, sy } = gridToScreen(job.gx, job.gy, 0, 0);
-            g.position.set(sx, sy - 80);
-            g.zIndex = 999999;
-            overlayLayer.addChild(g);
-            chopBadges.set(k, g);
+          let v = chopVisuals.get(k);
+          if (!v) {
+            const ring = new Graphics();
+            ring.zIndex = 999999;
+            overlayLayer.addChild(ring);
+            // Find nearest hut — fallback to plaza center
+            let hutGx = CITY_CENTER.gx, hutGy = CITY_CENTER.gy;
+            let best = Infinity;
+            for (const h of huts) {
+              const cx = h.gx + 1, cy = h.gy + 1;
+              const d = Math.hypot(cx - job.gx, cy - job.gy);
+              if (d < best) { best = d; hutGx = cx; hutGy = cy; }
+            }
+            const npc = new Sprite(smithTex ?? Texture.WHITE);
+            npc.anchor.set(0.5, 0.9);
+            if (smithTex) {
+              const scale = (TILE_W * 0.9) / Math.max(smithTex.width, smithTex.height);
+              npc.scale.set(scale);
+            } else {
+              npc.width = TILE_W * 0.4;
+              npc.height = TILE_H * 0.6;
+              npc.tint = 0x8a5a2a;
+            }
+            decorLayer.addChild(npc);
+            v = { ring, npc, hutGx, hutGy };
+            chopVisuals.set(k, v);
           }
-          const pulse = 1 + Math.sin(Date.now() / 180) * 0.08;
-          g.scale.set(pulse);
+          // Animate NPC: walk hut→tree first 20% of timer, stay for 60%, walk back last 20%
+          const total = job.finishesAt - job.startedAt;
+          const elapsed = Date.now() - job.startedAt;
+          const p = Math.max(0, Math.min(1, elapsed / total));
+          const hutPx = v.hutGx * TILE_W + TILE_W / 2;
+          const hutPy = v.hutGy * TILE_H + TILE_H * 0.6;
+          const treePx = job.gx * TILE_W + TILE_W / 2;
+          const treePy = job.gy * TILE_H + TILE_H * 0.6;
+          let nx = hutPx, ny = hutPy;
+          if (p < 0.2) {
+            const k2 = p / 0.2;
+            nx = hutPx + (treePx - hutPx) * k2;
+            ny = hutPy + (treePy - hutPy) * k2;
+          } else if (p < 0.8) {
+            nx = treePx; ny = treePy;
+          } else {
+            const k2 = (p - 0.8) / 0.2;
+            nx = treePx + (hutPx - treePx) * k2;
+            ny = treePy + (hutPy - treePy) * k2;
+          }
+          v.npc.position.set(nx, ny);
+          v.npc.zIndex = Math.floor(ny);
+          // Tiny bob while chopping
+          if (p >= 0.2 && p < 0.8) {
+            v.npc.position.y += Math.sin(Date.now() / 120) * 2;
+          }
+          // Progress ring: thin circle arc at top of tree
+          const ringX = treePx;
+          const ringY = treePy - TILE_H * 1.2;
+          const r = 14;
+          v.ring.clear();
+          v.ring.circle(0, 0, r).stroke({ color: 0x0d0a06, width: 3, alpha: 0.6 });
+          const arcEnd = -Math.PI / 2 + p * Math.PI * 2;
+          v.ring.arc(0, 0, r, -Math.PI / 2, arcEnd, false).stroke({ color: 0xfdd069, width: 3 });
+          v.ring.position.set(ringX, ringY);
         }
       };
       app.ticker.add(syncChopJobs);
@@ -1698,7 +1759,19 @@ export default function CityCanvas({
     }
     if (placingType) {
       const slug = spriteForLevel(placingType, 1);
-      const tex = getTopdownTexture(atlas, slug);
+      let tex: Texture | null = null;
+      // Farm-tileset buildings (lumber_hut etc) come from terrain cache
+      const farmSlug =
+        placingType === 'lumber_hut' ? 'farm:house_b' :
+        placingType === 'house' ? 'farm:house_a' :
+        placingType === 'farm' ? 'farm:barn' :
+        placingType === 'barracks' ? 'farm:shop' :
+        placingType === 'tower' ? 'farm:tower_a' :
+        placingType === 'fountain' ? 'farm:house_b' : null;
+      if (farmSlug) {
+        tex = terrainCacheRef.current?.buildings.get(farmSlug) ?? null;
+      }
+      if (!tex) tex = getTopdownTexture(atlas, slug);
       if (tex && tex !== Texture.EMPTY) {
         const ghost = new Sprite(tex);
         ghost.anchor.set(0.5, 0.95);

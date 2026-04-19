@@ -28,9 +28,7 @@ import {
   startChop,
   settleChops,
   CHOP_COIN_COST,
-  CHOP_DURATION_MS,
   CHOP_WOOD_REWARD,
-  CHOP_COIN_REWARD,
   type CityState,
   type PlacedBuilding,
 } from '@/lib/cityStore';
@@ -68,7 +66,6 @@ export default function CityClient() {
   const [canvasReady, setCanvasReady] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [, forceTick] = useState(0);
-  const [chopTarget, setChopTarget] = useState<{ gx: number; gy: number } | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
 
   // Initial load
@@ -97,36 +94,26 @@ export default function CityClient() {
     return () => clearInterval(id);
   }, [loaded]);
 
-  // Tap-tree event → open chop modal
+  // Tap-tree event → direct start chop (no modal)
   useEffect(() => {
     const onTapTree = (e: Event) => {
       const detail = (e as CustomEvent).detail as { gx: number; gy: number } | undefined;
       if (!detail) return;
-      setChopTarget(detail);
+      setState(s => {
+        if (!hasLumberHut(s)) { showFlash('Bouw eerst een Houthakkershut (50 🪙)'); return s; }
+        if (s.chopJobs.length >= maxChoppers(s)) { showFlash('Alle houthakkers zijn bezig'); return s; }
+        if (s.coins < CHOP_COIN_COST) { showFlash(`Je hebt ${CHOP_COIN_COST} 🪙 nodig`); return s; }
+        const next = startChop(s, detail.gx, detail.gy);
+        if (!next) return s;
+        vibrate(20);
+        playSfx('tap');
+        showFlash('🪓 Houthakker onderweg');
+        return next;
+      });
     };
     window.addEventListener('bliep:tap-tree', onTapTree);
     return () => window.removeEventListener('bliep:tap-tree', onTapTree);
   }, []);
-
-  function handleChopConfirm() {
-    if (!chopTarget) return;
-    if (!hasLumberHut(state)) {
-      showFlash('Bouw eerst een Houthakkershut');
-      setChopTarget(null);
-      return;
-    }
-    const next = startChop(state, chopTarget.gx, chopTarget.gy);
-    if (!next) {
-      const busy = state.chopJobs.length >= maxChoppers(state);
-      showFlash(busy ? 'Alle houthakkers zijn bezig' : 'Niet genoeg coins');
-      setChopTarget(null);
-      return;
-    }
-    setState(next);
-    setChopTarget(null);
-    vibrate(20);
-    playSfx('tap');
-  }
 
   function showFlash(msg: string) {
     setFlash(msg);
@@ -477,50 +464,21 @@ export default function CityClient() {
         </div>
       )}
 
-      {/* Chop confirmation modal */}
-      {chopTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setChopTarget(null)}>
-          <div
-            className="relative w-[min(380px,92%)] rounded-2xl border-2 border-[#5a3a10] p-5"
-            style={{
-              background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)',
-              boxShadow: 'inset 0 2px 0 rgba(255,230,160,0.3), 0 8px 0 #0d0a06, 0 14px 30px rgba(0,0,0,0.7)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center mb-4">
-              <div className="text-4xl mb-2">🪓</div>
-              <div className="font-display text-[#fdd069] text-lg mb-1">Boom omhakken?</div>
-              {hasLumberHut(state) ? (
-                <div className="text-[#a08060] text-xs">
-                  2 min • {CHOP_COIN_COST} 🪙 • houthakker {state.chopJobs.length + 1}/{maxChoppers(state)}
+      {/* Active chop timers in topbar */}
+      {state.chopJobs.length > 0 && (
+        <div className="fixed z-20 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 62px)', right: 10 }}>
+          <div className="flex flex-col gap-1 items-end">
+            {state.chopJobs.map(job => {
+              const remaining = Math.max(0, job.finishesAt - Date.now());
+              const mins = Math.floor(remaining / 60000);
+              const secs = Math.floor((remaining % 60000) / 1000);
+              return (
+                <div key={job.id} className="font-display text-[11px] tabular-nums px-3 py-1 rounded-full border-2 border-[#5a3a10] flex items-center gap-1.5" style={{ background: 'linear-gradient(180deg, #3a2718 0%, #1c0f06 100%)', color: '#e0b080', textShadow: '0 1px 0 #0d0a06', boxShadow: '0 2px 0 #0d0a06' }}>
+                  <span>🪓</span>
+                  <span>{mins}:{String(secs).padStart(2, '0')}</span>
                 </div>
-              ) : (
-                <div className="text-[#e0704a] text-xs">
-                  Bouw eerst een <b>Houthakkershut</b> (50 🪙)
-                </div>
-              )}
-              <div className="mt-3 text-[#88dd88] text-sm font-display">
-                Beloning: +{CHOP_WOOD_REWARD} 🪵 +{CHOP_COIN_REWARD} 🪙
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                className="flex-1 py-2.5 rounded-lg font-display text-sm border-2 border-[#5a3a10]"
-                style={{ background: 'linear-gradient(180deg, #2a1a0a 0%, #1c0f06 100%)', color: '#a08060' }}
-                onClick={() => setChopTarget(null)}
-              >
-                Annuleer
-              </button>
-              <button
-                className="flex-1 py-2.5 rounded-lg font-display text-sm border-2 border-[#5a3a10] disabled:opacity-50"
-                disabled={!hasLumberHut(state) || state.chopJobs.length >= maxChoppers(state) || state.coins < CHOP_COIN_COST}
-                style={{ background: 'linear-gradient(180deg, #fdd069 0%, #b8791f 100%)', color: '#1c0f06', textShadow: '0 1px 0 rgba(255,230,160,0.5)', boxShadow: 'inset 0 2px 0 rgba(255,255,220,0.5), 0 3px 0 #0d0a06' }}
-                onClick={handleChopConfirm}
-              >
-                🪓 Hak om
-              </button>
-            </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -807,11 +765,14 @@ function ChestStatus({ state }: { state: CityState }) {
 /** Map a building sprite slug to its preview image URL. */
 function topdownSpriteUrl(slug: string): string {
   if (slug.startsWith('ts:')) {
-    // ts:blue:castle → /assets/topdown/buildings/tinyswords/blue/castle.png
     const [, color, kind] = slug.split(':');
     return `/assets/topdown/buildings/tinyswords/${color}/${kind}.png`;
   }
   if (slug.startsWith('big_house')) return '/assets/topdown/buildings/big_houses.png';
+  if (slug === 'farm:hut' || slug.startsWith('farm:')) {
+    // Farm tileset sprites don't have standalone files — use a cozy hay house as drawer thumbnail
+    return '/assets/topdown/buildings/house_hay_2.png';
+  }
   return `/assets/topdown/buildings/${slug}.png`;
 }
 

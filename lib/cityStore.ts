@@ -266,7 +266,6 @@ export function maxChoppers(state: CityState): number {
 export const CHOP_DURATION_MS = 2 * 60 * 1000;
 export const CHOP_COIN_COST = 5;
 export const CHOP_WOOD_REWARD = 5;
-export const CHOP_COIN_REWARD = 3;
 
 /** Start a chop job on a tree cell. Deducts coin cost; refuses if slots full. */
 export function startChop(state: CityState, gx: number, gy: number): CityState | null {
@@ -300,7 +299,6 @@ export function settleChops(state: CityState, now = Date.now()): CityState {
   }
   return {
     ...state,
-    coins: state.coins + ripe.length * CHOP_COIN_REWARD,
     wood: state.wood + ripe.length * CHOP_WOOD_REWARD,
     chopJobs: remaining,
     choppedTrees: newChopped,
