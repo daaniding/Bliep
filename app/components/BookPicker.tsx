@@ -7,6 +7,7 @@ import type { DailyTask, TaskTier } from '@/lib/dailyTasks';
 interface Props {
   tasks: DailyTask[];
   onPick: (task: DailyTask) => void;
+  lucky?: boolean;
 }
 
 const cinzel = "var(--font-cinzel), 'Cinzel', serif";
@@ -15,7 +16,7 @@ const philosopher = "var(--font-philosopher), 'Philosopher', serif";
 // Which tier gets the "Populair" ribbon (mirrors reference: 30min card)
 const RIBBON_TIER: TaskTier = 'medium';
 
-export default function BookPicker({ tasks, onPick }: Props) {
+export default function BookPicker({ tasks, onPick, lucky = false }: Props) {
   // Sort so easy/medium/hard always render in that visual order
   const order: TaskTier[] = ['easy', 'medium', 'hard'];
   const sorted = [...tasks].sort(
@@ -144,6 +145,32 @@ export default function BookPicker({ tasks, onPick }: Props) {
               >
                 Voltooi een opdracht om coins te verdienen
               </div>
+              {lucky && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 12px 6px',
+                    borderRadius: 999,
+                    fontFamily: cinzel,
+                    fontWeight: 800,
+                    fontSize: 11,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: '#2a1608',
+                    background:
+                      'radial-gradient(ellipse 70% 50% at 50% 20%, rgba(255,252,220,.9), rgba(255,252,220,0) 70%), linear-gradient(180deg, #ffe07a 0%, #d99b22 60%, #a86a10 100%)',
+                    boxShadow:
+                      'inset 0 0 0 1.5px #4a2a08, inset 0 2px 0 rgba(255,255,220,.55), inset 0 -2px 0 rgba(90,50,10,.55), 0 2px 0 rgba(0,0,0,.4), 0 0 18px rgba(255,224,122,.55)',
+                    textShadow: '0 1px 0 rgba(255,240,180,.6)',
+                    animation: 'luckyBadgePulse 2.2s ease-in-out infinite',
+                  }}
+                >
+                  ✨ Geluksdag — kist opent direct
+                </div>
+              )}
             </div>
 
             {/* cards */}
@@ -171,6 +198,10 @@ export default function BookPicker({ tasks, onPick }: Props) {
             transform: scale(1) translateY(0);
             opacity: 1;
           }
+        }
+        @keyframes luckyBadgePulse {
+          0%, 100% { transform: translateY(0) scale(1); filter: brightness(1); }
+          50% { transform: translateY(-1px) scale(1.04); filter: brightness(1.12); }
         }
       `}</style>
     </div>

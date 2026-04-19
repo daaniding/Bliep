@@ -167,12 +167,17 @@ export function consumeChest(inv: ChestInventory, slotId: string): ChestInventor
 
 /** Add a new chest to inventory. Returns ok:false when inventory is full —
     caller must dismiss a chest or pay gems to instant-open one first. */
-export function grantChest(inv: ChestInventory, kind: ChestKind): { ok: boolean; inv: ChestInventory; reason?: string } {
+export function grantChest(
+  inv: ChestInventory,
+  kind: ChestKind,
+  opts: { instant?: boolean } = {},
+): { ok: boolean; inv: ChestInventory; reason?: string } {
   if (inv.slots.length >= MAX_SLOTS) {
     return { ok: false, inv, reason: 'Je schatkamer is vol — maak een slot vrij' };
   }
+  const state: SlotState = opts.instant ? 'ready' : 'waiting';
   const next: ChestInventory = {
-    slots: [...inv.slots, { id: uid(), kind, state: 'waiting' }],
+    slots: [...inv.slots, { id: uid(), kind, state }],
   };
   saveInventory(next);
   return { ok: true, inv: next };

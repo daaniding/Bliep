@@ -17,11 +17,12 @@ import LeagueModal from './components/modals/LeagueModal';
 import PassModal from './components/modals/PassModal';
 import ChestActionModal from './components/modals/ChestActionModal';
 import {
-  loadInventory, tickInventory, consumeChest,
+  loadInventory, tickInventory, consumeChest, grantChest,
   type ChestSlot as ChestSlotType, type ChestKind, type ChestInventory,
-  KIND_ROW, formatRemaining, remainingMs,
+  KIND_ROW, KIND_LABEL, formatRemaining, remainingMs,
   CHESTS_CHANGED, MAX_SLOTS,
 } from '@/lib/chests';
+import { isLuckyDay } from '@/lib/luckyDay';
 import { vibrate } from '@/lib/juice';
 import { getDailyTasks, loadDailyPick, saveDailyPick, type DailyTask } from '@/lib/dailyTasks';
 import { useCoins } from '@/lib/useCoins';
@@ -152,6 +153,17 @@ export default function Home() {
     if (chosenTask) {
       showFloater(`+${chosenTask.coins} 🪙`, '#fdd069');
       window.setTimeout(() => showFloater(`+${trophiesForTier(chosenTask.tier)} 🏆`, '#b080e0'), 350);
+      const kind: ChestKind = chosenTask.tier === 'easy' ? 'wood' : chosenTask.tier === 'medium' ? 'bronze' : 'gold';
+      const lucky = isLuckyDay(getToday());
+      const res = grantChest(loadInventory(), kind, { instant: lucky });
+      if (res.ok) {
+        const label = KIND_LABEL[kind];
+        const color = lucky ? '#6fd4f0' : '#fdd069';
+        const text = lucky ? `✨ ${label} — direct open!` : `+1 📦 ${label}`;
+        window.setTimeout(() => showFloater(text, color), 700);
+      } else {
+        window.setTimeout(() => showFloater('Kistenkast vol 📦', '#e07070'), 700);
+      }
     }
   }
   function handleAbort() {
@@ -174,7 +186,7 @@ export default function Home() {
   return (
     <GameShell hideTopBar hideNav>
       <div ref={confettiRef} className="fixed inset-0 pointer-events-none z-[9999]" />
-      {showPickerModal && <BookPicker tasks={tasks} onPick={handlePick} />}
+      {showPickerModal && <BookPicker tasks={tasks} onPick={handlePick} lucky={isLuckyDay(getToday())} />}
 
       <div className="bh-home">
 
