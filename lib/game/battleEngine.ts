@@ -24,6 +24,7 @@ export interface BattleEnemy {
   targetBuildingId?: string;
   hp: number; maxHp: number;
   speed: number;
+  damage: number;
   state: 'walk' | 'attack' | 'dead';
   attackTimer: number;
   facingLeft: boolean;
@@ -490,9 +491,11 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
   const c = buildingCenter(targetB, ox, oy);
   const diffMult = DIFFICULTY_MULT[state.difficulty];
   const baseHp = (30 + camp.defense * 3) * diffMult.enemyHp;
-  const mult = tier === 'scout' ? 0.5 : tier === 'soldier' ? 1.0 : 2.5;
-  const spdMult = tier === 'scout' ? 1.5 : tier === 'soldier' ? 1.0 : 0.7;
-  const hp = Math.round(baseHp * mult);
+  // Tier scaling: scouts = glass cannons (fast+fragile), elites = tanks
+  const hpMult = tier === 'scout' ? 0.35 : tier === 'soldier' ? 1.0 : 3.5;
+  const spdMult = tier === 'scout' ? 1.6 : tier === 'soldier' ? 1.0 : 0.6;
+  const dmgMult = tier === 'scout' ? 0.6 : tier === 'soldier' ? 1.0 : 2.2;
+  const hp = Math.round(baseHp * hpMult);
 
   state.enemies.push({
     id: state.nextId++,
@@ -500,6 +503,7 @@ function spawn(state: BattleState, camp: PveCamp, tier: 'scout' | 'soldier' | 'e
     targetBuildingId: targetB.id,
     hp, maxHp: hp,
     speed: ENEMY_SPEED * spdMult + Math.random() * 8,
+    damage: Math.round(ENEMY_DAMAGE * dmgMult),
     state: 'walk', attackTimer: 0,
     facingLeft: c.x < pos.x, tier,
     lastX: pos.x, lastY: pos.y, stuckTimer: 0,
@@ -560,8 +564,8 @@ function tickEnemies(state: BattleState, dt: number, buildings: PlacedBuilding[]
         e.attackTimer = 0;
         const bhp = state.buildingHp.get(e.targetBuildingId);
         if (bhp && !bhp.destroyed) {
-          bhp.hp -= ENEMY_DAMAGE;
-          emitDmg(state, e.targetX, e.targetY, ENEMY_DAMAGE, 0xff4444);
+          bhp.hp -= e.damage;
+          emitDmg(state, e.targetX, e.targetY, e.damage, 0xff4444);
           if (e.targetBuildingId === state.castleId) state.castleHit = true;
           state.fx.push({ id: state.nextId++, x: e.targetX + (Math.random() - 0.5) * 40, y: e.targetY - 15 + (Math.random() - 0.5) * 20, type: 'fire', done: false });
           if (bhp.hp <= 0) {
@@ -579,7 +583,7 @@ function tickEnemies(state: BattleState, dt: number, buildings: PlacedBuilding[]
       for (const d of state.defenders) {
         if (d.state === 'dead') continue;
         if (Math.hypot(d.x - e.x, d.y - e.y) < TILE_W * 1.5) {
-          d.hp -= ENEMY_DAMAGE * 0.5 * dt;
+          d.hp -= e.damage * 0.5 * dt;
           e.facingLeft = d.x < e.x;
           if (d.hp <= 0) {
             d.state = 'dead';

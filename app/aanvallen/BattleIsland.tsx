@@ -60,9 +60,19 @@ export default function BattleIsland({ camp, cityState, difficulty, onComplete }
       if (cancelled) { app.destroy(true, { children: true, texture: false }); return; }
       host.appendChild(app.canvas);
 
-      const [atlas, terrain, combat] = await Promise.all([
-        loadTopdownAtlas(), loadFarmTerrain(), loadCombatSprites(),
-      ]);
+      let atlas: Awaited<ReturnType<typeof loadTopdownAtlas>>;
+      let terrain: Awaited<ReturnType<typeof loadFarmTerrain>>;
+      let combat: Awaited<ReturnType<typeof loadCombatSprites>>;
+      try {
+        [atlas, terrain, combat] = await Promise.all([
+          loadTopdownAtlas().catch(() => ({} as Awaited<ReturnType<typeof loadTopdownAtlas>>)),
+          loadFarmTerrain(),
+          loadCombatSprites(),
+        ]);
+      } catch (err) {
+        console.error('[battle] asset load failed', err);
+        return;
+      }
       if (cancelled) { app.destroy(true, { children: true, texture: false }); return; }
 
       // Load custom tower sheets (per-level animated, match /stad)

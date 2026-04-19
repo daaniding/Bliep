@@ -122,7 +122,14 @@ function sliceFrames(tex: Texture, fw: number, fh: number, n: number): Texture[]
 export async function loadFarmTerrain(): Promise<FarmTerrain> {
   if (cached) return cached;
 
-  const tileset = await Assets.load<Texture>(`${BASE}/tilesets/farm_spring_summer.png`);
+  let tileset: Texture;
+  try {
+    tileset = await Assets.load<Texture>(`${BASE}/tilesets/farm_spring_summer.png`);
+  } catch {
+    // iOS Safari occasionally can't load — fall back to a blank white tex so
+    // callers don't crash the whole canvas init.
+    tileset = Texture.WHITE;
+  }
   nearest(tileset);
 
   const tileCache = new Map<string, Texture>();
