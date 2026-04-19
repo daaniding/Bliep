@@ -121,6 +121,8 @@ export default function CityCanvas({
   const atlasRef = useRef<TopdownAtlas | null>(null);
   const occupiedCellsRef = useRef<Set<string>>(new Set());
   const terrainCacheRef = useRef<FarmTerrain | null>(null);
+  type TowerSheet = { frames: Texture[]; frameW: number; frameH: number };
+  const towerSheetsRef = useRef<Array<TowerSheet | null>>([]);
   const originRef = useRef<{ originX: number; originY: number }>({ originX: 0, originY: 0 });
   const stateRef = useRef<CityState>(state);
   const placingRef = useRef<BuildingType | null>(placingType);
@@ -190,6 +192,31 @@ export default function CityCanvas({
       if (cancelled) return;
       atlasRef.current = atlas;
       terrainCacheRef.current = terrain;
+
+      // ---- Load tower animated sheets (level 1..7) ----
+      {
+        const sheets: Array<TowerSheet | null> = [];
+        for (let lv = 1; lv <= 7; lv++) {
+          try {
+            const tex = await (await import('pixi.js')).Assets.load<Texture>(`/assets/towers/idle/${lv}.png`);
+            if (!tex) { sheets.push(null); continue; }
+            if (tex.source) tex.source.scaleMode = 'nearest';
+            const frameH = tex.frame.height;
+            const count = Math.max(1, Math.floor(tex.frame.width / frameH));
+            const frameW = Math.floor(tex.frame.width / count);
+            const frames: Texture[] = [];
+            for (let i = 0; i < count; i++) {
+              const t = new Texture({ source: tex.source, frame: new Rectangle(i * frameW, 0, frameW, frameH) });
+              if (t.source) t.source.scaleMode = 'nearest';
+              frames.push(t);
+            }
+            sheets.push({ frames, frameW, frameH });
+          } catch {
+            sheets.push(null);
+          }
+        }
+        towerSheetsRef.current = sheets;
+      }
 
       // ---- Stage background (smooth ocean gradient — not tiled) ----
       const stageBg = new Graphics();
@@ -1868,6 +1895,28 @@ export default function CityCanvas({
         sprite.zIndex = -1;
         layer.addChild(sprite);
         continue;
+      }
+
+      // Defense towers use custom animated sheets per level
+      if (b.type === 'tower') {
+        const lvIdx = Math.max(0, Math.min(6, b.level - 1));
+        const sheet = towerSheetsRef.current[lvIdx];
+        if (sheet && sheet.frames.length > 0) {
+          const anim = new AnimatedSprite(sheet.frames);
+          anim.anchor.set(0.5, 0.95);
+          const longSide = Math.max(sheet.frameW, sheet.frameH);
+          const targetTiles = Math.max(fp.w, fp.h) * 1.4;
+          const baseScale = (TILE_W * targetTiles * (def.spriteScale ?? 1)) / longSide;
+          anim.scale.set(baseScale);
+          const { sx, sy } = gridToScreen(centerGx, centerGy, 0, 0);
+          anim.position.set(sx, sy + TILE_H * 0.4);
+          anim.zIndex = Math.floor(sy + TILE_H * 0.4);
+          anim.animationSpeed = 0.12;
+          anim.loop = true;
+          anim.play();
+          layer.addChild(anim);
+          continue;
+        }
       }
 
       const slug = spriteForLevel(b.type, b.level);

@@ -145,12 +145,12 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   tower: {
     type: 'tower',
     name: 'Wachttoren',
-    description: 'Boogschutters. Schaalt verdediging.',
+    description: 'Boogschutters. Schaalt verdediging. 7 levels.',
     baseCost: 250,
     costGrowth: 1.6,
     baseBuildSec: 80,
     buildTimeGrowth: 1.8,
-    maxLevel: MAX_LEVEL,
+    maxLevel: 7,
     spritesPerLevel: lvls(
       ts('yellow', 'archery'), ts('yellow', 'archery'), ts('yellow', 'archery'),
       ts('blue', 'archery'),   ts('blue', 'archery'),   ts('blue', 'archery'),
