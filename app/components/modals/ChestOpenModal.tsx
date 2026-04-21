@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BHModal from '../BHModal';
+import DarkKnight from '../DarkKnight';
 import { useCoins } from '@/lib/useCoins';
 import { useTrophies } from '@/lib/useTrophies';
 import { loadCity, saveCity, addSpeedTokens } from '@/lib/cityStore';
@@ -157,6 +158,7 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [revealIdx, setRevealIdx] = useState(0); // which big reveal is showing
   const [claimed, setClaimed] = useState(false);
+  const [knightAttacking, setKnightAttacking] = useState(false);
   const { award } = useCoins();
   const { awardTrophies } = useTrophies();
   const skin = CHEST_SKIN[kind];
@@ -181,20 +183,26 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
     setRewards(rollRewards(kind));
     setRevealIdx(0);
     setClaimed(false);
+    setKnightAttacking(false);
   }, [open, kind]);
 
-  async function tapChest() {
+  function tapChest() {
+    if (phase === 'burst' || phase === 'reveal' || phase === 'done') return;
+    if (knightAttacking) return;
+    sfxTap();
+    setKnightAttacking(true);
+  }
+
+  async function handleKnightImpact() {
     if (phase === 'idle') {
       setPhase('charging');
       setTaps(1);
-      sfxTap();
       return;
     }
     if (phase !== 'charging') return;
     const next = taps + 1;
-    sfxTap();
     if (next >= tapsNeeded + 1) {
-      // last tap → burst. Rewards were rolled when the modal opened,
+      // last hammer impact → burst. Rewards were rolled when the modal opened,
       // so taps scale with how fancy the loot is.
       setTaps(tapsNeeded + 1);
       await wait(120);
@@ -386,10 +394,20 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
             }}
           />
 
+          {/* chest + dark knight — flex row so knight stands to the right of the chest */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            gap: 0,
+            position: 'relative',
+            zIndex: 3,
+          }}>
           {/* chest — sprite-sheet frame stepping */}
           <motion.button
             onClick={tapChest}
-            disabled={phase === 'burst' || phase === 'reveal' || phase === 'done'}
+            disabled={knightAttacking || phase === 'burst' || phase === 'reveal' || phase === 'done'}
             aria-label="Sla op kist"
             animate={
               phase === 'idle'
@@ -443,6 +461,13 @@ export default function ChestOpenModal({ open, onClose, kind }: Props) {
               <div style={{ ...chestSpriteStyle(skin.baseRow, currentFrame, spriteScale), position: 'relative', zIndex: 2 }} />
             </div>
           </motion.button>
+
+          <DarkKnight
+            isAttacking={knightAttacking}
+            onAttackComplete={() => setKnightAttacking(false)}
+            onHammerImpact={handleKnightImpact}
+          />
+          </div>
 
           {/* burst sparkles (lightweight) */}
           {phase === 'burst' && Array.from({ length: 10 }).map((_, i) => {
